@@ -34,7 +34,7 @@ app.use(
     ],
     methods: ["GET"],
   })
-);
+);  
 
 // ─── SIMPLE IN-MEMORY CACHE ──────────────────────────────────────────────────
 // Caches odds for 10 minutes so we don't burn through API quota
@@ -211,7 +211,13 @@ app.get("/api/quota", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/edge-seeker.html');
+});
 
+app.get('/edge-seeker.html', (req, res) => {
+  res.sendFile(__dirname + '/edge-seeker.html');
+});
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
