@@ -31,7 +31,6 @@
     overflow-x: hidden;
   }
 
-  /* Background grid */
   body::before {
     content: '';
     position: fixed;
@@ -44,986 +43,504 @@
     z-index: 0;
   }
 
-  /* HEADER */
   header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    position: sticky; top: 0; z-index: 100;
     background: rgba(8,11,16,0.92);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
     padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between;
   }
 
   .logo {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 26px;
-    letter-spacing: 2px;
+    font-size: 26px; letter-spacing: 2px;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   }
 
   .logo span {
-    font-size: 10px;
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 3px;
-    display: block;
+    font-size: 10px; font-family: 'DM Mono', monospace; letter-spacing: 3px; display: block;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     margin-top: -4px;
   }
 
   .connect-btn {
     background: linear-gradient(135deg, var(--sol), var(--accent2));
-    border: none;
-    border-radius: 10px;
-    color: white;
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    font-weight: 500;
-    padding: 10px 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
-    letter-spacing: 0.5px;
+    border: none; border-radius: 10px; color: white;
+    font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+    padding: 10px 16px; cursor: pointer; display: flex; align-items: center;
+    gap: 8px; transition: all 0.2s; letter-spacing: 0.5px;
   }
-
   .connect-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+  .connect-btn .dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-  .connect-btn .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: #fff;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  /* WALLET MODAL */
   .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.8);
-    backdrop-filter: blur(8px);
-    z-index: 1000;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+    z-index: 1000; display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
   }
-
-  .modal-overlay.active {
-    opacity: 1;
-    pointer-events: all;
-  }
-
+  .modal-overlay.active { opacity: 1; pointer-events: all; }
   .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 24px 24px 0 0;
-    padding: 28px 24px 40px;
-    width: 100%;
-    max-width: 480px;
-    transform: translateY(100%);
-    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 24px 24px 0 0; padding: 28px 24px 40px;
+    width: 100%; max-width: 480px;
+    transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
   }
-
-  .modal-overlay.active .modal {
-    transform: translateY(0);
-  }
-
-  .modal-handle {
-    width: 40px; height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 0 auto 24px;
-  }
-
-  .modal h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 24px;
-    letter-spacing: 2px;
-    margin-bottom: 6px;
-    color: var(--text);
-  }
-
-  .modal p {
-    font-size: 13px;
-    color: var(--muted);
-    margin-bottom: 24px;
-  }
-
+  .modal-overlay.active .modal { transform: translateY(0); }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 24px; }
+  .modal h2 { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 2px; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
   .wallet-option {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    cursor: pointer;
-    margin-bottom: 10px;
-    transition: all 0.2s;
-    background: var(--bg);
+    display: flex; align-items: center; gap: 16px; padding: 16px;
+    border: 1px solid var(--border); border-radius: 14px; cursor: pointer;
+    margin-bottom: 10px; transition: all 0.2s; background: var(--bg);
   }
+  .wallet-option:hover { border-color: var(--accent); background: rgba(0,229,255,0.05); }
+  .wallet-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .w-name { font-weight: 600; font-size: 15px; }
+  .w-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-  .wallet-option:hover {
-    border-color: var(--accent);
-    background: rgba(0,229,255,0.05);
+  main { position: relative; z-index: 1; padding: 20px 16px; max-width: 480px; margin: 0 auto; }
+
+  .wallet-bar {
+    background: linear-gradient(135deg, rgba(153,69,255,0.1), rgba(0,229,255,0.05));
+    border: 1px solid rgba(153,69,255,0.3); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 20px; display: none;
+    align-items: center; justify-content: space-between;
   }
+  .wallet-bar.visible { display: flex; }
+  .wallet-info { display: flex; align-items: center; gap: 10px; }
+  .wallet-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--sol), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .wallet-addr { font-family: 'DM Mono', monospace; font-size: 12px; }
+  .wallet-wname { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sol-amount { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--sol); letter-spacing: 1px; text-align: right; }
+  .sol-usd { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: right; }
 
-  .wallet-icon {
-    width: 44px; height: 44px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    flex-shrink: 0;
-  }
-
-  .wallet-option .name {
-    font-weight: 600;
-    font-size: 15px;
-  }
-
-  .wallet-option .desc {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
-  /* MAIN */
-  main {
-    position: relative;
-    z-index: 1;
-    padding: 20px 16px;
-    max-width: 480px;
-    margin: 0 auto;
-  }
-
-  /* STAT CARDS ROW */
-  .stats-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), transparent);
-  }
-
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), transparent); }
   .stat-card.green::before { background: linear-gradient(90deg, var(--green), transparent); }
-  .stat-card.gold::before { background: linear-gradient(90deg, var(--gold), transparent); }
-  .stat-card.purple::before { background: linear-gradient(90deg, var(--sol), transparent); }
-
-  .stat-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-
-  .stat-value {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 30px;
-    letter-spacing: 1px;
-    line-height: 1;
-  }
-
-  .stat-value.green { color: var(--green); }
-  .stat-value.gold { color: var(--gold); }
-  .stat-value.cyan { color: var(--accent); }
+  .stat-card.gold::before  { background: linear-gradient(90deg, var(--gold), transparent); }
+  .stat-card.purple::before{ background: linear-gradient(90deg, var(--sol), transparent); }
+  .stat-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 1px; line-height: 1; }
+  .stat-value.green  { color: var(--green); }
+  .stat-value.gold   { color: var(--gold); }
+  .stat-value.cyan   { color: var(--accent); }
   .stat-value.purple { color: var(--sol); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
-  .stat-sub {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 4px;
-  }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; }
+  .badge { font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 10px; border-radius: 20px; letter-spacing: 1px; }
+  .badge.live { background: rgba(255,58,92,0.15); color: var(--red); border: 1px solid rgba(255,58,92,0.3); animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.6} }
 
-  /* SECTION HEADER */
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
+  .filter-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 16px; }
+  .filter-tabs::-webkit-scrollbar { display: none; }
+  .tab { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+  .tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 500; }
 
-  .section-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
-    letter-spacing: 2px;
-    color: var(--text);
-  }
+  .last-updated { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: center; margin-bottom: 16px; letter-spacing: 0.5px; display: none; }
+  .last-updated span { color: var(--accent); }
 
-  .badge {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    letter-spacing: 1px;
-  }
+  /* LOADING */
+  .loading-state { text-align: center; padding: 60px 20px; }
+  .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; color: var(--muted); }
 
-  .badge.live {
-    background: rgba(255, 58, 92, 0.15);
-    color: var(--red);
-    border: 1px solid rgba(255,58,92,0.3);
-    animation: blink 1.5s infinite;
-  }
+  /* ERROR */
+  .error-state { background: rgba(255,58,92,0.06); border: 1px solid rgba(255,58,92,0.2); border-radius: 16px; padding: 24px; text-align: center; display: none; }
+  .error-state.visible { display: block; }
+  .error-icon { font-size: 32px; margin-bottom: 12px; }
+  .error-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; color: var(--red); margin-bottom: 8px; }
+  .error-msg { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.7; }
+  .retry-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; padding: 10px 20px; cursor: pointer; transition: all 0.2s; }
+  .retry-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-  }
-
-  .badge.hot {
-    background: rgba(255,208,96,0.1);
-    color: var(--gold);
-    border: 1px solid rgba(255,208,96,0.3);
-  }
+  /* EMPTY */
+  .empty-state { text-align: center; padding: 50px 20px; display: none; }
+  .empty-state.visible { display: block; }
+  .empty-icon { font-size: 40px; margin-bottom: 16px; }
+  .empty-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; }
+  .empty-msg { font-size: 13px; color: var(--muted); line-height: 1.7; }
 
   /* BET CARD */
   .bet-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 18px;
-    margin-bottom: 12px;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.2s;
-    animation: slideIn 0.4s ease both;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; padding: 18px; margin-bottom: 12px;
+    position: relative; overflow: hidden; cursor: pointer;
+    transition: all 0.2s; animation: slideIn 0.4s ease both;
   }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
+  @keyframes slideIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   .bet-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-
   .bet-card.top-pick { border-color: rgba(0,229,255,0.4); }
-  .bet-card.top-pick::after {
-    content: '⚡ TOP PICK';
-    position: absolute;
-    top: 12px; right: 12px;
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 1.5px;
-    color: var(--accent);
-    background: rgba(0,229,255,0.1);
-    border: 1px solid rgba(0,229,255,0.3);
-    padding: 3px 8px;
-    border-radius: 20px;
-  }
-
-  .bet-matchup {
-    font-size: 13px;
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.5px;
-    margin-bottom: 10px;
-  }
-
-  .bet-teams {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-  }
-
-  .team {
-    text-align: center;
-  }
-
-  .team-name {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    letter-spacing: 1px;
-  }
-
-  .team-record {
-    font-size: 11px;
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-  }
-
-  .vs {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    background: var(--bg);
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-  }
-
-  /* EDGE BAR */
-  .edge-section {
-    margin-bottom: 14px;
-  }
-
-  .edge-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-  }
-
-  .edge-text {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 1px;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
-  .edge-pct {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    color: var(--green);
-    letter-spacing: 1px;
-  }
-
-  .edge-bar {
-    height: 6px;
-    background: var(--bg);
-    border-radius: 3px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-  }
-
-  .edge-fill {
-    height: 100%;
-    border-radius: 3px;
-    background: linear-gradient(90deg, var(--green), var(--accent));
-    transition: width 1s ease;
-  }
-
-  /* BET DETAILS ROW */
-  .bet-details {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-  }
-
-  .detail-item {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 8px;
-    text-align: center;
-  }
-
-  .detail-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 1px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-
-  .detail-value {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
-    letter-spacing: 0.5px;
-  }
-
-  .detail-value.cyan { color: var(--accent); }
+  .top-pick-badge { position: absolute; top: 12px; right: 12px; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; color: var(--accent); background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.3); padding: 3px 8px; border-radius: 20px; }
+  .bet-matchup { font-size: 13px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .confidence-badge { display: inline-flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--gold); background: rgba(255,208,96,0.1); border: 1px solid rgba(255,208,96,0.25); padding: 4px 10px; border-radius: 20px; margin-bottom: 10px; }
+  .bet-teams { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .team { text-align: center; }
+  .team-name { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; }
+  .team-record { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .vs { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); background: var(--bg); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); }
+  .edge-section { margin-bottom: 14px; }
+  .edge-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .edge-text { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+  .edge-pct { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--green); letter-spacing: 1px; text-shadow: 0 0 20px rgba(0,255,136,0.5); }
+  .edge-bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+  .edge-fill { height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, var(--green), var(--accent)); transition: width 1s ease; }
+  .bet-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .detail-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 8px; text-align: center; }
+  .detail-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .detail-value { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 0.5px; }
+  .detail-value.cyan  { color: var(--accent); }
   .detail-value.green { color: var(--green); }
-  .detail-value.gold { color: var(--gold); }
+  .detail-value.gold  { color: var(--gold); }
+  .book-tag { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .book-name { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+  .game-time { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
 
-  /* TREND MINI CHART */
-  .trend-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 4px;
-    height: 28px;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-  }
-
-  .trend-bar {
-    flex: 1;
-    border-radius: 3px 3px 0 0;
-    transition: height 0.5s ease;
-  }
-
-  .trend-bar.win { background: var(--green); opacity: 0.7; }
-  .trend-bar.loss { background: var(--red); opacity: 0.5; }
-
-  .trend-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    color: var(--muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-  }
-
-  /* FILTER TABS */
-  .filter-tabs {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-bottom: 4px;
-    margin-bottom: 16px;
-  }
-
-  .filter-tabs::-webkit-scrollbar { display: none; }
-
-  .tab {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 1px;
-    padding: 8px 16px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--muted);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-
-  .tab.active {
-    background: var(--accent);
-    color: var(--bg);
-    border-color: var(--accent);
-    font-weight: 500;
-  }
-
-  /* WALLET STATUS BAR */
-  .wallet-bar {
-    background: linear-gradient(135deg, rgba(153,69,255,0.1), rgba(0,229,255,0.05));
-    border: 1px solid rgba(153,69,255,0.3);
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    display: none;
-  }
-
-  .wallet-bar.visible { display: flex; }
-
-  .wallet-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .wallet-avatar {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--sol), var(--accent2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-  }
-
-  .wallet-addr {
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    color: var(--text);
-    letter-spacing: 0.5px;
-  }
-
-  .wallet-name {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
-  .sol-balance {
-    text-align: right;
-  }
-
-  .sol-amount {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    color: var(--sol);
-    letter-spacing: 1px;
-  }
-
-  .sol-usd {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-  }
-
-  /* BOTTOM NAV */
-  .bottom-nav {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: rgba(8,11,16,0.95);
-    backdrop-filter: blur(20px);
-    border-top: 1px solid var(--border);
-    display: flex;
-    padding: 10px 0 24px;
-    z-index: 100;
-  }
-
-  .nav-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
-    padding: 6px 0;
-    transition: all 0.2s;
-  }
-
-  .nav-icon {
-    font-size: 20px;
-    transition: transform 0.2s;
-  }
-
-  .nav-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 1px;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(8,11,16,0.95); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 10px 0 24px; z-index: 100; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 0; transition: all 0.2s; }
+  .nav-icon { font-size: 20px; transition: transform 0.2s; }
+  .nav-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
   .nav-item.active .nav-icon { transform: translateY(-2px); }
   .nav-item.active .nav-label { color: var(--accent); }
-
-  /* SPACER for bottom nav */
   .bottom-spacer { height: 90px; }
 
-  /* GLOW effects */
-  .glow-cyan { text-shadow: 0 0 20px rgba(0,229,255,0.5); }
-  .glow-green { text-shadow: 0 0 20px rgba(0,255,136,0.5); }
-
-  /* CONFIDENCE RING */
-  .confidence-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 1px;
-    color: var(--gold);
-    background: rgba(255,208,96,0.1);
-    border: 1px solid rgba(255,208,96,0.25);
-    padding: 4px 10px;
-    border-radius: 20px;
-    margin-bottom: 10px;
-  }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%) translateY(-20px);
-    background: var(--surface2);
-    border: 1px solid var(--accent);
-    border-radius: 12px;
-    padding: 12px 20px;
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    color: var(--accent);
-    letter-spacing: 0.5px;
-    z-index: 2000;
-    opacity: 0;
-    transition: all 0.3s;
-    pointer-events: none;
-    white-space: nowrap;
-  }
-
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+  .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--surface2); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 20px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: 0.5px; z-index: 2000; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- HEADER -->
 <header>
-  <div class="logo">
-    Edge Seeker
-    <span>BASEBALL ANALYTICS</span>
-  </div>
+  <div class="logo">Edge Seeker<span>BASEBALL ANALYTICS</span></div>
   <button class="connect-btn" onclick="openWalletModal()">
     <div class="dot"></div>
     <span id="connectText">CONNECT</span>
   </button>
 </header>
 
-<!-- WALLET MODAL -->
 <div class="modal-overlay" id="walletModal" onclick="closeWalletModal(event)">
   <div class="modal">
     <div class="modal-handle"></div>
     <h2>Connect Wallet</h2>
     <p>Choose your Solana wallet to access Edge Seeker analytics</p>
-
-    <div class="wallet-option" onclick="connectWallet('Phantom', '👻')">
-      <div class="wallet-icon" style="background: linear-gradient(135deg, #6e45ff22, #6e45ff44);">👻</div>
-      <div>
-        <div class="name">Phantom</div>
-        <div class="desc">Most popular Solana wallet</div>
-      </div>
+    <div class="wallet-option" onclick="connectWallet('Phantom','👻')">
+      <div class="wallet-icon" style="background:linear-gradient(135deg,#6e45ff22,#6e45ff44)">👻</div>
+      <div><div class="w-name">Phantom</div><div class="w-desc">Most popular Solana wallet</div></div>
     </div>
-
-    <div class="wallet-option" onclick="connectWallet('Solflare', '☀️')">
-      <div class="wallet-icon" style="background: linear-gradient(135deg, #FF6B0022, #FF6B0044);">☀️</div>
-      <div>
-        <div class="name">Solflare</div>
-        <div class="desc">Native Solana wallet & staking</div>
-      </div>
+    <div class="wallet-option" onclick="connectWallet('Solflare','☀️')">
+      <div class="wallet-icon" style="background:linear-gradient(135deg,#FF6B0022,#FF6B0044)">☀️</div>
+      <div><div class="w-name">Solflare</div><div class="w-desc">Native Solana wallet & staking</div></div>
     </div>
-
-    <div class="wallet-option" onclick="connectWallet('Backpack', '🎒')">
-      <div class="wallet-icon" style="background: linear-gradient(135deg, #E33D3D22, #E33D3D44);">🎒</div>
-      <div>
-        <div class="name">Backpack</div>
-        <div class="desc">xNFT wallet by Coral</div>
-      </div>
+    <div class="wallet-option" onclick="connectWallet('Backpack','🎒')">
+      <div class="wallet-icon" style="background:linear-gradient(135deg,#E33D3D22,#E33D3D44)">🎒</div>
+      <div><div class="w-name">Backpack</div><div class="w-desc">xNFT wallet by Coral</div></div>
     </div>
   </div>
 </div>
 
-<!-- MAIN -->
 <main>
-
-  <!-- WALLET STATUS BAR -->
   <div class="wallet-bar" id="walletBar">
     <div class="wallet-info">
       <div class="wallet-avatar" id="walletAvatar">👻</div>
       <div>
-        <div class="wallet-addr" id="walletAddr">7xKp...4mRq</div>
-        <div class="wallet-name" id="walletName">Phantom</div>
+        <div class="wallet-addr" id="walletAddr">—</div>
+        <div class="wallet-wname" id="walletWName">—</div>
       </div>
     </div>
-    <div class="sol-balance">
+    <div>
       <div class="sol-amount">12.4 SOL</div>
       <div class="sol-usd">≈ $1,860.00</div>
     </div>
   </div>
 
-  <!-- STATS ROW -->
   <div class="stats-row">
     <div class="stat-card green">
-      <div class="stat-label">Win Rate</div>
-      <div class="stat-value green glow-green">68%</div>
-      <div class="stat-sub">Last 30 days</div>
+      <div class="stat-label">Today's Picks</div>
+      <div class="stat-value green" id="statPicks">—</div>
+      <div class="stat-sub">Edges found</div>
     </div>
     <div class="stat-card gold">
       <div class="stat-label">Avg Edge</div>
-      <div class="stat-value gold">+7.2%</div>
+      <div class="stat-value gold" id="statAvgEdge">—</div>
       <div class="stat-sub">vs book odds</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Active Picks</div>
-      <div class="stat-value cyan">9</div>
-      <div class="stat-sub">Today</div>
+      <div class="stat-label">Top Edge</div>
+      <div class="stat-value cyan" id="statTopEdge">—</div>
+      <div class="stat-sub">Best pick today</div>
     </div>
     <div class="stat-card purple">
-      <div class="stat-label">ROI</div>
-      <div class="stat-value purple">+23.4%</div>
-      <div class="stat-sub">This season</div>
+      <div class="stat-label">Games Today</div>
+      <div class="stat-value purple" id="statGames">—</div>
+      <div class="stat-sub">Analyzed</div>
     </div>
   </div>
 
-  <!-- FILTER TABS -->
   <div class="filter-tabs">
-    <div class="tab active" onclick="setTab(this)">ALL PICKS</div>
-    <div class="tab" onclick="setTab(this)">MONEYLINE</div>
-    <div class="tab" onclick="setTab(this)">RUN LINE</div>
-    <div class="tab" onclick="setTab(this)">OVER/UNDER</div>
-    <div class="tab" onclick="setTab(this)">PROPS</div>
+    <div class="tab active" onclick="setTab(this,'ALL')">ALL PICKS</div>
+    <div class="tab" onclick="setTab(this,'HIGH')">HIGH CONF</div>
+    <div class="tab" onclick="setTab(this,'MEDIUM')">MEDIUM</div>
+    <div class="tab" onclick="setTab(this,'LOW')">LOW</div>
   </div>
 
-  <!-- PICKS SECTION HEADER -->
   <div class="section-header">
     <div class="section-title">TODAY'S EDGES</div>
     <div class="badge live">● LIVE ODDS</div>
   </div>
 
-  <!-- BET CARD 1 -->
-  <div class="bet-card top-pick" style="animation-delay: 0s">
-    <div class="bet-matchup">⚾ MLB · 7:10 PM ET · MONEYLINE</div>
-    <div class="confidence-badge">🔥 HIGH CONFIDENCE · 89/100</div>
-    <div class="bet-teams">
-      <div class="team">
-        <div class="team-name">NYY</div>
-        <div class="team-record">38-22</div>
-      </div>
-      <div class="vs">VS</div>
-      <div class="team">
-        <div class="team-name">BOS</div>
-        <div class="team-record">31-28</div>
-      </div>
-    </div>
-    <div class="edge-section">
-      <div class="edge-label">
-        <span class="edge-text">EDGE DETECTED · NYY ML</span>
-        <span class="edge-pct glow-green">+11.3%</span>
-      </div>
-      <div class="edge-bar">
-        <div class="edge-fill" style="width: 78%"></div>
-      </div>
-    </div>
-    <div class="bet-details">
-      <div class="detail-item">
-        <div class="detail-label">Book Odds</div>
-        <div class="detail-value cyan">-148</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">True Odds</div>
-        <div class="detail-value green">-128</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Kelly %</div>
-        <div class="detail-value gold">4.2%</div>
-      </div>
-    </div>
-    <div class="trend-row">
-      <div class="trend-bar win" style="height:60%"></div>
-      <div class="trend-bar win" style="height:80%"></div>
-      <div class="trend-bar loss" style="height:40%"></div>
-      <div class="trend-bar win" style="height:90%"></div>
-      <div class="trend-bar win" style="height:70%"></div>
-      <div class="trend-bar win" style="height:85%"></div>
-      <div class="trend-bar loss" style="height:30%"></div>
-      <div class="trend-bar win" style="height:95%"></div>
-      <div class="trend-bar win" style="height:65%"></div>
-      <div class="trend-bar win" style="height:75%"></div>
-      <span class="trend-label">L10: 8-2</span>
-    </div>
+  <div class="last-updated" id="lastUpdated">
+    Updated <span id="updatedTime">—</span> · auto-refreshes every 10 min
   </div>
 
-  <!-- BET CARD 2 -->
-  <div class="bet-card" style="animation-delay: 0.08s">
-    <div class="bet-matchup">⚾ MLB · 8:40 PM ET · OVER/UNDER</div>
-    <div class="confidence-badge">⚡ SHARP ACTION · 74/100</div>
-    <div class="bet-teams">
-      <div class="team">
-        <div class="team-name">LAD</div>
-        <div class="team-record">44-17</div>
-      </div>
-      <div class="vs">O/U</div>
-      <div class="team">
-        <div class="team-name">SF</div>
-        <div class="team-record">29-30</div>
-      </div>
+  <div id="picksContainer">
+    <div class="loading-state" id="loadingState">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">FETCHING LIVE ODDS...</div>
     </div>
-    <div class="edge-section">
-      <div class="edge-label">
-        <span class="edge-text">EDGE DETECTED · OVER 8.5</span>
-        <span class="edge-pct glow-green">+8.7%</span>
-      </div>
-      <div class="edge-bar">
-        <div class="edge-fill" style="width: 63%"></div>
-      </div>
+    <div class="error-state" id="errorState">
+      <div class="error-icon">⚠️</div>
+      <div class="error-title">BACKEND OFFLINE</div>
+      <div class="error-msg" id="errorMsg">Make sure your backend server is running.<br>In VS Code terminal: <strong>npm start</strong></div>
+      <button class="retry-btn" onclick="loadPicks()">↻ RETRY</button>
     </div>
-    <div class="bet-details">
-      <div class="detail-item">
-        <div class="detail-label">Book Line</div>
-        <div class="detail-value cyan">8.5</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Proj Total</div>
-        <div class="detail-value green">9.8</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Kelly %</div>
-        <div class="detail-value gold">3.1%</div>
-      </div>
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">⚾</div>
+      <div class="empty-title">NO EDGES RIGHT NOW</div>
+      <div class="empty-msg">No picks meet the 3% edge threshold today.<br>MLB regular season starts April 1st — check back for a full slate.</div>
     </div>
-    <div class="trend-row">
-      <div class="trend-bar win" style="height:70%"></div>
-      <div class="trend-bar loss" style="height:45%"></div>
-      <div class="trend-bar win" style="height:85%"></div>
-      <div class="trend-bar win" style="height:60%"></div>
-      <div class="trend-bar win" style="height:90%"></div>
-      <div class="trend-bar loss" style="height:35%"></div>
-      <div class="trend-bar win" style="height:75%"></div>
-      <div class="trend-bar win" style="height:65%"></div>
-      <div class="trend-bar win" style="height:80%"></div>
-      <div class="trend-bar loss" style="height:40%"></div>
-      <span class="trend-label">L10: 7-3</span>
-    </div>
-  </div>
-
-  <!-- BET CARD 3 -->
-  <div class="bet-card" style="animation-delay: 0.16s">
-    <div class="bet-matchup">⚾ MLB · 6:05 PM ET · RUN LINE</div>
-    <div class="confidence-badge">📊 VALUE BET · 71/100</div>
-    <div class="bet-teams">
-      <div class="team">
-        <div class="team-name">ATL</div>
-        <div class="team-record">40-20</div>
-      </div>
-      <div class="vs">-1.5</div>
-      <div class="team">
-        <div class="team-name">MIA</div>
-        <div class="team-record">24-37</div>
-      </div>
-    </div>
-    <div class="edge-section">
-      <div class="edge-label">
-        <span class="edge-text">EDGE DETECTED · ATL -1.5</span>
-        <span class="edge-pct glow-green">+6.4%</span>
-      </div>
-      <div class="edge-bar">
-        <div class="edge-fill" style="width: 55%"></div>
-      </div>
-    </div>
-    <div class="bet-details">
-      <div class="detail-item">
-        <div class="detail-label">Book Odds</div>
-        <div class="detail-value cyan">+115</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">True Value</div>
-        <div class="detail-value green">+130</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Kelly %</div>
-        <div class="detail-value gold">2.8%</div>
-      </div>
-    </div>
-    <div class="trend-row">
-      <div class="trend-bar loss" style="height:40%"></div>
-      <div class="trend-bar win" style="height:75%"></div>
-      <div class="trend-bar win" style="height:85%"></div>
-      <div class="trend-bar win" style="height:65%"></div>
-      <div class="trend-bar loss" style="height:30%"></div>
-      <div class="trend-bar win" style="height:90%"></div>
-      <div class="trend-bar win" style="height:70%"></div>
-      <div class="trend-bar win" style="height:80%"></div>
-      <div class="trend-bar loss" style="height:45%"></div>
-      <div class="trend-bar win" style="height:85%"></div>
-      <span class="trend-label">L10: 7-3</span>
-    </div>
+    <div id="picksList"></div>
   </div>
 
   <div class="bottom-spacer"></div>
 </main>
 
-<!-- BOTTOM NAV -->
 <div class="bottom-nav">
-  <div class="nav-item active">
-    <div class="nav-icon">⚡</div>
-    <div class="nav-label">Picks</div>
-  </div>
-  <div class="nav-item">
-    <div class="nav-icon">📊</div>
-    <div class="nav-label">Trends</div>
-  </div>
-  <div class="nav-item">
-    <div class="nav-icon">🏟️</div>
-    <div class="nav-label">Games</div>
-  </div>
-  <div class="nav-item">
-    <div class="nav-icon">💰</div>
-    <div class="nav-label">Bankroll</div>
-  </div>
-  <div class="nav-item">
-    <div class="nav-icon">👤</div>
-    <div class="nav-label">Profile</div>
-  </div>
+  <div class="nav-item active"><div class="nav-icon">⚡</div><div class="nav-label">Picks</div></div>
+  <div class="nav-item"><div class="nav-icon">📊</div><div class="nav-label">Trends</div></div>
+  <div class="nav-item"><div class="nav-icon">🏟️</div><div class="nav-label">Games</div></div>
+  <div class="nav-item"><div class="nav-icon">💰</div><div class="nav-label">Bankroll</div></div>
+  <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">Profile</div></div>
 </div>
 
 <script>
-  // WALLET MODAL
-  function openWalletModal() {
-    const connected = document.getElementById('walletBar').classList.contains('visible');
-    if (connected) {
-      disconnectWallet();
+  // ── CONFIG ─────────────────────────────────────────────────────────────────
+  // Change this to your Vercel URL once deployed, e.g.:
+  // const API_BASE = 'https://edge-seeker-backend.vercel.app';
+  const API_BASE = 'htthttps://edge-seeker.vercel.app/';
+
+  let allPicks = [];
+  let currentFilter = 'ALL';
+
+  // ── LOAD PICKS FROM BACKEND ────────────────────────────────────────────────
+  async function loadPicks() {
+    showLoading();
+    try {
+      const res = await fetch(`${API_BASE}/api/picks`);
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+
+      allPicks = data.picks || [];
+      updateStats(data);
+
+      if (data.fetchedAt) {
+        const t = new Date(data.fetchedAt);
+        document.getElementById('updatedTime').textContent =
+          t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('lastUpdated').style.display = 'block';
+      }
+
+      renderPicks(allPicks);
+    } catch (err) {
+      console.error(err);
+      showError(err.message);
+    }
+  }
+
+  // ── UPDATE STATS ──────────────────────────────────────────────────────────
+  function updateStats(data) {
+    const picks = data.picks || [];
+    document.getElementById('statPicks').textContent = picks.length || '0';
+    document.getElementById('statGames').textContent = data.gamesAnalyzed || '0';
+    if (picks.length > 0) {
+      const avg = picks.reduce((s, p) => s + p.edgePct, 0) / picks.length;
+      document.getElementById('statAvgEdge').textContent = `+${avg.toFixed(1)}%`;
+      document.getElementById('statTopEdge').textContent = `+${picks[0].edgePct}%`;
+    } else {
+      document.getElementById('statAvgEdge').textContent = 'N/A';
+      document.getElementById('statTopEdge').textContent = 'N/A';
+    }
+  }
+
+  // ── RENDER PICK CARDS ─────────────────────────────────────────────────────
+  function renderPicks(picks) {
+    hideAll();
+    const filtered = filterPicks(picks);
+
+    if (!filtered || filtered.length === 0) {
+      document.getElementById('emptyState').classList.add('visible');
       return;
     }
+
+    const list = document.getElementById('picksList');
+    list.innerHTML = '';
+
+    filtered.forEach((pick, i) => {
+      list.appendChild(buildCard(pick, i));
+    });
+
+    setTimeout(() => {
+      document.querySelectorAll('.edge-fill').forEach(el => {
+        el.style.width = el.dataset.width + '%';
+      });
+    }, 100);
+  }
+
+  function buildCard(pick, i) {
+    const isTop = i === 0;
+    const conf = pick.confidence || 0;
+    const emoji = conf >= 70 ? '🔥' : conf >= 50 ? '⚡' : '📊';
+    const label = conf >= 70 ? 'HIGH CONFIDENCE' : conf >= 50 ? 'SHARP ACTION' : 'VALUE BET';
+    const barW = Math.min(100, Math.max(20, ((pick.edgePct - 3) / 12) * 80 + 20));
+    const trueAmerican = probToAmerican(pick.trueWinProb / 100);
+    const gameTime = fmtTime(pick.gameTime);
+
+    const card = document.createElement('div');
+    card.className = `bet-card${isTop ? ' top-pick' : ''}`;
+    card.style.animationDelay = `${i * 0.08}s`;
+    card.innerHTML = `
+      ${isTop ? '<div class="top-pick-badge">⚡ TOP PICK</div>' : ''}
+      <div class="bet-matchup">⚾ MLB · ${gameTime} · ${(pick.betType||'Moneyline').toUpperCase()}</div>
+      <div class="confidence-badge">${emoji} ${label} · ${conf}/100</div>
+      <div class="bet-teams">
+        <div class="team">
+          <div class="team-name">${pick.teamAbbr}</div>
+          <div class="team-record">${pick.trueWinProb}% win</div>
+        </div>
+        <div class="vs">VS</div>
+        <div class="team">
+          <div class="team-name">${pick.opponentAbbr}</div>
+          <div class="team-record">${(100-pick.trueWinProb).toFixed(1)}% win</div>
+        </div>
+      </div>
+      <div class="edge-section">
+        <div class="edge-label">
+          <span class="edge-text">EDGE DETECTED · ${pick.pick}</span>
+          <span class="edge-pct">+${pick.edgePct}%</span>
+        </div>
+        <div class="edge-bar"><div class="edge-fill" data-width="${barW}" style="width:0"></div></div>
+      </div>
+      <div class="bet-details">
+        <div class="detail-item">
+          <div class="detail-label">Book Odds</div>
+          <div class="detail-value cyan">${pick.bookOddsAmerican}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">True Odds</div>
+          <div class="detail-value green">${trueAmerican}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Kelly %</div>
+          <div class="detail-value gold">${pick.kellyPct}%</div>
+        </div>
+      </div>
+      <div class="book-tag">
+        <span class="book-name">📖 ${pick.bookmaker || 'Best line'}</span>
+        <span class="game-time">${gameTime}</span>
+      </div>
+    `;
+    card.addEventListener('click', () => showToast(`${pick.pick} · +${pick.edgePct}% edge`));
+    return card;
+  }
+
+  // ── FILTER ────────────────────────────────────────────────────────────────
+  function filterPicks(picks) {
+    if (currentFilter === 'ALL')    return picks;
+    if (currentFilter === 'HIGH')   return picks.filter(p => p.confidence >= 70);
+    if (currentFilter === 'MEDIUM') return picks.filter(p => p.confidence >= 40 && p.confidence < 70);
+    if (currentFilter === 'LOW')    return picks.filter(p => p.confidence < 40);
+    return picks;
+  }
+
+  function setTab(el, filter) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    currentFilter = filter;
+    renderPicks(allPicks);
+  }
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────
+  function fmtTime(iso) {
+    if (!iso) return 'TBD';
+    try { return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }); }
+    catch { return 'TBD'; }
+  }
+
+  function probToAmerican(p) {
+    if (!p || p <= 0 || p >= 1) return 'EVEN';
+    return p >= 0.5
+      ? String(Math.round(-100 * p / (1 - p)))
+      : '+' + Math.round(100 * (1 - p) / p);
+  }
+
+  function showLoading() {
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('errorState').classList.remove('visible');
+    document.getElementById('emptyState').classList.remove('visible');
+    document.getElementById('picksList').innerHTML = '';
+  }
+
+  function hideAll() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').classList.remove('visible');
+    document.getElementById('emptyState').classList.remove('visible');
+  }
+
+  function showError(msg) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorMsg').innerHTML =
+      `Make sure your backend is running in VS Code terminal:<br><strong>npm start</strong><br><br><small style="color:var(--muted)">${msg}</small>`;
+    document.getElementById('errorState').classList.add('visible');
+  }
+
+  // ── WALLET ────────────────────────────────────────────────────────────────
+  function openWalletModal() {
+    if (document.getElementById('walletBar').classList.contains('visible')) { disconnectWallet(); return; }
     document.getElementById('walletModal').classList.add('active');
   }
-
   function closeWalletModal(e) {
-    if (e.target === document.getElementById('walletModal')) {
+    if (e.target === document.getElementById('walletModal'))
       document.getElementById('walletModal').classList.remove('active');
-    }
   }
-
   function connectWallet(name, emoji) {
     document.getElementById('walletModal').classList.remove('active');
-    
-    // Simulate connection
     setTimeout(() => {
-      const fakeAddr = generateAddr();
+      const c = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+      const r = n => Array.from({length:n},()=>c[Math.floor(Math.random()*c.length)]).join('');
       document.getElementById('walletAvatar').textContent = emoji;
-      document.getElementById('walletAddr').textContent = fakeAddr;
-      document.getElementById('walletName').textContent = name;
+      document.getElementById('walletAddr').textContent = `${r(4)}...${r(4)}`;
+      document.getElementById('walletWName').textContent = name;
       document.getElementById('walletBar').classList.add('visible');
       document.getElementById('connectText').textContent = 'CONNECTED';
       showToast(`${emoji} ${name} connected!`);
     }, 300);
   }
-
   function disconnectWallet() {
     document.getElementById('walletBar').classList.remove('visible');
     document.getElementById('connectText').textContent = 'CONNECT';
     showToast('Wallet disconnected');
   }
 
-  function generateAddr() {
-    const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    const r = (n) => Array.from({length: n}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    return `${r(4)}...${r(4)}`;
-  }
-
-  // TABS
-  function setTab(el) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-  }
-
-  // TOAST
+  // ── TOAST ─────────────────────────────────────────────────────────────────
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -1031,7 +548,7 @@
     setTimeout(() => t.classList.remove('show'), 2800);
   }
 
-  // NAV
+  // ── NAV ───────────────────────────────────────────────────────────────────
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', function() {
       document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -1039,22 +556,11 @@
     });
   });
 
-  // BET CARD click
-  document.querySelectorAll('.bet-card').forEach(card => {
-    card.addEventListener('click', () => showToast('Full analysis coming soon'));
-  });
+  // ── AUTO-REFRESH every 10 min ─────────────────────────────────────────────
+  setInterval(loadPicks, 10 * 60 * 1000);
 
-  // Animate edge bars on load
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      document.querySelectorAll('.edge-fill').forEach(fill => {
-        const w = fill.style.width;
-        fill.style.width = '0';
-        setTimeout(() => fill.style.width = w, 100);
-      });
-    }, 200);
-  });
+  // ── INIT ──────────────────────────────────────────────────────────────────
+  loadPicks();
 </script>
-
 </body>
 </html>
