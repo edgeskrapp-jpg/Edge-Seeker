@@ -344,6 +344,42 @@
   .sharp-bar-wrap { width: 80px; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-top: 6px; }
   .sharp-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--sol), var(--accent)); }
 
+  /* ── EDIT PROFILE STYLES ─────────────────────────────────────────────── */
+  .edit-profile-screen { position: fixed; inset: 0; background: var(--bg); z-index: 500; overflow-y: auto; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.34,1.2,0.64,1); }
+  .edit-profile-screen.active { transform: translateX(0); }
+  .edit-screen-header { position: sticky; top: 0; background: rgba(8,11,16,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 16px; z-index: 10; }
+  .edit-back-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: "DM Mono", monospace; font-size: 12px; letter-spacing: 1px; padding: 8px 14px; cursor: pointer; transition: all 0.2s; }
+  .edit-back-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .edit-screen-title { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 2px; }
+  .edit-save-btn { margin-left: auto; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 10px; color: var(--bg); font-family: "DM Mono", monospace; font-size: 12px; font-weight: 600; letter-spacing: 1px; padding: 8px 16px; cursor: pointer; transition: all 0.2s; }
+  .edit-save-btn:hover { opacity: 0.9; }
+  .edit-screen-body { padding: 20px 16px 100px; max-width: 480px; margin: 0 auto; }
+
+  /* PFP PICKER */
+  .pfp-section { text-align: center; margin-bottom: 24px; }
+  .pfp-current { width: 80px; height: 80px; border-radius: 22px; background: linear-gradient(135deg, var(--sol), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 12px; cursor: pointer; border: 3px solid var(--border); transition: border-color 0.2s; position: relative; }
+  .pfp-current:hover { border-color: var(--accent); }
+  .pfp-edit-hint { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+  .pfp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+  .pfp-option { width: 100%; aspect-ratio: 1; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; background: var(--bg); border: 2px solid transparent; transition: all 0.15s; }
+  .pfp-option:hover { border-color: var(--accent); transform: scale(1.1); }
+  .pfp-option.selected { border-color: var(--accent); background: rgba(0,229,255,0.1); }
+  .pfp-picker { display: none; }
+  .pfp-picker.visible { display: block; }
+
+  /* SETTINGS SECTION */
+  .edit-section { margin-bottom: 20px; }
+  .edit-section-title { font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+  .edit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .edit-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .edit-row:last-child { border-bottom: none; }
+  .edit-row-label { font-size: 14px; font-weight: 500; }
+  .edit-row-sub { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.5px; }
+
+  /* EDIT PROFILE BUTTON on profile hero */
+  .edit-profile-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: 1px; padding: 6px 12px; cursor: pointer; transition: all 0.2s; margin-top: 8px; display: inline-block; }
+  .edit-profile-btn:hover { border-color: var(--accent); color: var(--accent); }
+
   /* ── BANKROLL PLACEHOLDER ─────────────────────────────────────────────── */
   .bankroll-placeholder { background: linear-gradient(135deg, rgba(255,208,96,0.06), rgba(0,229,255,0.04)); border: 1px solid rgba(255,208,96,0.2); border-radius: 20px; padding: 32px 24px; text-align: center; margin-bottom: 20px; }
   .bankroll-ph-icon { font-size: 48px; margin-bottom: 16px; }
@@ -825,6 +861,7 @@
     <div class="profile-info">
       <div class="profile-name" id="profileName">Not Connected</div>
       <div class="profile-since">Edge Seeker Member</div>
+      <div class="edit-profile-btn" onclick="openEditProfile()">✏️ EDIT</div>
     </div>
     <div class="profile-sol-badge" id="profileSolBadge" style="display:none">
       <div class="psol-amount" id="profileSolAmount">— SOL</div>
@@ -945,6 +982,130 @@
 
   <div class="bottom-spacer"></div>
 </main>
+
+
+<!-- EDIT PROFILE SCREEN -->
+<div class="edit-profile-screen" id="editProfileScreen">
+
+  <div class="edit-screen-header">
+    <button class="edit-back-btn" onclick="closeEditProfile()">← BACK</button>
+    <div class="edit-screen-title">EDIT PROFILE</div>
+    <button class="edit-save-btn" onclick="saveEditProfile()">SAVE</button>
+  </div>
+
+  <div class="edit-screen-body">
+
+    <!-- PFP SECTION -->
+    <div class="pfp-section">
+      <div class="pfp-current" id="editPfpPreview" onclick="togglePfpPicker()">👤</div>
+      <div class="pfp-edit-hint">TAP TO CHANGE AVATAR</div>
+      <div class="pfp-picker" id="pfpPicker">
+        <div class="pfp-grid" id="pfpGrid"></div>
+      </div>
+    </div>
+
+    <!-- DISPLAY NAME -->
+    <div class="edit-section">
+      <div class="edit-section-title">Display Name</div>
+      <div class="edit-card">
+        <div class="edit-row">
+          <div>
+            <div class="edit-row-label">Username</div>
+            <div class="edit-row-sub">Shown on leaderboard and profile</div>
+          </div>
+        </div>
+        <div style="padding: 0 16px 16px">
+          <input class="form-input" id="editUsername" placeholder="Enter username..." />
+        </div>
+      </div>
+    </div>
+
+    <!-- PRIVACY SETTINGS -->
+    <div class="edit-section">
+      <div class="edit-section-title">Privacy</div>
+      <div class="edit-card">
+        <div class="edit-row">
+          <div>
+            <div class="edit-row-label">Show Wallet Address</div>
+            <div class="edit-row-sub">Display your SOL address on profile</div>
+          </div>
+          <div class="toggle active" id="editWalletToggle" onclick="toggleEditSetting('editWalletToggle','showWallet')">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+        <div class="edit-row">
+          <div>
+            <div class="edit-row-label">Show SOL Balance</div>
+            <div class="edit-row-sub">Display your balance on profile</div>
+          </div>
+          <div class="toggle active" id="editBalanceToggle" onclick="toggleEditSetting('editBalanceToggle','showBalance')">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+        <div class="edit-row">
+          <div>
+            <div class="edit-row-label">Show Betting Stats</div>
+            <div class="edit-row-sub">Display your W/L record publicly</div>
+          </div>
+          <div class="toggle active" id="editStatsToggle" onclick="toggleEditSetting('editStatsToggle','showStats')">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APPEARANCE -->
+    <div class="edit-section">
+      <div class="edit-section-title">Appearance</div>
+      <div class="edit-card">
+        <div class="edit-row">
+          <div>
+            <div class="edit-row-label">Dark Mode</div>
+            <div class="edit-row-sub">Use dark theme (recommended)</div>
+          </div>
+          <div class="toggle active" id="editDarkToggle" onclick="toggleEditSetting('editDarkToggle','darkMode')">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAVORITE TEAMS -->
+    <div class="edit-section">
+      <div class="edit-section-title">Favorite Teams</div>
+      <div class="edit-card" style="padding:16px">
+        <div id="editFavoriteTeams" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px">
+          <select class="form-input" id="editTeamSelect" style="flex:1">
+            <option value="">Add a team...</option>
+            <optgroup label="AL East"><option>NYY</option><option>BOS</option><option>TOR</option><option>TB</option><option>BAL</option></optgroup>
+            <optgroup label="AL Central"><option>CLE</option><option>MIN</option><option>CWS</option><option>KC</option><option>DET</option></optgroup>
+            <optgroup label="AL West"><option>HOU</option><option>TEX</option><option>SEA</option><option>OAK</option><option>LAA</option></optgroup>
+            <optgroup label="NL East"><option>ATL</option><option>NYM</option><option>PHI</option><option>MIA</option><option>WSH</option></optgroup>
+            <optgroup label="NL Central"><option>CHC</option><option>MIL</option><option>STL</option><option>CIN</option><option>PIT</option></optgroup>
+            <optgroup label="NL West"><option>LAD</option><option>SF</option><option>SD</option><option>ARI</option><option>COL</option></optgroup>
+          </select>
+          <button class="setup-confirm-btn" onclick="addEditTeam()">ADD</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DANGER ZONE -->
+    <div class="edit-section">
+      <div class="edit-section-title">Account</div>
+      <div class="edit-card">
+        <div class="edit-row" style="cursor:pointer" onclick="disconnectWallet()">
+          <div>
+            <div class="edit-row-label" style="color:var(--red)">Disconnect Wallet</div>
+            <div class="edit-row-sub">Sign out of Edge Seeker</div>
+          </div>
+          <div style="color:var(--muted)">→</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
@@ -1463,6 +1624,21 @@
   let walletVisible = true;
 
   function renderProfile() {
+    // Apply saved settings
+    const settings = getProfileSettings();
+    applyProfileSettings(settings);
+
+    // Update avatar from saved pfp
+    const savedPfp = settings.pfp;
+    const connected = document.getElementById('walletBar').classList.contains('visible');
+    if (savedPfp && savedPfp !== 'undefined') {
+      document.getElementById('profileAvatar').textContent = savedPfp;
+    }
+
+    // Show/hide stats based on privacy settings
+    const statsCard = document.querySelector('[id="pRecordW"]')?.closest('.profile-card');
+    if (statsCard) statsCard.style.display = settings.showStats !== false ? 'block' : 'none';
+
     // Sync wallet info
     const addr = document.getElementById('walletAddr').textContent;
     const wname = document.getElementById('walletWName').textContent;
@@ -1586,6 +1762,165 @@
       '</div>';
   }
 
+
+  // ── EDIT PROFILE ─────────────────────────────────────────────────────────
+  const PFP_EMOJIS = [
+    '👤','🦅','🐺','🦁','🐯','🦊','🐻','🦝','🐼','🦄',
+    '🤖','👾','🎭','🏆','⚡','🔥','💎','🎯','🚀','⚾',
+    '🏟️','🎲','🃏','🎰','💰','🌙','☀️','❄️','🌊','🎸'
+  ];
+
+  const DEFAULT_SETTINGS = {
+    pfp: '👤',
+    username: '',
+    showWallet: true,
+    showBalance: true,
+    showStats: true,
+    darkMode: true,
+  };
+
+  function getProfileSettings() {
+    const raw = localStorage.getItem('edgeseeker_profile');
+    return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_SETTINGS };
+  }
+
+  function saveProfileSettings(settings) {
+    localStorage.setItem('edgeseeker_profile', JSON.stringify(settings));
+  }
+
+  function openEditProfile() {
+    const settings = getProfileSettings();
+    const screen = document.getElementById('editProfileScreen');
+
+    // Pre-fill form
+    document.getElementById('editPfpPreview').textContent = settings.pfp;
+    document.getElementById('editUsername').value = settings.username || '';
+
+    // Set toggles
+    setToggleState('editWalletToggle', settings.showWallet);
+    setToggleState('editBalanceToggle', settings.showBalance);
+    setToggleState('editStatsToggle', settings.showStats);
+    setToggleState('editDarkToggle', settings.darkMode);
+
+    // Build PFP grid
+    buildPfpGrid(settings.pfp);
+
+    // Load edit teams
+    renderEditTeams();
+
+    screen.classList.add('active');
+  }
+
+  function closeEditProfile() {
+    document.getElementById('editProfileScreen').classList.remove('active');
+    document.getElementById('pfpPicker').classList.remove('visible');
+  }
+
+  function saveEditProfile() {
+    const settings = getProfileSettings();
+    settings.pfp = document.getElementById('editPfpPreview').textContent;
+    settings.username = document.getElementById('editUsername').value.trim();
+    settings.showWallet = document.getElementById('editWalletToggle').classList.contains('active');
+    settings.showBalance = document.getElementById('editBalanceToggle').classList.contains('active');
+    settings.showStats = document.getElementById('editStatsToggle').classList.contains('active');
+    settings.darkMode = document.getElementById('editDarkToggle').classList.contains('active');
+
+    saveProfileSettings(settings);
+    applyProfileSettings(settings);
+    closeEditProfile();
+    showToast('✅ Profile saved!');
+    renderProfile();
+  }
+
+  function applyProfileSettings(settings) {
+    // Apply dark/light mode
+    if (!settings.darkMode) {
+      document.documentElement.style.setProperty('--bg', '#F0F4F8');
+      document.documentElement.style.setProperty('--surface', '#FFFFFF');
+      document.documentElement.style.setProperty('--text', '#0D1117');
+      document.documentElement.style.setProperty('--muted', '#6B7280');
+      document.documentElement.style.setProperty('--border', '#E5E7EB');
+    } else {
+      document.documentElement.style.setProperty('--bg', '#080B10');
+      document.documentElement.style.setProperty('--surface', '#0E1420');
+      document.documentElement.style.setProperty('--text', '#E8EDF5');
+      document.documentElement.style.setProperty('--muted', '#5A6A85');
+      document.documentElement.style.setProperty('--border', '#1E2A40');
+    }
+
+    // Apply stats visibility
+    const statsCard = document.querySelector('.profile-card:has(#pRecordW)');
+    if (statsCard) statsCard.style.display = settings.showStats ? 'block' : 'none';
+  }
+
+  function buildPfpGrid(currentPfp) {
+    const grid = document.getElementById('pfpGrid');
+    grid.innerHTML = PFP_EMOJIS.map(emoji => `
+      <div class="pfp-option${emoji === currentPfp ? ' selected' : ''}"
+           onclick="selectPfp('${emoji}')">${emoji}</div>
+    `).join('');
+  }
+
+  function selectPfp(emoji) {
+    document.getElementById('editPfpPreview').textContent = emoji;
+    document.querySelectorAll('.pfp-option').forEach(el => {
+      el.classList.toggle('selected', el.textContent === emoji);
+    });
+  }
+
+  function togglePfpPicker() {
+    document.getElementById('pfpPicker').classList.toggle('visible');
+  }
+
+  function setToggleState(id, active) {
+    const el = document.getElementById(id);
+    if (active) el.classList.add('active');
+    else el.classList.remove('active');
+  }
+
+  function toggleEditSetting(toggleId) {
+    document.getElementById(toggleId).classList.toggle('active');
+  }
+
+  // Edit screen team management
+  function renderEditTeams() {
+    const teams = getFavoriteTeams();
+    const container = document.getElementById('editFavoriteTeams');
+    if (teams.length === 0) {
+      container.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">No teams added yet</div>`;
+      return;
+    }
+    container.innerHTML = teams.map(t => `
+      <div class="team-chip">
+        ⚾ ${t}
+        <button class="team-chip-remove" onclick="removeEditTeam('${t}')">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function addEditTeam() {
+    const val = document.getElementById('editTeamSelect').value;
+    if (!val) { showToast('Select a team'); return; }
+    const teams = getFavoriteTeams();
+    if (teams.includes(val)) { showToast('Already added!'); return; }
+    if (teams.length >= 6) { showToast('Max 6 teams'); return; }
+    teams.push(val);
+    saveFavoriteTeams(teams);
+    document.getElementById('editTeamSelect').value = '';
+    renderEditTeams();
+    showToast('⚾ ' + val + ' added!');
+  }
+
+  function removeEditTeam(team) {
+    saveFavoriteTeams(getFavoriteTeams().filter(t => t !== team));
+    renderEditTeams();
+  }
+
+  // Apply saved settings on load
+  window.addEventListener('load', () => {
+    const settings = getProfileSettings();
+    applyProfileSettings(settings);
+  });
 
   // ── TRENDS + AI AGENT ────────────────────────────────────────────────────
   let trendsLoaded = false;
