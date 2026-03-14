@@ -282,6 +282,45 @@
   .roi-bar-fill.positive { background: linear-gradient(90deg, var(--green), var(--accent)); }
   .roi-bar-fill.negative { background: linear-gradient(90deg, var(--red), #FF6B6B); }
 
+  /* ── PROFILE STYLES ────────────────────────────────────────────────── */
+  .profile-hero { background: linear-gradient(135deg, rgba(153,69,255,0.1), rgba(0,229,255,0.06)); border: 1px solid rgba(153,69,255,0.25); border-radius: 20px; padding: 24px; display: flex; align-items: center; gap: 16px; margin-bottom: 16px; position: relative; overflow: hidden; }
+  .profile-hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--sol), var(--accent)); }
+  .profile-avatar { width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, var(--sol), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+  .profile-info { flex: 1; }
+  .profile-name { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; }
+  .profile-since { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; }
+  .profile-sol-badge { text-align: right; }
+  .psol-amount { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--sol); letter-spacing: 1px; }
+  .psol-usd { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px; margin-bottom: 14px; }
+  .profile-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .profile-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px; color: var(--text); }
+  .profile-card-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+  .wallet-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .wallet-detail-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+  .wallet-detail-value { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); }
+  .hidden-msg { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); text-align: center; padding: 12px 0; letter-spacing: 1px; }
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+  .toggle-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--muted); }
+  .toggle { width: 40px; height: 22px; background: var(--border); border-radius: 11px; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.active { background: var(--accent); }
+  .toggle-thumb { width: 16px; height: 16px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: left 0.2s; }
+  .toggle.active .toggle-thumb { left: 21px; }
+  .profile-stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+  .profile-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; }
+  .profile-stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; line-height: 1; }
+  .profile-stat-value.green { color: var(--green); }
+  .profile-stat-value.red   { color: var(--red); }
+  .profile-stat-value.cyan  { color: var(--accent); }
+  .profile-stat-value.gold  { color: var(--gold); }
+  .profile-stat-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+  .add-team-btn { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; color: var(--accent); background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.2); padding: 5px 12px; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+  .add-team-btn:hover { background: rgba(0,229,255,0.15); }
+  .team-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 4px; font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 1px; }
+  .team-chip-remove { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0; line-height: 1; transition: color 0.2s; }
+  .team-chip-remove:hover { color: var(--red); }
+  .teams-wrap { display: flex; flex-wrap: wrap; }
+
   /* BOTTOM NAV */
   .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(8,11,16,0.95); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 10px 0 24px; z-index: 100; }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 0; transition: all 0.2s; }
@@ -540,6 +579,128 @@
   <div class="bottom-spacer"></div>
 </main>
 
+
+<!-- PAGE: PROFILE -->
+<main id="page-profile" class="page">
+
+  <div class="profile-hero">
+    <div class="profile-avatar" id="profileAvatar">👤</div>
+    <div class="profile-info">
+      <div class="profile-name" id="profileName">Not Connected</div>
+      <div class="profile-since">Edge Seeker Member</div>
+    </div>
+    <div class="profile-sol-badge" id="profileSolBadge" style="display:none">
+      <div class="psol-amount" id="profileSolAmount">— SOL</div>
+      <div class="psol-usd" id="profileSolUsd"></div>
+    </div>
+  </div>
+
+  <div class="profile-card" id="walletCard">
+    <div class="profile-card-header">
+      <div class="profile-card-title">WALLET</div>
+      <div class="toggle-wrap">
+        <span class="toggle-label" id="walletToggleLabel">VISIBLE</span>
+        <div class="toggle active" id="walletToggle" onclick="toggleWalletVisibility()">
+          <div class="toggle-thumb"></div>
+        </div>
+      </div>
+    </div>
+    <div id="walletCardContent">
+      <div class="wallet-detail-row">
+        <div class="wallet-detail-label">ADDRESS</div>
+        <div class="wallet-detail-value" id="profileWalletAddr">—</div>
+      </div>
+      <div class="wallet-detail-row">
+        <div class="wallet-detail-label">NETWORK</div>
+        <div class="wallet-detail-value" style="color:var(--green)">Solana Mainnet</div>
+      </div>
+      <div class="wallet-detail-row" style="border-bottom:none">
+        <div class="wallet-detail-label">SOL BALANCE</div>
+        <div class="wallet-detail-value" id="profileSolBalance">—</div>
+      </div>
+    </div>
+    <div id="walletCardHidden" style="display:none">
+      <div class="hidden-msg">🔒 Wallet details hidden</div>
+    </div>
+  </div>
+
+  <div class="profile-card">
+    <div class="profile-card-header">
+      <div class="profile-card-title">BETTING STATS</div>
+      <div class="profile-card-sub">This Season</div>
+    </div>
+    <div class="profile-stats-grid">
+      <div class="profile-stat">
+        <div class="profile-stat-value green" id="pRecordW">0</div>
+        <div class="profile-stat-label">WINS</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-value red" id="pRecordL">0</div>
+        <div class="profile-stat-label">LOSSES</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-value cyan" id="pWinRate">0%</div>
+        <div class="profile-stat-label">WIN RATE</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-value gold" id="pROI">0%</div>
+        <div class="profile-stat-label">ROI</div>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted)">WIN RATE</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent)" id="pWinRateBar">0%</span>
+      </div>
+      <div class="roi-bar-wrap"><div class="roi-bar-fill positive" id="pWinRateFill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="profile-card">
+    <div class="profile-card-header">
+      <div class="profile-card-title">FAVORITE TEAMS</div>
+      <div class="add-team-btn" onclick="showAddTeam()">+ ADD</div>
+    </div>
+    <div id="addTeamPanel" style="display:none;margin-bottom:14px">
+      <div style="display:flex;gap:8px">
+        <select class="form-input" id="teamSelect" style="flex:1">
+          <option value="">Select a team...</option>
+          <optgroup label="AL East"><option>NYY</option><option>BOS</option><option>TOR</option><option>TB</option><option>BAL</option></optgroup>
+          <optgroup label="AL Central"><option>CLE</option><option>MIN</option><option>CWS</option><option>KC</option><option>DET</option></optgroup>
+          <optgroup label="AL West"><option>HOU</option><option>TEX</option><option>SEA</option><option>OAK</option><option>LAA</option></optgroup>
+          <optgroup label="NL East"><option>ATL</option><option>NYM</option><option>PHI</option><option>MIA</option><option>WSH</option></optgroup>
+          <optgroup label="NL Central"><option>CHC</option><option>MIL</option><option>STL</option><option>CIN</option><option>PIT</option></optgroup>
+          <optgroup label="NL West"><option>LAD</option><option>SF</option><option>SD</option><option>ARI</option><option>COL</option></optgroup>
+        </select>
+        <button class="setup-confirm-btn" onclick="addFavoriteTeam()" style="padding:10px 16px">ADD</button>
+      </div>
+    </div>
+    <div id="favoriteTeamsList">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px 0">No favorite teams yet — tap + ADD above</div>
+    </div>
+  </div>
+
+  <div class="profile-card">
+    <div class="profile-card-header">
+      <div class="profile-card-title">ABOUT</div>
+    </div>
+    <div class="wallet-detail-row">
+      <div class="wallet-detail-label">APP VERSION</div>
+      <div class="wallet-detail-value">1.0.0</div>
+    </div>
+    <div class="wallet-detail-row">
+      <div class="wallet-detail-label">CHAIN</div>
+      <div class="wallet-detail-value" style="color:var(--sol)">Solana</div>
+    </div>
+    <div class="wallet-detail-row" style="border-bottom:none">
+      <div class="wallet-detail-label">SEASON</div>
+      <div class="wallet-detail-value">MLB 2026</div>
+    </div>
+  </div>
+
+  <div class="bottom-spacer"></div>
+</main>
+
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <div class="nav-item active" onclick="showPage('picks', this)"><div class="nav-icon">⚡</div><div class="nav-label">Picks</div></div>
@@ -567,6 +728,7 @@
     if (navEl) navEl.classList.add('active');
 
     if (name === 'bankroll') renderBankroll();
+    if (name === 'profile') renderProfile();
   }
 
   // ── PICKS ─────────────────────────────────────────────────────────────────
@@ -1048,6 +1210,133 @@
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // ── PROFILE ───────────────────────────────────────────────────────────────
+  let walletVisible = true;
+
+  function renderProfile() {
+    // Sync wallet info
+    const addr = document.getElementById('walletAddr').textContent;
+    const wname = document.getElementById('walletWName').textContent;
+    const solAmt = document.getElementById('solBalanceAmount').textContent;
+    const solUsd = document.getElementById('solBalanceUsd').textContent;
+    const connected = document.getElementById('walletBar').classList.contains('visible');
+
+    if (connected && addr !== '—') {
+      document.getElementById('profileAvatar').textContent = document.getElementById('walletAvatar').textContent;
+      document.getElementById('profileName').textContent = addr;
+      document.getElementById('profileWalletAddr').textContent = addr;
+      document.getElementById('profileSolBalance').textContent = solAmt;
+      document.getElementById('profileSolBadge').style.display = 'block';
+      document.getElementById('profileSolAmount').textContent = solAmt;
+      document.getElementById('profileSolUsd').textContent = solUsd;
+    } else {
+      document.getElementById('profileAvatar').textContent = '👤';
+      document.getElementById('profileName').textContent = 'Not Connected';
+      document.getElementById('profileWalletAddr').textContent = '—';
+      document.getElementById('profileSolBalance').textContent = '—';
+      document.getElementById('profileSolBadge').style.display = 'none';
+    }
+
+    // Sync betting stats from bankroll
+    const bankData = getBankrollData();
+    if (bankData && bankData.bets.length > 0) {
+      const bets = bankData.bets.filter(b => b.result !== 'pending');
+      const wins = bets.filter(b => b.result === 'win').length;
+      const losses = bets.filter(b => b.result === 'loss').length;
+      const winRate = bets.length > 0 ? Math.round(wins / bets.length * 100) : 0;
+      const totalBet = bets.reduce((s, b) => s + b.amount, 0);
+      let profit = 0;
+      bankData.bets.forEach(b => {
+        if (b.result === 'win') profit += calcPayout(b.amount, b.odds);
+        else if (b.result === 'loss') profit -= b.amount;
+      });
+      const roi = totalBet > 0 ? (profit / totalBet * 100) : 0;
+
+      document.getElementById('pRecordW').textContent = wins;
+      document.getElementById('pRecordL').textContent = losses;
+      document.getElementById('pWinRate').textContent = winRate + '%';
+      document.getElementById('pWinRateBar').textContent = winRate + '%';
+      document.getElementById('pROI').textContent = (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
+      document.getElementById('pROI').className = 'profile-stat-value ' + (roi >= 0 ? 'gold' : 'red');
+      setTimeout(() => { document.getElementById('pWinRateFill').style.width = winRate + '%'; }, 100);
+    }
+
+    // Load favorite teams
+    renderFavoriteTeams();
+  }
+
+  function toggleWalletVisibility() {
+    walletVisible = !walletVisible;
+    const toggle = document.getElementById('walletToggle');
+    const label = document.getElementById('walletToggleLabel');
+    const content = document.getElementById('walletCardContent');
+    const hidden = document.getElementById('walletCardHidden');
+
+    if (walletVisible) {
+      toggle.classList.add('active');
+      label.textContent = 'VISIBLE';
+      content.style.display = 'block';
+      hidden.style.display = 'none';
+    } else {
+      toggle.classList.remove('active');
+      label.textContent = 'HIDDEN';
+      content.style.display = 'none';
+      hidden.style.display = 'block';
+    }
+  }
+
+  // FAVORITE TEAMS
+  function getFavoriteTeams() {
+    const raw = localStorage.getItem('edgeseeker_teams');
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  function saveFavoriteTeams(teams) {
+    localStorage.setItem('edgeseeker_teams', JSON.stringify(teams));
+  }
+
+  function showAddTeam() {
+    const panel = document.getElementById('addTeamPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function addFavoriteTeam() {
+    const val = document.getElementById('teamSelect').value;
+    if (!val) { showToast('Select a team first'); return; }
+    const teams = getFavoriteTeams();
+    if (teams.includes(val)) { showToast('Already added!'); return; }
+    if (teams.length >= 6) { showToast('Max 6 favorite teams'); return; }
+    teams.push(val);
+    saveFavoriteTeams(teams);
+    document.getElementById('teamSelect').value = '';
+    document.getElementById('addTeamPanel').style.display = 'none';
+    renderFavoriteTeams();
+    showToast('⚾ ' + val + ' added!');
+  }
+
+  function removeFavoriteTeam(team) {
+    const teams = getFavoriteTeams().filter(t => t !== team);
+    saveFavoriteTeams(teams);
+    renderFavoriteTeams();
+  }
+
+  function renderFavoriteTeams() {
+    const teams = getFavoriteTeams();
+    const container = document.getElementById('favoriteTeamsList');
+    if (teams.length === 0) {
+      container.innerHTML = '<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px 0">No favorite teams yet — tap + ADD above</div>';
+      return;
+    }
+    container.innerHTML = '<div class="teams-wrap">' +
+      teams.map(t => `
+        <div class="team-chip">
+          ⚾ ${t}
+          <button class="team-chip-remove" onclick="removeFavoriteTeam('${t}')">✕</button>
+        </div>
+      `).join('') +
+      '</div>';
   }
 
   // ── AUTO-REFRESH ──────────────────────────────────────────────────────────
