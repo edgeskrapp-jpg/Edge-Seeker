@@ -1326,7 +1326,7 @@
     const teams = getFavoriteTeams();
     const container = document.getElementById('favoriteTeamsList');
     if (teams.length === 0) {
-      container.innerHTML = '<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px 0">No favorite teams yet — tap + ADD above</div>';
+      container.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px 0">No favorite teams yet — tap + ADD above</div>`;
       return;
     }
     container.innerHTML = '<div class="teams-wrap">' +
