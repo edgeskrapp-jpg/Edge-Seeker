@@ -23,94 +23,46 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-  body {
-    font-family: 'Instrument Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+  body { font-family: 'Instrument Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
 
   body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
   }
 
-  header {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(8,11,16,0.92);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 20px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
+  /* PAGES */
+  .page { display: none; }
+  .page.active { display: block; }
 
-  .logo {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 26px; letter-spacing: 2px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  }
-
-  .logo span {
-    font-size: 10px; font-family: 'DM Mono', monospace; letter-spacing: 3px; display: block;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    margin-top: -4px;
-  }
-
-  .connect-btn {
-    background: linear-gradient(135deg, var(--sol), var(--accent2));
-    border: none; border-radius: 10px; color: white;
-    font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
-    padding: 10px 16px; cursor: pointer; display: flex; align-items: center;
-    gap: 8px; transition: all 0.2s; letter-spacing: 0.5px;
-  }
+  /* HEADER */
+  header { position: sticky; top: 0; z-index: 100; background: rgba(8,11,16,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 2px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .logo span { font-size: 10px; font-family: 'DM Mono', monospace; letter-spacing: 3px; display: block; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-top: -4px; }
+  .connect-btn { background: linear-gradient(135deg, var(--sol), var(--accent2)); border: none; border-radius: 10px; color: white; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; padding: 10px 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; letter-spacing: 0.5px; }
   .connect-btn:hover { opacity: 0.85; transform: translateY(-1px); }
   .connect-btn .dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
-    z-index: 1000; display: flex; align-items: flex-end; justify-content: center;
-    opacity: 0; pointer-events: none; transition: opacity 0.3s;
-  }
+  /* WALLET MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
   .modal-overlay.active { opacity: 1; pointer-events: all; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 24px 24px 0 0; padding: 28px 24px 40px;
-    width: 100%; max-width: 480px;
-    transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
-  }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 28px 24px 40px; width: 100%; max-width: 480px; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); }
   .modal-overlay.active .modal { transform: translateY(0); }
   .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 24px; }
   .modal h2 { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 2px; margin-bottom: 6px; }
   .modal p { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
-  .wallet-option {
-    display: flex; align-items: center; gap: 16px; padding: 16px;
-    border: 1px solid var(--border); border-radius: 14px; cursor: pointer;
-    margin-bottom: 10px; transition: all 0.2s; background: var(--bg);
-  }
+  .wallet-option { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s; background: var(--bg); }
   .wallet-option:hover { border-color: var(--accent); background: rgba(0,229,255,0.05); }
   .wallet-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
   .w-name { font-weight: 600; font-size: 15px; }
   .w-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
+  /* MAIN */
   main { position: relative; z-index: 1; padding: 20px 16px; max-width: 480px; margin: 0 auto; }
 
-  .wallet-bar {
-    background: linear-gradient(135deg, rgba(153,69,255,0.1), rgba(0,229,255,0.05));
-    border: 1px solid rgba(153,69,255,0.3); border-radius: 14px;
-    padding: 14px 16px; margin-bottom: 20px; display: none;
-    align-items: center; justify-content: space-between;
-  }
+  /* WALLET BAR */
+  .wallet-bar { background: linear-gradient(135deg, rgba(153,69,255,0.1), rgba(0,229,255,0.05)); border: 1px solid rgba(153,69,255,0.3); border-radius: 14px; padding: 14px 16px; margin-bottom: 20px; display: none; align-items: center; justify-content: space-between; }
   .wallet-bar.visible { display: flex; }
   .wallet-info { display: flex; align-items: center; gap: 10px; }
   .wallet-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--sol), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 18px; }
@@ -119,26 +71,31 @@
   .sol-amount { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--sol); letter-spacing: 1px; text-align: right; }
   .sol-usd { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: right; }
 
+  /* STATS ROW */
   .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
   .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; position: relative; overflow: hidden; }
   .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), transparent); }
   .stat-card.green::before { background: linear-gradient(90deg, var(--green), transparent); }
   .stat-card.gold::before  { background: linear-gradient(90deg, var(--gold), transparent); }
   .stat-card.purple::before{ background: linear-gradient(90deg, var(--sol), transparent); }
+  .stat-card.red::before   { background: linear-gradient(90deg, var(--red), transparent); }
   .stat-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
   .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 1px; line-height: 1; }
   .stat-value.green  { color: var(--green); }
   .stat-value.gold   { color: var(--gold); }
   .stat-value.cyan   { color: var(--accent); }
   .stat-value.purple { color: var(--sol); }
+  .stat-value.red    { color: var(--red); }
   .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
+  /* SECTION HEADER */
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; }
   .badge { font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 10px; border-radius: 20px; letter-spacing: 1px; }
   .badge.live { background: rgba(255,58,92,0.15); color: var(--red); border: 1px solid rgba(255,58,92,0.3); animation: blink 1.5s infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.6} }
 
+  /* FILTER TABS */
   .filter-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 16px; }
   .filter-tabs::-webkit-scrollbar { display: none; }
   .tab { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
@@ -147,13 +104,11 @@
   .last-updated { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: center; margin-bottom: 16px; letter-spacing: 0.5px; display: none; }
   .last-updated span { color: var(--accent); }
 
-  /* LOADING */
+  /* LOADING / ERROR / EMPTY */
   .loading-state { text-align: center; padding: 60px 20px; }
   .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-text { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; color: var(--muted); }
-
-  /* ERROR */
   .error-state { background: rgba(255,58,92,0.06); border: 1px solid rgba(255,58,92,0.2); border-radius: 16px; padding: 24px; text-align: center; display: none; }
   .error-state.visible { display: block; }
   .error-icon { font-size: 32px; margin-bottom: 12px; }
@@ -161,8 +116,6 @@
   .error-msg { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.7; }
   .retry-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; padding: 10px 20px; cursor: pointer; transition: all 0.2s; }
   .retry-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* EMPTY */
   .empty-state { text-align: center; padding: 50px 20px; display: none; }
   .empty-state.visible { display: block; }
   .empty-icon { font-size: 40px; margin-bottom: 16px; }
@@ -170,12 +123,7 @@
   .empty-msg { font-size: 13px; color: var(--muted); line-height: 1.7; }
 
   /* BET CARD */
-  .bet-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 18px; padding: 18px; margin-bottom: 12px;
-    position: relative; overflow: hidden; cursor: pointer;
-    transition: all 0.2s; animation: slideIn 0.4s ease both;
-  }
+  .bet-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 12px; position: relative; overflow: hidden; cursor: pointer; transition: all 0.2s; animation: slideIn 0.4s ease both; }
   @keyframes slideIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   .bet-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   .bet-card.top-pick { border-color: rgba(0,229,255,0.4); }
@@ -204,6 +152,137 @@
   .book-name { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
   .game-time { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
 
+  /* ── BANKROLL STYLES ──────────────────────────────────────────────────── */
+
+  /* BALANCE HERO */
+  .balance-hero {
+    background: linear-gradient(135deg, rgba(0,229,255,0.08), rgba(123,97,255,0.08));
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 20px;
+    padding: 28px 24px;
+    text-align: center;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .balance-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .balance-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  .balance-amount { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 2px; color: var(--text); line-height: 1; }
+  .balance-amount.up   { color: var(--green); text-shadow: 0 0 30px rgba(0,255,136,0.3); }
+  .balance-amount.down { color: var(--red); }
+  .balance-change { font-family: 'DM Mono', monospace; font-size: 13px; margin-top: 8px; }
+  .balance-change.up   { color: var(--green); }
+  .balance-change.down { color: var(--red); }
+  .balance-meta { display: flex; justify-content: center; gap: 24px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .balance-meta-item { text-align: center; }
+  .balance-meta-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .balance-meta-value { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px; }
+
+  /* LOG BET BUTTON */
+  .log-bet-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 14px;
+    color: var(--bg); font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px; letter-spacing: 2px;
+    padding: 16px; cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .log-bet-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* BET LOG MODAL */
+  .bet-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 28px 24px 40px; width: 100%; max-width: 480px; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+  .modal-overlay.active .bet-modal { transform: translateY(0); }
+
+  /* FORM */
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; display: block; }
+  .form-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text);
+    font-family: 'Instrument Sans', sans-serif; font-size: 15px;
+    padding: 12px 16px; transition: border-color 0.2s;
+    appearance: none;
+  }
+  .form-input:focus { outline: none; border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .result-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .result-btn {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px;
+    padding: 10px; cursor: pointer; transition: all 0.2s; text-align: center;
+  }
+  .result-btn.win.selected  { background: rgba(0,255,136,0.1); border-color: var(--green); color: var(--green); }
+  .result-btn.loss.selected { background: rgba(255,58,92,0.1); border-color: var(--red); color: var(--red); }
+  .result-btn.push.selected { background: rgba(255,208,96,0.1); border-color: var(--gold); color: var(--gold); }
+  .result-btn:hover { border-color: var(--accent); }
+
+  .submit-bet-btn {
+    width: 100%; background: linear-gradient(135deg, var(--green), var(--accent));
+    border: none; border-radius: 12px; color: var(--bg);
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px;
+    padding: 14px; cursor: pointer; margin-top: 8px; transition: all 0.2s;
+  }
+  .submit-bet-btn:hover { opacity: 0.9; }
+
+  /* BANKROLL SETUP */
+  .setup-card { background: var(--surface); border: 1px solid rgba(0,229,255,0.2); border-radius: 18px; padding: 24px; margin-bottom: 20px; text-align: center; }
+  .setup-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; margin-bottom: 8px; }
+  .setup-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.7; }
+  .setup-input-row { display: flex; gap: 10px; }
+  .setup-input-row .form-input { flex: 1; }
+  .setup-confirm-btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 12px; color: var(--bg); font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px; padding: 12px 20px; cursor: pointer; white-space: nowrap; }
+
+  /* BET HISTORY LIST */
+  .history-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    animation: slideIn 0.3s ease both;
+  }
+  .history-left { display: flex; align-items: center; gap: 12px; }
+  .history-result {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .history-result.win  { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+  .history-result.loss { background: rgba(255,58,92,0.1);  color: var(--red);   border: 1px solid rgba(255,58,92,0.3); }
+  .history-result.push { background: rgba(255,208,96,0.1); color: var(--gold);  border: 1px solid rgba(255,208,96,0.3); }
+  .history-result.pending { background: rgba(90,106,133,0.1); color: var(--muted); border: 1px solid var(--border); }
+  .history-pick { font-weight: 600; font-size: 14px; }
+  .history-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.5px; }
+  .history-right { text-align: right; }
+  .history-amount { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px; }
+  .history-amount.win  { color: var(--green); }
+  .history-amount.loss { color: var(--red); }
+  .history-amount.push { color: var(--gold); }
+  .history-amount.pending { color: var(--muted); }
+  .history-odds { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .delete-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px; margin-left: 8px; opacity: 0.5; transition: opacity 0.2s; }
+  .delete-btn:hover { opacity: 1; color: var(--red); }
+
+  /* ROI BAR */
+  .roi-bar-wrap { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; height: 8px; overflow: hidden; margin-top: 6px; }
+  .roi-bar-fill { height: 100%; border-radius: 8px; transition: width 1s ease; }
+  .roi-bar-fill.positive { background: linear-gradient(90deg, var(--green), var(--accent)); }
+  .roi-bar-fill.negative { background: linear-gradient(90deg, var(--red), #FF6B6B); }
+
+  /* BOTTOM NAV */
   .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(8,11,16,0.95); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 10px 0 24px; z-index: 100; }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 0; transition: all 0.2s; }
   .nav-icon { font-size: 20px; transition: transform 0.2s; }
@@ -212,6 +291,7 @@
   .nav-item.active .nav-label { color: var(--accent); }
   .bottom-spacer { height: 90px; }
 
+  /* TOAST */
   .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--surface2); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 20px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: 0.5px; z-index: 2000; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
@@ -220,6 +300,7 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- HEADER -->
 <header>
   <div class="logo">Edge Seeker<span>BASEBALL ANALYTICS</span></div>
   <button class="connect-btn" onclick="openWalletModal()">
@@ -228,27 +309,73 @@
   </button>
 </header>
 
+<!-- WALLET MODAL -->
 <div class="modal-overlay" id="walletModal" onclick="closeWalletModal(event)">
   <div class="modal">
     <div class="modal-handle"></div>
     <h2>Connect Wallet</h2>
     <p>Choose your Solana wallet to access Edge Seeker analytics</p>
-    <div class="wallet-option" onclick="connectWallet('Phantom','👻')">
+    <div class="wallet-option" id="wallet-Phantom" onclick="connectWallet('Phantom','👻')">
       <div class="wallet-icon" style="background:linear-gradient(135deg,#6e45ff22,#6e45ff44)">👻</div>
-      <div><div class="w-name">Phantom</div><div class="w-desc">Most popular Solana wallet</div></div>
+      <div><div class="w-name">Phantom</div><div class="w-desc">Checking...</div></div>
     </div>
-    <div class="wallet-option" onclick="connectWallet('Solflare','☀️')">
+    <div class="wallet-option" id="wallet-Solflare" onclick="connectWallet('Solflare','☀️')">
       <div class="wallet-icon" style="background:linear-gradient(135deg,#FF6B0022,#FF6B0044)">☀️</div>
-      <div><div class="w-name">Solflare</div><div class="w-desc">Native Solana wallet & staking</div></div>
+      <div><div class="w-name">Solflare</div><div class="w-desc">Checking...</div></div>
     </div>
-    <div class="wallet-option" onclick="connectWallet('Backpack','🎒')">
+    <div class="wallet-option" id="wallet-Backpack" onclick="connectWallet('Backpack','🎒')">
       <div class="wallet-icon" style="background:linear-gradient(135deg,#E33D3D22,#E33D3D44)">🎒</div>
-      <div><div class="w-name">Backpack</div><div class="w-desc">xNFT wallet by Coral</div></div>
+      <div><div class="w-name">Backpack</div><div class="w-desc">Checking...</div></div>
     </div>
   </div>
 </div>
 
-<main>
+<!-- LOG BET MODAL -->
+<div class="modal-overlay" id="betModal" onclick="closeBetModal(event)">
+  <div class="bet-modal">
+    <div class="modal-handle"></div>
+    <h2>Log a Bet</h2>
+    <p>Track this pick against your bankroll</p>
+
+    <div class="form-group">
+      <label class="form-label">Pick / Team</label>
+      <input class="form-input" id="betPick" placeholder="e.g. NYY ML" />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Bet Amount ($)</label>
+        <input class="form-input" id="betAmount" type="number" placeholder="50" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Odds</label>
+        <input class="form-input" id="betOdds" placeholder="-118" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Sportsbook</label>
+      <input class="form-input" id="betBook" placeholder="e.g. DraftKings" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Result</label>
+      <div class="result-btns">
+        <div class="result-btn win" onclick="selectResult('win', this)">✓ WIN</div>
+        <div class="result-btn loss" onclick="selectResult('loss', this)">✗ LOSS</div>
+        <div class="result-btn push" onclick="selectResult('push', this)">~ PUSH</div>
+      </div>
+    </div>
+
+    <button class="submit-bet-btn" onclick="submitBet()">+ LOG BET</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PAGE: PICKS -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<main id="page-picks" class="page active">
+
   <div class="wallet-bar" id="walletBar">
     <div class="wallet-info">
       <div class="wallet-avatar" id="walletAvatar">👻</div>
@@ -258,8 +385,8 @@
       </div>
     </div>
     <div>
-      <div class="sol-amount">12.4 SOL</div>
-      <div class="sol-usd">≈ $1,860.00</div>
+      <div class="sol-amount" id="solBalanceAmount">— SOL</div>
+      <div class="sol-usd" id="solBalanceUsd"></div>
     </div>
   </div>
 
@@ -310,13 +437,13 @@
     <div class="error-state" id="errorState">
       <div class="error-icon">⚠️</div>
       <div class="error-title">BACKEND OFFLINE</div>
-      <div class="error-msg" id="errorMsg">Make sure your backend server is running.<br>In VS Code terminal: <strong>npm start</strong></div>
+      <div class="error-msg" id="errorMsg">Make sure your backend is running.<br><strong>npm start</strong></div>
       <button class="retry-btn" onclick="loadPicks()">↻ RETRY</button>
     </div>
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">⚾</div>
       <div class="empty-title">NO EDGES RIGHT NOW</div>
-      <div class="empty-msg">No picks meet the 3% edge threshold today.<br>MLB regular season starts April 1st — check back for a full slate.</div>
+      <div class="empty-msg">No picks meet the 3% edge threshold today.<br>MLB regular season starts April 1st.</div>
     </div>
     <div id="picksList"></div>
   </div>
@@ -324,41 +451,138 @@
   <div class="bottom-spacer"></div>
 </main>
 
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PAGE: BANKROLL -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<main id="page-bankroll" class="page">
+
+  <!-- SETUP (shown when no bankroll set) -->
+  <div id="bankrollSetup">
+    <div class="setup-card">
+      <div class="setup-title">SET YOUR BANKROLL</div>
+      <div class="setup-desc">Enter your starting bankroll to begin tracking your bets, ROI, and performance over the season.</div>
+      <div class="setup-input-row">
+        <input class="form-input" id="setupAmount" type="number" placeholder="e.g. 1000" />
+        <button class="setup-confirm-btn" onclick="setBankroll()">SET</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRACKER (shown when bankroll is set) -->
+  <div id="bankrollTracker" style="display:none">
+
+    <!-- BALANCE HERO -->
+    <div class="balance-hero">
+      <div class="balance-label">Current Balance</div>
+      <div class="balance-amount" id="currentBalance">$0</div>
+      <div class="balance-change" id="balanceChange">+$0.00 (0.0%)</div>
+      <div class="balance-meta">
+        <div class="balance-meta-item">
+          <div class="balance-meta-label">Starting</div>
+          <div class="balance-meta-value" id="startingBalance">$0</div>
+        </div>
+        <div class="balance-meta-item">
+          <div class="balance-meta-label">ROI</div>
+          <div class="balance-meta-value" id="roiValue">0%</div>
+        </div>
+        <div class="balance-meta-item">
+          <div class="balance-meta-label">Record</div>
+          <div class="balance-meta-value" id="recordValue">0-0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="stats-row" style="margin-bottom:20px">
+      <div class="stat-card green">
+        <div class="stat-label">Total Won</div>
+        <div class="stat-value green" id="totalWon">$0</div>
+        <div class="stat-sub">From winning bets</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Total Lost</div>
+        <div class="stat-value red" id="totalLost">$0</div>
+        <div class="stat-sub">From losing bets</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-label">Avg Bet</div>
+        <div class="stat-value gold" id="avgBet">$0</div>
+        <div class="stat-sub">Per wager</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Win Rate</div>
+        <div class="stat-value cyan" id="winRate">0%</div>
+        <div class="stat-sub">Resolved bets</div>
+      </div>
+    </div>
+
+    <!-- LOG BET BUTTON -->
+    <button class="log-bet-btn" onclick="openBetModal()">
+      + LOG A BET
+    </button>
+
+    <!-- BET HISTORY -->
+    <div class="section-header">
+      <div class="section-title">BET HISTORY</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer" onclick="resetBankroll()">RESET ↺</div>
+    </div>
+
+    <div id="betHistory">
+      <div class="empty-state visible">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">NO BETS LOGGED</div>
+        <div class="empty-msg">Tap the button above to log your first bet and start tracking your performance.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottom-spacer"></div>
+</main>
+
+<!-- BOTTOM NAV -->
 <div class="bottom-nav">
-  <div class="nav-item active"><div class="nav-icon">⚡</div><div class="nav-label">Picks</div></div>
-  <div class="nav-item"><div class="nav-icon">📊</div><div class="nav-label">Trends</div></div>
-  <div class="nav-item"><div class="nav-icon">🏟️</div><div class="nav-label">Games</div></div>
-  <div class="nav-item"><div class="nav-icon">💰</div><div class="nav-label">Bankroll</div></div>
-  <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">Profile</div></div>
+  <div class="nav-item active" onclick="showPage('picks', this)"><div class="nav-icon">⚡</div><div class="nav-label">Picks</div></div>
+  <div class="nav-item" onclick="showPage('trends', this)"><div class="nav-icon">📊</div><div class="nav-label">Trends</div></div>
+  <div class="nav-item" onclick="showPage('games', this)"><div class="nav-icon">🏟️</div><div class="nav-label">Games</div></div>
+  <div class="nav-item" onclick="showPage('bankroll', this)"><div class="nav-icon">💰</div><div class="nav-label">Bankroll</div></div>
+  <div class="nav-item" onclick="showPage('profile', this)"><div class="nav-icon">👤</div><div class="nav-label">Profile</div></div>
 </div>
 
 <script>
-  // ── CONFIG ─────────────────────────────────────────────────────────────────
-  // Change this to your Vercel URL once deployed, e.g.:
-  // const API_BASE = 'https://edge-seeker-backend.vercel.app';
-  const API_BASE = 'https://edge-seeker.vercel.app/';
+  // ── CONFIG ────────────────────────────────────────────────────────────────
+  const API_BASE = 'https://edge-seeker.vercel.app';
 
+  // ── STATE ─────────────────────────────────────────────────────────────────
   let allPicks = [];
   let currentFilter = 'ALL';
+  let selectedResult = 'pending';
 
-  // ── LOAD PICKS FROM BACKEND ────────────────────────────────────────────────
+  // ── PAGE NAVIGATION ───────────────────────────────────────────────────────
+  function showPage(name, navEl) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const page = document.getElementById(`page-${name}`);
+    if (page) page.classList.add('active');
+    if (navEl) navEl.classList.add('active');
+
+    if (name === 'bankroll') renderBankroll();
+  }
+
+  // ── PICKS ─────────────────────────────────────────────────────────────────
   async function loadPicks() {
     showLoading();
     try {
       const res = await fetch(`${API_BASE}/api/picks`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
-
       allPicks = data.picks || [];
       updateStats(data);
-
       if (data.fetchedAt) {
         const t = new Date(data.fetchedAt);
-        document.getElementById('updatedTime').textContent =
-          t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('updatedTime').textContent = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         document.getElementById('lastUpdated').style.display = 'block';
       }
-
       renderPicks(allPicks);
     } catch (err) {
       console.error(err);
@@ -366,7 +590,6 @@
     }
   }
 
-  // ── UPDATE STATS ──────────────────────────────────────────────────────────
   function updateStats(data) {
     const picks = data.picks || [];
     document.getElementById('statPicks').textContent = picks.length || '0';
@@ -381,28 +604,14 @@
     }
   }
 
-  // ── RENDER PICK CARDS ─────────────────────────────────────────────────────
   function renderPicks(picks) {
     hideAll();
     const filtered = filterPicks(picks);
-
-    if (!filtered || filtered.length === 0) {
-      document.getElementById('emptyState').classList.add('visible');
-      return;
-    }
-
+    if (!filtered || filtered.length === 0) { document.getElementById('emptyState').classList.add('visible'); return; }
     const list = document.getElementById('picksList');
     list.innerHTML = '';
-
-    filtered.forEach((pick, i) => {
-      list.appendChild(buildCard(pick, i));
-    });
-
-    setTimeout(() => {
-      document.querySelectorAll('.edge-fill').forEach(el => {
-        el.style.width = el.dataset.width + '%';
-      });
-    }, 100);
+    filtered.forEach((pick, i) => list.appendChild(buildCard(pick, i)));
+    setTimeout(() => { document.querySelectorAll('.edge-fill').forEach(el => { el.style.width = el.dataset.width + '%'; }); }, 100);
   }
 
   function buildCard(pick, i) {
@@ -413,7 +622,6 @@
     const barW = Math.min(100, Math.max(20, ((pick.edgePct - 3) / 12) * 80 + 20));
     const trueAmerican = probToAmerican(pick.trueWinProb / 100);
     const gameTime = fmtTime(pick.gameTime);
-
     const card = document.createElement('div');
     card.className = `bet-card${isTop ? ' top-pick' : ''}`;
     card.style.animationDelay = `${i * 0.08}s`;
@@ -422,15 +630,9 @@
       <div class="bet-matchup">⚾ MLB · ${gameTime} · ${(pick.betType||'Moneyline').toUpperCase()}</div>
       <div class="confidence-badge">${emoji} ${label} · ${conf}/100</div>
       <div class="bet-teams">
-        <div class="team">
-          <div class="team-name">${pick.teamAbbr}</div>
-          <div class="team-record">${pick.trueWinProb}% win</div>
-        </div>
+        <div class="team"><div class="team-name">${pick.teamAbbr}</div><div class="team-record">${pick.trueWinProb}% win</div></div>
         <div class="vs">VS</div>
-        <div class="team">
-          <div class="team-name">${pick.opponentAbbr}</div>
-          <div class="team-record">${(100-pick.trueWinProb).toFixed(1)}% win</div>
-        </div>
+        <div class="team"><div class="team-name">${pick.opponentAbbr}</div><div class="team-record">${(100-pick.trueWinProb).toFixed(1)}% win</div></div>
       </div>
       <div class="edge-section">
         <div class="edge-label">
@@ -440,29 +642,23 @@
         <div class="edge-bar"><div class="edge-fill" data-width="${barW}" style="width:0"></div></div>
       </div>
       <div class="bet-details">
-        <div class="detail-item">
-          <div class="detail-label">Book Odds</div>
-          <div class="detail-value cyan">${pick.bookOddsAmerican}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">True Odds</div>
-          <div class="detail-value green">${trueAmerican}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Kelly %</div>
-          <div class="detail-value gold">${pick.kellyPct}%</div>
-        </div>
+        <div class="detail-item"><div class="detail-label">Book Odds</div><div class="detail-value cyan">${pick.bookOddsAmerican}</div></div>
+        <div class="detail-item"><div class="detail-label">True Odds</div><div class="detail-value green">${trueAmerican}</div></div>
+        <div class="detail-item"><div class="detail-label">Kelly %</div><div class="detail-value gold">${pick.kellyPct}%</div></div>
       </div>
       <div class="book-tag">
         <span class="book-name">📖 ${pick.bookmaker || 'Best line'}</span>
         <span class="game-time">${gameTime}</span>
       </div>
     `;
-    card.addEventListener('click', () => showToast(`${pick.pick} · +${pick.edgePct}% edge`));
+    card.addEventListener('click', () => {
+      document.getElementById('betPick').value = pick.pick;
+      document.getElementById('betOdds').value = pick.bookOddsAmerican;
+      openBetModal();
+    });
     return card;
   }
 
-  // ── FILTER ────────────────────────────────────────────────────────────────
   function filterPicks(picks) {
     if (currentFilter === 'ALL')    return picks;
     if (currentFilter === 'HIGH')   return picks.filter(p => p.confidence >= 70);
@@ -478,6 +674,184 @@
     renderPicks(allPicks);
   }
 
+  // ── BANKROLL ──────────────────────────────────────────────────────────────
+  function getBankrollData() {
+    const raw = localStorage.getItem('edgeseeker_bankroll');
+    return raw ? JSON.parse(raw) : null;
+  }
+
+  function saveBankrollData(data) {
+    localStorage.setItem('edgeseeker_bankroll', JSON.stringify(data));
+  }
+
+  function setBankroll() {
+    const amount = parseFloat(document.getElementById('setupAmount').value);
+    if (!amount || amount <= 0) { showToast('Enter a valid amount'); return; }
+    const data = { starting: amount, bets: [] };
+    saveBankrollData(data);
+    renderBankroll();
+  }
+
+  function resetBankroll() {
+    if (!confirm('Reset your bankroll and clear all bet history?')) return;
+    localStorage.removeItem('edgeseeker_bankroll');
+    renderBankroll();
+  }
+
+  function renderBankroll() {
+    const data = getBankrollData();
+    if (!data) {
+      document.getElementById('bankrollSetup').style.display = 'block';
+      document.getElementById('bankrollTracker').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('bankrollSetup').style.display = 'none';
+    document.getElementById('bankrollTracker').style.display = 'block';
+
+    const bets = data.bets || [];
+    const starting = data.starting;
+
+    // Calculate stats
+    let won = 0, lost = 0, pushed = 0, totalWon = 0, totalLost = 0, totalBet = 0;
+    bets.forEach(b => {
+      if (b.result === 'win') {
+        won++;
+        totalWon += calcPayout(b.amount, b.odds);
+      } else if (b.result === 'loss') {
+        lost++;
+        totalLost += b.amount;
+      } else if (b.result === 'push') {
+        pushed++;
+      }
+      if (b.result !== 'pending') totalBet += b.amount;
+    });
+
+    const netProfit = totalWon - totalLost;
+    const current = starting + netProfit;
+    const roi = totalBet > 0 ? (netProfit / totalBet * 100) : 0;
+    const resolved = won + lost;
+    const winRate = resolved > 0 ? Math.round(won / resolved * 100) : 0;
+
+    // Update hero
+    const balEl = document.getElementById('currentBalance');
+    balEl.textContent = `$${current.toFixed(2)}`;
+    balEl.className = `balance-amount ${netProfit >= 0 ? 'up' : 'down'}`;
+
+    const changeEl = document.getElementById('balanceChange');
+    const changeSign = netProfit >= 0 ? '+' : '';
+    changeEl.textContent = `${changeSign}$${netProfit.toFixed(2)} (${changeSign}${roi.toFixed(1)}%)`;
+    changeEl.className = `balance-change ${netProfit >= 0 ? 'up' : 'down'}`;
+
+    document.getElementById('startingBalance').textContent = `$${starting.toFixed(0)}`;
+    document.getElementById('roiValue').textContent = `${roi >= 0 ? '+' : ''}${roi.toFixed(1)}%`;
+    document.getElementById('recordValue').textContent = `${won}-${lost}`;
+
+    // Stats cards
+    document.getElementById('totalWon').textContent  = `$${totalWon.toFixed(0)}`;
+    document.getElementById('totalLost').textContent = `$${totalLost.toFixed(0)}`;
+    document.getElementById('avgBet').textContent    = bets.length > 0 ? `$${(bets.reduce((s,b)=>s+b.amount,0)/bets.length).toFixed(0)}` : '$0';
+    document.getElementById('winRate').textContent   = `${winRate}%`;
+
+    // Bet history
+    const histEl = document.getElementById('betHistory');
+    if (bets.length === 0) {
+      histEl.innerHTML = `<div class="empty-state visible"><div class="empty-icon">📋</div><div class="empty-title">NO BETS LOGGED</div><div class="empty-msg">Tap the button above to log your first bet.</div></div>`;
+      return;
+    }
+
+    histEl.innerHTML = '';
+    // Show newest first
+    [...bets].reverse().forEach((bet, i) => {
+      const realIdx = bets.length - 1 - i;
+      const payout = bet.result === 'win' ? `+$${calcPayout(bet.amount, bet.odds).toFixed(2)}` :
+                     bet.result === 'loss' ? `-$${bet.amount.toFixed(2)}` :
+                     bet.result === 'push' ? `$${bet.amount.toFixed(2)}` : `$${bet.amount.toFixed(2)}`;
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `
+        <div class="history-left">
+          <div class="history-result ${bet.result}">${bet.result === 'pending' ? '⏳' : bet.result === 'win' ? 'W' : bet.result === 'push' ? 'P' : 'L'}</div>
+          <div>
+            <div class="history-pick">${bet.pick}</div>
+            <div class="history-meta">${bet.book || 'Sportsbook'} · ${fmtDate(bet.date)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <div class="history-right">
+            <div class="history-amount ${bet.result}">${payout}</div>
+            <div class="history-odds">${bet.odds} · $${bet.amount} wagered</div>
+          </div>
+          <button class="delete-btn" onclick="deleteBet(${realIdx})">✕</button>
+        </div>
+      `;
+      histEl.appendChild(item);
+    });
+  }
+
+  function calcPayout(amount, oddsStr) {
+    const odds = parseInt(oddsStr);
+    if (isNaN(odds)) return 0;
+    if (odds > 0) return amount * (odds / 100);
+    else return amount * (100 / Math.abs(odds));
+  }
+
+  function deleteBet(index) {
+    const data = getBankrollData();
+    if (!data) return;
+    data.bets.splice(index, 1);
+    saveBankrollData(data);
+    renderBankroll();
+    showToast('Bet removed');
+  }
+
+  // ── BET MODAL ─────────────────────────────────────────────────────────────
+  function openBetModal() {
+    selectedResult = 'pending';
+    document.querySelectorAll('.result-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('betModal').classList.add('active');
+  }
+
+  function closeBetModal(e) {
+    if (e.target === document.getElementById('betModal'))
+      document.getElementById('betModal').classList.remove('active');
+  }
+
+  function selectResult(result, el) {
+    selectedResult = result;
+    document.querySelectorAll('.result-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function submitBet() {
+    const pick   = document.getElementById('betPick').value.trim();
+    const amount = parseFloat(document.getElementById('betAmount').value);
+    const odds   = document.getElementById('betOdds').value.trim();
+    const book   = document.getElementById('betBook').value.trim();
+
+    if (!pick)         { showToast('Enter a pick'); return; }
+    if (!amount || amount <= 0) { showToast('Enter a valid amount'); return; }
+    if (!odds)         { showToast('Enter the odds'); return; }
+
+    const data = getBankrollData();
+    if (!data) { showToast('Set your bankroll first'); return; }
+
+    data.bets.push({ pick, amount, odds, book, result: selectedResult, date: new Date().toISOString() });
+    saveBankrollData(data);
+
+    // Clear form
+    document.getElementById('betPick').value = '';
+    document.getElementById('betAmount').value = '';
+    document.getElementById('betOdds').value = '';
+    document.getElementById('betBook').value = '';
+    selectedResult = 'pending';
+    document.querySelectorAll('.result-btn').forEach(b => b.classList.remove('selected'));
+
+    document.getElementById('betModal').classList.remove('active');
+    showToast('✅ Bet logged!');
+    renderBankroll();
+  }
+
   // ── HELPERS ───────────────────────────────────────────────────────────────
   function fmtTime(iso) {
     if (!iso) return 'TBD';
@@ -485,11 +859,15 @@
     catch { return 'TBD'; }
   }
 
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' }); }
+    catch { return ''; }
+  }
+
   function probToAmerican(p) {
     if (!p || p <= 0 || p >= 1) return 'EVEN';
-    return p >= 0.5
-      ? String(Math.round(-100 * p / (1 - p)))
-      : '+' + Math.round(100 * (1 - p) / p);
+    return p >= 0.5 ? String(Math.round(-100 * p / (1 - p))) : '+' + Math.round(100 * (1 - p) / p);
   }
 
   function showLoading() {
@@ -507,38 +885,162 @@
 
   function showError(msg) {
     document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('errorMsg').innerHTML =
-      `Make sure your backend is running in VS Code terminal:<br><strong>npm start</strong><br><br><small style="color:var(--muted)">${msg}</small>`;
+    document.getElementById('errorMsg').innerHTML = `Backend offline. Run <strong>npm start</strong><br><small style="color:var(--muted)">${msg}</small>`;
     document.getElementById('errorState').classList.add('visible');
   }
 
   // ── WALLET ────────────────────────────────────────────────────────────────
+  // Uses the real Phantom / Solflare / Backpack browser extension APIs
+  // SOL balance fetched from Solana mainnet RPC
+
+  const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
+
+  // Detect which wallets are installed
+  function getProvider(name) {
+    if (name === 'Phantom')  return window.phantom?.solana || window.solana;
+    if (name === 'Solflare') return window.solflare;
+    if (name === 'Backpack') return window.backpack?.solana || window.xnft?.solana;
+    return null;
+  }
+
   function openWalletModal() {
-    if (document.getElementById('walletBar').classList.contains('visible')) { disconnectWallet(); return; }
+    if (document.getElementById('walletBar').classList.contains('visible')) {
+      disconnectWallet(); return;
+    }
+    // Update wallet options to show which are installed
+    updateWalletOptions();
     document.getElementById('walletModal').classList.add('active');
   }
+
+  function updateWalletOptions() {
+    const wallets = [
+      { name: 'Phantom',  emoji: '👻', installed: !!(window.phantom?.solana || (window.solana?.isPhantom)) },
+      { name: 'Solflare', emoji: '☀️', installed: !!window.solflare },
+      { name: 'Backpack', emoji: '🎒', installed: !!(window.backpack || window.xnft) },
+    ];
+    wallets.forEach(w => {
+      const el = document.getElementById(`wallet-${w.name}`);
+      if (!el) return;
+      const desc = el.querySelector('.w-desc');
+      if (w.installed) {
+        desc.textContent = 'Installed ✓';
+        desc.style.color = 'var(--green)';
+        el.style.opacity = '1';
+      } else {
+        desc.textContent = 'Not installed';
+        el.style.opacity = '0.5';
+      }
+    });
+  }
+
   function closeWalletModal(e) {
     if (e.target === document.getElementById('walletModal'))
       document.getElementById('walletModal').classList.remove('active');
   }
-  function connectWallet(name, emoji) {
+
+  async function connectWallet(name, emoji) {
+    const provider = getProvider(name);
+
+    if (!provider) {
+      showToast(`${name} not found — install the extension`);
+      window.open(
+        name === 'Phantom'  ? 'https://phantom.app' :
+        name === 'Solflare' ? 'https://solflare.com' :
+        'https://backpack.app', '_blank'
+      );
+      return;
+    }
+
     document.getElementById('walletModal').classList.remove('active');
-    setTimeout(() => {
-      const c = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-      const r = n => Array.from({length:n},()=>c[Math.floor(Math.random()*c.length)]).join('');
+    showToast('Connecting...');
+
+    try {
+      // Request connection — this triggers the Phantom popup
+      const resp = await provider.connect();
+      const pubkey = resp.publicKey.toString();
+
+      // Show wallet bar with real address
       document.getElementById('walletAvatar').textContent = emoji;
-      document.getElementById('walletAddr').textContent = `${r(4)}...${r(4)}`;
+      document.getElementById('walletAddr').textContent = `${pubkey.slice(0,4)}...${pubkey.slice(-4)}`;
       document.getElementById('walletWName').textContent = name;
       document.getElementById('walletBar').classList.add('visible');
       document.getElementById('connectText').textContent = 'CONNECTED';
+
       showToast(`${emoji} ${name} connected!`);
-    }, 300);
+
+      // Fetch real SOL balance
+      fetchSOLBalance(pubkey);
+
+    } catch (err) {
+      if (err.code === 4001) {
+        showToast('Connection cancelled');
+      } else {
+        showToast(`Error: ${err.message}`);
+        console.error('Wallet connect error:', err);
+      }
+    }
   }
+
+  async function fetchSOLBalance(pubkey) {
+    try {
+      const res = await fetch(SOLANA_RPC, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1,
+          method: 'getBalance',
+          params: [pubkey, { commitment: 'confirmed' }]
+        })
+      });
+      const data = await res.json();
+      const lamports = data?.result?.value || 0;
+      const sol = (lamports / 1_000_000_000).toFixed(2);
+
+      // Fetch SOL price in USD
+      let usdVal = '';
+      try {
+        const priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+        const priceData = await priceRes.json();
+        const price = priceData?.solana?.usd || 0;
+        usdVal = `≈ $${(sol * price).toFixed(2)}`;
+      } catch { usdVal = ''; }
+
+      document.getElementById('solBalanceAmount').textContent = `${sol} SOL`;
+      document.getElementById('solBalanceUsd').textContent = usdVal;
+
+    } catch (err) {
+      console.error('Balance fetch error:', err);
+      document.getElementById('solBalanceAmount').textContent = '— SOL';
+    }
+  }
+
   function disconnectWallet() {
+    // Disconnect from provider if possible
+    try {
+      const provider = window.phantom?.solana || window.solana;
+      if (provider?.disconnect) provider.disconnect();
+    } catch {}
+
     document.getElementById('walletBar').classList.remove('visible');
     document.getElementById('connectText').textContent = 'CONNECT';
+    document.getElementById('solBalanceAmount').textContent = '— SOL';
+    document.getElementById('solBalanceUsd').textContent = '';
     showToast('Wallet disconnected');
   }
+
+  // Auto-reconnect if wallet was previously connected
+  window.addEventListener('load', async () => {
+    const provider = window.phantom?.solana || window.solana;
+    if (provider?.isConnected && provider.publicKey) {
+      const pubkey = provider.publicKey.toString();
+      document.getElementById('walletAvatar').textContent = '👻';
+      document.getElementById('walletAddr').textContent = `${pubkey.slice(0,4)}...${pubkey.slice(-4)}`;
+      document.getElementById('walletWName').textContent = 'Phantom';
+      document.getElementById('walletBar').classList.add('visible');
+      document.getElementById('connectText').textContent = 'CONNECTED';
+      fetchSOLBalance(pubkey);
+    }
+  });
 
   // ── TOAST ─────────────────────────────────────────────────────────────────
   function showToast(msg) {
@@ -548,15 +1050,7 @@
     setTimeout(() => t.classList.remove('show'), 2800);
   }
 
-  // ── NAV ───────────────────────────────────────────────────────────────────
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function() {
-      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
-
-  // ── AUTO-REFRESH every 10 min ─────────────────────────────────────────────
+  // ── AUTO-REFRESH ──────────────────────────────────────────────────────────
   setInterval(loadPicks, 10 * 60 * 1000);
 
   // ── INIT ──────────────────────────────────────────────────────────────────
