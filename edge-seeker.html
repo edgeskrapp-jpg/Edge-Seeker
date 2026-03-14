@@ -1644,10 +1644,10 @@
     const wname = document.getElementById('walletWName').textContent;
     const solAmt = document.getElementById('solBalanceAmount').textContent;
     const solUsd = document.getElementById('solBalanceUsd').textContent;
-    const connected = document.getElementById('walletBar').classList.contains('visible');
 
     if (connected && addr !== '—') {
-      document.getElementById('profileAvatar').textContent = document.getElementById('walletAvatar').textContent;
+      const pfp = settings.pfp && settings.pfp !== '👤' ? settings.pfp : document.getElementById('walletAvatar').textContent;
+      document.getElementById('profileAvatar').textContent = pfp;
       document.getElementById('profileName').textContent = addr;
       document.getElementById('profileWalletAddr').textContent = addr;
       document.getElementById('profileSolBalance').textContent = solAmt;
@@ -2304,3 +2304,4 @@ Respond with ONLY the JSON, no other text.`
 </script>
 </body>
 </html>
+ 
