@@ -15,6 +15,13 @@ const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
 const { analyzePicks } = require("./edgeAnalyzer");
+const { calculateBetPoints, getAccuracyBonus } = require("./pointsConfig");
+const {
+  getUser, upsertUser,
+  saveBet, getUserBets, updateBetResult,
+  getPoints, addPoints,
+  getLeaderboard,
+} = require("./supabase");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,7 +30,7 @@ const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────────────
 
-app.use(express.static(__dirname));
+app.use(express.json());
 app.use(
   cors({
     origin: [
@@ -32,9 +39,9 @@ app.use(
       "http://localhost:3000",
       /\.vercel\.app$/,         // Any Vercel deployment
     ],
-    methods: ["GET"],
+    methods: ["GET", "POST", "PATCH"],
   })
-);  
+);
 
 // ─── SIMPLE IN-MEMORY CACHE ──────────────────────────────────────────────────
 // Caches odds for 10 minutes so we don't burn through API quota
@@ -211,19 +218,133 @@ app.get("/api/quota", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/edge-seeker.html');
+
+
+// ─── USER ROUTES ─────────────────────────────────────────────────────────────
+
+app.post("/api/users/upsert", async (req, res) => {
+  try {
+    const { wallet_address, username } = req.body;
+    if (!wallet_address) return res.status(400).json({ error: "wallet_address required" });
+    const user = await upsertUser(wallet_address, username);
+    res.json({ user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.get('/edge-seeker.html', (req, res) => {
-  res.sendFile(__dirname + '/edge-seeker.html');
+app.get("/api/users/:wallet", async (req, res) => {
+  try {
+    const user = await getUser(req.params.wallet);
+    const points = await getPoints(req.params.wallet);
+    res.json({ user, points });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+// ─── BETS ROUTES ─────────────────────────────────────────────────────────────
+
+app.post("/api/bets", async (req, res) => {
+  try {
+    const { wallet_address, pick, amount, odds, book, result, source, is_edge_pick } = req.body;
+    if (!wallet_address || !pick || !amount || !odds) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Get existing bets to calculate streak
+    const existingBets = await getUserBets(wallet_address);
+    let streakCount = 0;
+    for (const b of existingBets) {
+      if (b.result === 'win') streakCount++;
+      else break;
+    }
+
+    // Calculate points
+    const points = calculateBetPoints({
+      result: result || 'pending',
+      source: source || 'manual',
+      isEdgePick: is_edge_pick || false,
+      streakCount,
+    });
+
+    const bet = await saveBet({
+      wallet_address, pick, amount: parseFloat(amount),
+      odds, book, result: result || 'pending',
+      source: source || 'manual',
+      points_earned: points,
+    });
+
+    // Award points if result is known
+    if (result && result !== 'pending' && points > 0) {
+      await addPoints(wallet_address, points);
+    }
+
+    res.json({ bet, points_earned: points });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/bets/:wallet", async (req, res) => {
+  try {
+    const bets = await getUserBets(req.params.wallet);
+    res.json({ bets });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch("/api/bets/:id/result", async (req, res) => {
+  try {
+    const { result, wallet_address, is_edge_pick, streak_count } = req.body;
+    const points = calculateBetPoints({
+      result,
+      source: req.body.source || 'manual',
+      isEdgePick: is_edge_pick || false,
+      streakCount: streak_count || 0,
+    });
+    const bet = await updateBetResult(req.params.id, result, points);
+    if (points > 0 && wallet_address) await addPoints(wallet_address, points);
+    res.json({ bet, points_earned: points });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── LEADERBOARD ROUTES ───────────────────────────────────────────────────────
+
+app.get("/api/leaderboard", async (req, res) => {
+  try {
+    const type = req.query.type || 'all_time';
+    const limit = parseInt(req.query.limit) || 50;
+    const board = await getLeaderboard(type, limit);
+    res.json({ leaderboard: board, type });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/points/:wallet", async (req, res) => {
+  try {
+    const points = await getPoints(req.params.wallet);
+    const bets = await getUserBets(req.params.wallet);
+    const resolved = bets.filter(b => b.result !== 'pending');
+    const wins = resolved.filter(b => b.result === 'win').length;
+    const winRate = resolved.length > 0 ? wins / resolved.length : 0;
+    const accuracy = getAccuracyBonus(winRate);
+    res.json({ points, accuracy, totalBets: bets.length, resolvedBets: resolved.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
   res.status(404).json({
     error: "Route not found",
-    availableRoutes: ["/api/health", "/api/picks", "/api/odds/raw", "/api/quota"],
+    availableRoutes: ["/api/health", "/api/picks", "/api/odds/raw", "/api/quota", "/api/leaderboard", "/api/bets/:wallet", "/api/points/:wallet", "/api/users/:wallet"],
   });
 });
 

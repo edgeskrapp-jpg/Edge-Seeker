@@ -321,6 +321,47 @@
   .team-chip-remove:hover { color: var(--red); }
   .teams-wrap { display: flex; flex-wrap: wrap; }
 
+  /* ── LEADERBOARD STYLES ─────────────────────────────────────────────── */
+  .lb-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .lb-tab { flex: 1; font-family: "DM Mono", monospace; font-size: 11px; letter-spacing: 1px; padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; text-align: center; transition: all 0.2s; }
+  .lb-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 8px; animation: slideIn 0.3s ease both; }
+  .lb-rank { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 1px; width: 32px; text-align: center; flex-shrink: 0; }
+  .lb-rank.gold   { color: var(--gold); }
+  .lb-rank.silver { color: #C0C0C0; }
+  .lb-rank.bronze { color: #CD7F32; }
+  .lb-rank.normal { color: var(--muted); }
+  .lb-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent2), var(--sol)); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .lb-info { flex: 1; }
+  .lb-name { font-weight: 600; font-size: 14px; }
+  .lb-meta { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.5px; }
+  .lb-points { text-align: right; }
+  .lb-points-value { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 1px; color: var(--gold); }
+  .lb-points-label { font-family: "DM Mono", monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+  .lb-you { border-color: rgba(0,229,255,0.4); background: rgba(0,229,255,0.04); }
+  .my-rank-card { background: linear-gradient(135deg, rgba(255,208,96,0.08), rgba(0,229,255,0.05)); border: 1px solid rgba(255,208,96,0.25); border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+  .my-rank-left { display: flex; align-items: center; gap: 12px; }
+  .my-rank-badge { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--gold), #FF9500); display: flex; align-items: center; justify-content: center; font-family: "Bebas Neue", sans-serif; font-size: 16px; color: var(--bg); letter-spacing: 1px; }
+  .my-rank-label { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-bottom: 4px; }
+  .my-rank-value { font-family: "Bebas Neue", sans-serif; font-size: 20px; letter-spacing: 1px; }
+
+  /* ── TRACKER STYLES ──────────────────────────────────────────────────── */
+  .source-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+  .source-tabs::-webkit-scrollbar { display: none; }
+  .source-tab { font-family: "DM Mono", monospace; font-size: 11px; letter-spacing: 1px; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+  .source-tab.active { background: var(--sol); color: white; border-color: var(--sol); }
+  .import-card { background: var(--surface); border: 1px dashed var(--border); border-radius: 16px; padding: 28px 20px; text-align: center; margin-bottom: 16px; cursor: pointer; transition: all 0.2s; }
+  .import-card:hover { border-color: var(--accent); background: rgba(0,229,255,0.03); }
+  .import-icon { font-size: 36px; margin-bottom: 12px; }
+  .import-title { font-family: "Bebas Neue", sans-serif; font-size: 18px; letter-spacing: 2px; margin-bottom: 6px; }
+  .import-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .import-input { display: none; }
+  .tracker-bet-row { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; animation: slideIn 0.3s ease both; }
+  .tracker-source-badge { font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: 1px; padding: 3px 8px; border-radius: 20px; }
+  .tracker-source-badge.kalshi     { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); }
+  .tracker-source-badge.polymarket { background: rgba(123,97,255,0.1); color: var(--accent2); border: 1px solid rgba(123,97,255,0.2); }
+  .tracker-source-badge.manual     { background: rgba(90,106,133,0.1); color: var(--muted); border: 1px solid var(--border); }
+
   /* BOTTOM NAV */
   .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(8,11,16,0.95); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 10px 0 24px; z-index: 100; }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 0; transition: all 0.2s; }
@@ -580,6 +621,118 @@
 </main>
 
 
+
+<!-- PAGE: TRENDS (Leaderboard) -->
+<main id="page-trends" class="page">
+  <div style="margin-bottom:16px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px">LEADERBOARD</div>
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">TOP EDGE SEEKERS THIS SEASON</div>
+  </div>
+
+  <!-- MY RANK CARD -->
+  <div class="my-rank-card" id="myRankCard" style="display:none">
+    <div class="my-rank-left">
+      <div class="my-rank-badge" id="myRankBadge">#—</div>
+      <div>
+        <div class="my-rank-label">YOUR RANK</div>
+        <div class="my-rank-value" id="myRankName">—</div>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold)" id="myRankPoints">0</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">POINTS</div>
+    </div>
+  </div>
+
+  <!-- SET USERNAME CARD -->
+  <div class="profile-card" id="usernameCard" style="margin-bottom:16px">
+    <div class="profile-card-header">
+      <div class="profile-card-title">YOUR DISPLAY NAME</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <input class="form-input" id="usernameInput" placeholder="Pick a username..." style="flex:1" />
+      <button class="setup-confirm-btn" onclick="saveUsername()">SAVE</button>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:8px;letter-spacing:0.5px">
+      Shown on the leaderboard instead of your wallet address
+    </div>
+  </div>
+
+  <!-- LEADERBOARD TABS -->
+  <div class="lb-tabs">
+    <div class="lb-tab active" onclick="setLbTab(this,'all_time')">ALL TIME</div>
+    <div class="lb-tab" onclick="setLbTab(this,'weekly')">THIS WEEK</div>
+  </div>
+
+  <!-- LEADERBOARD LIST -->
+  <div id="leaderboardList">
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">LOADING LEADERBOARD...</div>
+    </div>
+  </div>
+
+  <div class="bottom-spacer"></div>
+</main>
+
+<!-- PAGE: GAMES (Tracker) -->
+<main id="page-games" class="page">
+  <div style="margin-bottom:16px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px">BET TRACKER</div>
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">KALSHI · POLYMARKET · MANUAL</div>
+  </div>
+
+  <!-- SOURCE TABS -->
+  <div class="source-tabs">
+    <div class="source-tab active" onclick="setSourceTab(this,'all')">ALL BETS</div>
+    <div class="source-tab" onclick="setSourceTab(this,'kalshi')">KALSHI</div>
+    <div class="source-tab" onclick="setSourceTab(this,'polymarket')">POLYMARKET</div>
+    <div class="source-tab" onclick="setSourceTab(this,'manual')">MANUAL</div>
+  </div>
+
+  <!-- IMPORT CARDS -->
+  <div id="importCards">
+    <div class="import-card" onclick="document.getElementById('kalshiFile').click()">
+      <input type="file" id="kalshiFile" class="import-input" accept=".csv" onchange="importCSV(event,'kalshi')" />
+      <div class="import-icon">📊</div>
+      <div class="import-title">IMPORT FROM KALSHI</div>
+      <div class="import-desc">Export your bet history from Kalshi as CSV<br>and upload it here to track your performance</div>
+    </div>
+
+    <div class="import-card" onclick="document.getElementById('polyFile').click()">
+      <input type="file" id="polyFile" class="import-input" accept=".csv" onchange="importCSV(event,'polymarket')" />
+      <div class="import-icon">🔮</div>
+      <div class="import-title">IMPORT FROM POLYMARKET</div>
+      <div class="import-desc">Export your positions from Polymarket<br>and upload here to track your P&L</div>
+    </div>
+
+    <div class="import-card" onclick="openBetModal()">
+      <div class="import-icon">✏️</div>
+      <div class="import-title">ADD MANUALLY</div>
+      <div class="import-desc">Log a bet from any sportsbook manually<br>including DraftKings, FanDuel, BetMGM</div>
+    </div>
+  </div>
+
+  <!-- TRACKER STATS -->
+  <div class="stats-row" id="trackerStats" style="display:none;margin-top:16px">
+    <div class="stat-card green">
+      <div class="stat-label">Total Bets</div>
+      <div class="stat-value cyan" id="trackerTotal">0</div>
+      <div class="stat-sub">All sources</div>
+    </div>
+    <div class="stat-card gold">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-value gold" id="trackerWinRate">0%</div>
+      <div class="stat-sub">Resolved bets</div>
+    </div>
+  </div>
+
+  <!-- BET LIST -->
+  <div id="trackerBetList" style="margin-top:16px"></div>
+
+  <div class="bottom-spacer"></div>
+</main>
+
 <!-- PAGE: PROFILE -->
 <main id="page-profile" class="page">
 
@@ -729,6 +882,8 @@
 
     if (name === 'bankroll') renderBankroll();
     if (name === 'profile') renderProfile();
+    if (name === 'trends') loadLeaderboard();
+    if (name === 'games') renderTrackerBets();
   }
 
   // ── PICKS ─────────────────────────────────────────────────────────────────
@@ -1337,6 +1492,223 @@
         </div>
       `).join('') +
       '</div>';
+  }
+
+
+  // ── LEADERBOARD ───────────────────────────────────────────────────────────
+  let currentLbType = 'all_time';
+  let trackerSourceFilter = 'all';
+  let trackerBets = [];
+
+  async function loadLeaderboard() {
+    const list = document.getElementById('leaderboardList');
+    list.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><div class="loading-text">LOADING...</div></div>';
+    try {
+      const res = await fetch(`${API_BASE}/api/leaderboard?type=${currentLbType}&limit=50`);
+      const data = await res.json();
+      renderLeaderboard(data.leaderboard || []);
+    } catch (err) {
+      list.innerHTML = `<div class="error-state visible"><div class="error-icon">⚠️</div><div class="error-title">FAILED TO LOAD</div><div class="error-msg">${err.message}</div></div>`;
+    }
+  }
+
+  function renderLeaderboard(rows) {
+    const list = document.getElementById('leaderboardList');
+    const walletAddr = document.getElementById('walletAddr').textContent;
+
+    if (!rows || rows.length === 0) {
+      list.innerHTML = '<div class="empty-state visible"><div class="empty-icon">🏆</div><div class="empty-title">NO RANKINGS YET</div><div class="empty-msg">Be the first on the leaderboard! Log bets to earn points.</div></div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    rows.forEach((row, i) => {
+      const rank = i + 1;
+      const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'normal';
+      const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+      const isYou = row.wallet_address && walletAddr && row.wallet_address.startsWith(walletAddr.slice(0,4));
+      const points = currentLbType === 'weekly' ? row.weekly_points : row.total_points;
+
+      const el = document.createElement('div');
+      el.className = `lb-row${isYou ? ' lb-you' : ''}`;
+      el.style.animationDelay = `${i * 0.04}s`;
+      el.innerHTML = `
+        <div class="lb-rank ${rankClass}">${rankEmoji}</div>
+        <div class="lb-avatar">👤</div>
+        <div class="lb-info">
+          <div class="lb-name">${row.display}</div>
+          <div class="lb-meta">${row.wallet_address?.slice(0,4)}...${row.wallet_address?.slice(-4)} ${isYou ? '· YOU' : ''}</div>
+        </div>
+        <div class="lb-points">
+          <div class="lb-points-value">${(points || 0).toLocaleString()}</div>
+          <div class="lb-points-label">PTS</div>
+        </div>
+      `;
+      list.appendChild(el);
+
+      // Update my rank card
+      if (isYou) {
+        document.getElementById('myRankCard').style.display = 'flex';
+        document.getElementById('myRankBadge').textContent = '#' + rank;
+        document.getElementById('myRankName').textContent = row.display;
+        document.getElementById('myRankPoints').textContent = (points || 0).toLocaleString();
+      }
+    });
+  }
+
+  function setLbTab(el, type) {
+    document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    currentLbType = type;
+    loadLeaderboard();
+  }
+
+  async function saveUsername() {
+    const username = document.getElementById('usernameInput').value.trim();
+    const walletAddr = document.getElementById('walletAddr').textContent;
+    if (!username) { showToast('Enter a username'); return; }
+    if (!document.getElementById('walletBar').classList.contains('visible')) {
+      showToast('Connect wallet first'); return;
+    }
+
+    // Get full wallet from Phantom
+    const provider = window.phantom?.solana || window.solana;
+    const fullWallet = provider?.publicKey?.toString();
+    if (!fullWallet) { showToast('Wallet not connected'); return; }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/users/upsert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: fullWallet, username }),
+      });
+      const data = await res.json();
+      if (data.user) {
+        showToast('✅ Username saved!');
+        document.getElementById('usernameInput').value = '';
+        loadLeaderboard();
+      }
+    } catch (err) {
+      showToast('Error saving username');
+    }
+  }
+
+  // ── TRACKER ───────────────────────────────────────────────────────────────
+  function setSourceTab(el, source) {
+    document.querySelectorAll('.source-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    trackerSourceFilter = source;
+    renderTrackerBets();
+  }
+
+  async function importCSV(event, source) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const csv = e.target.result;
+      const bets = parseCSV(csv, source);
+      if (bets.length === 0) { showToast('No bets found in CSV'); return; }
+      bets.forEach(bet => trackerBets.push(bet));
+      saveTrackerBets();
+      renderTrackerBets();
+      showToast(`✅ Imported ${bets.length} bets from ${source}`);
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  function parseCSV(csv, source) {
+    const lines = csv.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+    const bets = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
+      const row = {};
+      headers.forEach((h, idx) => row[h] = cols[idx] || '');
+
+      // Try to map common CSV column names from Kalshi/Polymarket
+      const pick   = row['market'] || row['event'] || row['title'] || row['question'] || row['contract'] || 'Unknown';
+      const amount = parseFloat(row['amount'] || row['cost'] || row['size'] || row['stake'] || '0');
+      const odds   = row['price'] || row['odds'] || row['yes_price'] || '+100';
+      const result = (row['status'] || row['outcome'] || row['result'] || 'pending').toLowerCase();
+      const date   = row['date'] || row['created_at'] || row['time'] || new Date().toISOString();
+
+      if (!pick || amount <= 0) continue;
+
+      bets.push({
+        id: `${source}-${i}-${Date.now()}`,
+        pick, amount, odds,
+        result: result.includes('win') || result.includes('yes') ? 'win' :
+                result.includes('loss') || result.includes('no') ? 'loss' :
+                result.includes('push') ? 'push' : 'pending',
+        source,
+        book: source.charAt(0).toUpperCase() + source.slice(1),
+        date,
+      });
+    }
+    return bets;
+  }
+
+  function getTrackerBets() {
+    const raw = localStorage.getItem('edgeseeker_tracker');
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  function saveTrackerBets() {
+    localStorage.setItem('edgeseeker_tracker', JSON.stringify(trackerBets));
+  }
+
+  function renderTrackerBets() {
+    trackerBets = getTrackerBets();
+    const filtered = trackerSourceFilter === 'all' ? trackerBets :
+      trackerBets.filter(b => b.source === trackerSourceFilter);
+
+    const listEl = document.getElementById('trackerBetList');
+    const statsEl = document.getElementById('trackerStats');
+
+    if (trackerBets.length > 0) statsEl.style.display = 'grid';
+
+    // Update stats
+    const resolved = filtered.filter(b => b.result !== 'pending');
+    const wins = resolved.filter(b => b.result === 'win').length;
+    document.getElementById('trackerTotal').textContent = filtered.length;
+    document.getElementById('trackerWinRate').textContent = resolved.length > 0 ?
+      Math.round(wins / resolved.length * 100) + '%' : '0%';
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<div class="empty-state visible"><div class="empty-icon">📋</div><div class="empty-title">NO BETS YET</div><div class="empty-msg">Import from Kalshi or Polymarket, or add manually above.</div></div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    [...filtered].reverse().forEach((bet, i) => {
+      const el = document.createElement('div');
+      el.className = 'tracker-bet-row';
+      el.style.animationDelay = `${i * 0.04}s`;
+      const payout = bet.result === 'win' ? `+$${calcPayout(bet.amount, bet.odds).toFixed(2)}` :
+                     bet.result === 'loss' ? `-$${parseFloat(bet.amount).toFixed(2)}` :
+                     `$${parseFloat(bet.amount).toFixed(2)}`;
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;flex:1">
+          <div class="history-result ${bet.result}">${bet.result === 'win' ? 'W' : bet.result === 'loss' ? 'L' : bet.result === 'push' ? 'P' : '⏳'}</div>
+          <div>
+            <div style="font-weight:600;font-size:14px">${bet.pick}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+              <span class="tracker-source-badge ${bet.source}">${bet.source.toUpperCase()}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">${fmtDate(bet.date)}</span>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="history-amount ${bet.result}">${payout}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">${bet.odds} · $${bet.amount}</div>
+        </div>
+      `;
+      listEl.appendChild(el);
+    });
   }
 
   // ── AUTO-REFRESH ──────────────────────────────────────────────────────────
