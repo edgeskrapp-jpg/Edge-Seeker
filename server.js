@@ -338,7 +338,15 @@ app.get("/api/points/:wallet", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+const path = require('path');
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+});
+
+app.get('/edge-seeker.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+});
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
