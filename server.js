@@ -342,6 +342,102 @@ app.get("/api/points/:wallet", async (req, res) => {
 });
 
 
+
+// ─── PAYMENT VERIFICATION ────────────────────────────────────────────────────
+
+const REVENUE_WALLET = "HzqJgHrrzRXbLnBvAueFKvTx4Fn6PKcZL36tJ4Npx7Cb";
+const FREE_ACCESS_WALLETS = [
+  "8YPA4TV2rKkFdeJwvhQZPm6CNMNAm9sjP98p3DZSEgcL", // Owner testing wallet
+];
+const PREMIUM_PRICE_SOL = 0.01; // 0.01 SOL per day
+const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+
+/**
+ * Check if a wallet has paid today
+ * Looks for a SOL transfer to the revenue wallet in the last 24 hours
+ */
+async function verifyPayment(walletAddress) {
+  // Always free for whitelisted wallets
+  if (FREE_ACCESS_WALLETS.includes(walletAddress)) {
+    return { paid: true, free: true, reason: "Whitelisted wallet" };
+  }
+
+  try {
+    // Fetch recent transactions for the revenue wallet
+    const res = await fetch(SOLANA_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getSignaturesForAddress",
+        params: [
+          REVENUE_WALLET,
+          { limit: 50 }
+        ]
+      })
+    });
+
+    const data = await res.json();
+    const signatures = data.result || [];
+
+    if (signatures.length === 0) return { paid: false, reason: "No transactions found" };
+
+    // Check each recent transaction
+    const oneDayAgo = Math.floor(Date.now() / 1000) - 86400;
+
+    for (const sig of signatures) {
+      // Skip old transactions
+      if (sig.blockTime < oneDayAgo) continue;
+
+      // Fetch full transaction details
+      const txRes = await fetch(SOLANA_RPC, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getTransaction",
+          params: [sig.signature, { encoding: "json", maxSupportedTransactionVersion: 0 }]
+        })
+      });
+
+      const txData = await txRes.json();
+      const tx = txData.result;
+      if (!tx) continue;
+
+      // Check if this transaction is from the paying wallet
+      const accountKeys = tx.transaction?.message?.accountKeys || [];
+      const fromWallet = accountKeys[0];
+
+      if (fromWallet !== walletAddress) continue;
+
+      // Check SOL transfer amount
+      const preBalances = tx.meta?.preBalances || [];
+      const postBalances = tx.meta?.postBalances || [];
+      const lamportsSent = (preBalances[0] || 0) - (postBalances[0] || 0);
+      const solSent = lamportsSent / 1_000_000_000;
+
+      if (solSent >= PREMIUM_PRICE_SOL) {
+        return {
+          paid: true,
+          free: false,
+          amount: solSent,
+          signature: sig.signature,
+          reason: `Payment verified: ${solSent} SOL`
+        };
+      }
+    }
+
+    return { paid: false, reason: `No payment of ${PREMIUM_PRICE_SOL} SOL found in last 24h` };
+
+  } catch (err) {
+    console.error("Payment verification error:", err.message);
+    // Fail open during testing — change to fail closed before launch
+    return { paid: false, reason: err.message };
+  }
+}
+
 // ─── AI AGENT ROUTES ─────────────────────────────────────────────────────────
 
 /**
@@ -377,13 +473,32 @@ app.get("/api/agent/premium", async (req, res) => {
   try {
     const { wallet } = req.query;
 
-    // TODO: Verify SOL payment on-chain before serving premium pick
-    // For now, we'll add payment verification in the next phase
-    // Uncomment this block when payment gating is ready:
-    //
-    // if (!wallet) return res.status(401).json({ error: "Wallet required" });
-    // const hasPaid = await verifyPayment(wallet);
-    // if (!hasPaid) return res.status(402).json({ error: "Payment required", price: "0.01 SOL" });
+    // Verify wallet is provided
+    if (!wallet) {
+      return res.status(401).json({
+        error: "Wallet required",
+        message: "Connect your Phantom wallet to access premium picks"
+      });
+    }
+
+    // Verify payment on-chain
+    const payment = await verifyPayment(wallet);
+    if (!payment.paid) {
+      return res.status(402).json({
+        error: "Payment required",
+        message: `Send ${PREMIUM_PRICE_SOL} SOL to unlock today's premium pick`,
+        price: PREMIUM_PRICE_SOL,
+        revenueWallet: REVENUE_WALLET,
+        reason: payment.reason,
+      });
+    }
+
+    // Log if it was free access or paid
+    if (payment.free) {
+      console.log(`🔓 Free access granted to whitelisted wallet: ${wallet}`);
+    } else {
+      console.log(`✅ Payment verified for wallet: ${wallet} — ${payment.amount} SOL`);
+    }
 
     let picks = [];
     if (isCacheValid(cache.picks)) {
@@ -669,15 +784,7 @@ app.get("/admin/refresh-agent", (req, res) => {
     <a href="/admin?secret=${secret}" style="color:#00E5FF">← Back to Admin</a>
   </body></html>`);
 });
-const path = require('path');
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
-});
-
-app.get('/edge-seeker.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
-});
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
