@@ -321,6 +321,73 @@
   .team-chip-remove:hover { color: var(--red); }
   .teams-wrap { display: flex; flex-wrap: wrap; }
 
+  /* ── ELO STYLES ──────────────────────────────────────────────────────── */
+  .elo-header-tabs { display: flex; gap: 0; margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 4px; }
+  .elo-header-tab { flex: 1; font-family: "DM Mono", monospace; font-size: 11px; letter-spacing: 1px; padding: 10px; border-radius: 10px; border: none; background: transparent; color: var(--muted); cursor: pointer; transition: all 0.2s; text-align: center; }
+  .elo-header-tab.active { background: var(--accent); color: var(--bg); font-weight: 600; }
+  .elo-filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .elo-filter-tab { font-family: "DM Mono", monospace; font-size: 11px; letter-spacing: 1px; padding: 8px 20px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; transition: all 0.2s; }
+  .elo-filter-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+  .elo-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 8px; animation: slideIn 0.3s ease both; cursor: pointer; transition: all 0.2s; }
+  .elo-row:hover { border-color: var(--accent); transform: translateX(2px); }
+  .elo-rank { font-family: "Bebas Neue", sans-serif; font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
+  .elo-rank.gold   { color: var(--gold); }
+  .elo-rank.silver { color: #C0C0C0; }
+  .elo-rank.bronze { color: #CD7F32; }
+  .elo-rank.normal { color: var(--muted); }
+  .elo-team-abbr { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 1px; width: 44px; flex-shrink: 0; }
+  .elo-info { flex: 1; }
+  .elo-tier { font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: 1.5px; margin-bottom: 3px; }
+  .elo-note { font-size: 11px; color: var(--muted); }
+  .elo-right { text-align: right; flex-shrink: 0; }
+  .elo-number { font-family: "Bebas Neue", sans-serif; font-size: 24px; letter-spacing: 1px; }
+  .elo-change { font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: 0.5px; margin-top: 2px; }
+  .elo-change.up   { color: var(--green); }
+  .elo-change.down { color: var(--red); }
+  .elo-change.neutral { color: var(--muted); }
+  .elo-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .elo-bar-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+  .elo-divider { font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); text-align: center; padding: 8px 0; border-top: 1px dashed var(--border); margin: 4px 0 8px; }
+  .elo-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .elo-legend-item { display: flex; align-items: center; gap: 6px; font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: 1px; color: var(--muted); }
+  .elo-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .leaderboard-coming-soon { background: var(--surface); border: 1px dashed var(--border); border-radius: 16px; padding: 40px 24px; text-align: center; }
+  .coming-soon-icon { font-size: 48px; margin-bottom: 16px; }
+  .coming-soon-title { font-family: "Bebas Neue", sans-serif; font-size: 24px; letter-spacing: 3px; color: var(--muted); margin-bottom: 8px; }
+  .coming-soon-desc { font-size: 13px; color: var(--muted); line-height: 1.8; }
+
+  /* ── ACCURACY TRACKER STYLES ─────────────────────────────────────────── */
+  .accuracy-section { margin-bottom: 20px; }
+  .tracker-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .tracker-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; text-align: center; position: relative; overflow: hidden; }
+  .tracker-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .tracker-card.total::before  { background: linear-gradient(90deg, var(--accent), transparent); }
+  .tracker-card.pick1::before  { background: linear-gradient(90deg, var(--gold), transparent); }
+  .tracker-card.pick2::before  { background: linear-gradient(90deg, var(--sol), transparent); }
+  .tracker-label { font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  .tracker-record { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 1px; line-height: 1; margin-bottom: 4px; }
+  .tracker-record.total { color: var(--accent); }
+  .tracker-record.pick1 { color: var(--gold); }
+  .tracker-record.pick2 { color: var(--sol); }
+  .tracker-winrate { font-family: "DM Mono", monospace; font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .tracker-roi { font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: 0.5px; }
+  .tracker-roi.positive { color: var(--green); }
+  .tracker-roi.negative { color: var(--red); }
+  .tracker-roi.neutral  { color: var(--muted); }
+
+  /* RECENT PICKS LIST */
+  .recent-pick-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; animation: slideIn 0.3s ease both; }
+  .recent-pick-result { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: "Bebas Neue", sans-serif; font-size: 12px; letter-spacing: 0.5px; flex-shrink: 0; }
+  .recent-pick-result.win     { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+  .recent-pick-result.loss    { background: rgba(255,58,92,0.1);  color: var(--red);   border: 1px solid rgba(255,58,92,0.3); }
+  .recent-pick-result.push    { background: rgba(255,208,96,0.1); color: var(--gold);  border: 1px solid rgba(255,208,96,0.3); }
+  .recent-pick-result.pending { background: rgba(90,106,133,0.1); color: var(--muted); border: 1px solid var(--border); }
+  .recent-pick-info { flex: 1; }
+  .recent-pick-name { font-weight: 600; font-size: 13px; }
+  .recent-pick-meta { font-family: "DM Mono", monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.5px; margin-top: 2px; }
+  .recent-pick-rank { font-family: "DM Mono", monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+  .accuracy-empty { text-align: center; padding: 30px; font-family: "DM Mono", monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; background: var(--surface); border: 1px dashed var(--border); border-radius: 12px; }
+
   /* ── GAME CARDS & DETAIL SCREEN ──────────────────────────────────────── */
   .games-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .game-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; cursor: pointer; transition: all 0.2s; animation: slideIn 0.3s ease both; position: relative; overflow: hidden; }
@@ -710,6 +777,51 @@
     <div id="premiumPickContent"></div>
   </div>
 
+  <!-- ACCURACY TRACKER -->
+  <div class="accuracy-section" style="margin-top:20px">
+    <div class="section-header">
+      <div class="section-title">AGENT ACCURACY</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px" id="accuracySeasonLabel">2026 SEASON</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-family:'DM Mono',monospace;letter-spacing:0.5px">
+      Live tracking of every premium pick. Results updated after each game.
+    </div>
+
+    <!-- 3 TRACKER CARDS -->
+    <div class="tracker-grid">
+      <div class="tracker-card total">
+        <div class="tracker-label">TOTAL</div>
+        <div class="tracker-record total" id="totalRecord">0-0</div>
+        <div class="tracker-winrate" id="totalWinRate">0% win</div>
+        <div class="tracker-roi neutral" id="totalROI">+0.00u ROI</div>
+      </div>
+      <div class="tracker-card pick1">
+        <div class="tracker-label">🥇 PICK 1</div>
+        <div class="tracker-record pick1" id="pick1Record">0-0</div>
+        <div class="tracker-winrate" id="pick1WinRate">0% win</div>
+        <div class="tracker-roi neutral" id="pick1ROI">+0.00u ROI</div>
+      </div>
+      <div class="tracker-card pick2">
+        <div class="tracker-label">🥈 PICK 2</div>
+        <div class="tracker-record pick2" id="pick2Record">0-0</div>
+        <div class="tracker-winrate" id="pick2WinRate">0% win</div>
+        <div class="tracker-roi neutral" id="pick2ROI">+0.00u ROI</div>
+      </div>
+    </div>
+
+    <!-- RECENT PICKS -->
+    <div class="section-header">
+      <div class="section-title" style="font-size:14px">RECENT PICKS</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)" id="totalPicksCount"></div>
+    </div>
+    <div id="recentPicksList">
+      <div class="accuracy-empty">
+        SEASON STARTS MARCH 25TH<br>
+        <span style="font-size:9px;margin-top:4px;display:block">Every premium pick will be tracked here</span>
+      </div>
+    </div>
+  </div>
+
   <!-- SHARP MONEY MOVEMENT -->
   <div class="section-header" style="margin-top:20px">
     <div class="section-title">SHARP MONEY</div>
@@ -831,51 +943,57 @@
 
 <!-- PAGE: TRENDS (Leaderboard) -->
 <main id="page-leaderboard" class="page">
-  <div style="margin-bottom:16px">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px">LEADERBOARD</div>
-    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">TOP EDGE SEEKERS THIS SEASON</div>
+
+  <!-- HEADER TABS — Switch between Elo and User Leaderboard -->
+  <div class="elo-header-tabs">
+    <button class="elo-header-tab active" onclick="setLeaderboardView('elo', this)">⚾ MLB ELO</button>
+    <button class="elo-header-tab" onclick="setLeaderboardView('users', this)">🏆 USERS</button>
   </div>
 
-  <!-- MY RANK CARD -->
-  <div class="my-rank-card" id="myRankCard" style="display:none">
-    <div class="my-rank-left">
-      <div class="my-rank-badge" id="myRankBadge">#—</div>
-      <div>
-        <div class="my-rank-label">YOUR RANK</div>
-        <div class="my-rank-value" id="myRankName">—</div>
+  <!-- ELO VIEW -->
+  <div id="eloView">
+    <div style="margin-bottom:16px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px">MLB ELO RANKINGS</div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">UPDATES DAILY AFTER GAMES</div>
+    </div>
+
+    <!-- AL / NL FILTER -->
+    <div class="elo-filter-tabs">
+      <div class="elo-filter-tab active" onclick="setEloFilter('all', this)">ALL 30</div>
+      <div class="elo-filter-tab" onclick="setEloFilter('al', this)">AL</div>
+      <div class="elo-filter-tab" onclick="setEloFilter('nl', this)">NL</div>
+    </div>
+
+    <!-- ELO LEGEND -->
+    <div class="elo-legend">
+      <div class="elo-legend-item"><div class="elo-legend-dot" style="background:#FFD060"></div>ELITE 1600+</div>
+      <div class="elo-legend-item"><div class="elo-legend-dot" style="background:#00E5FF"></div>CONTENDER 1540+</div>
+      <div class="elo-legend-item"><div class="elo-legend-dot" style="background:#00FF88"></div>STRONG 1490+</div>
+      <div class="elo-legend-item"><div class="elo-legend-dot" style="background:#8A9AB5"></div>AVERAGE 1440+</div>
+      <div class="elo-legend-item"><div class="elo-legend-dot" style="background:#FF6B35"></div>WEAK 1380+</div>
+      <div class="elo-legend-item"><div class="elo-legend-dot" style="background:#FF3A5C"></div>REBUILD</div>
+    </div>
+
+    <!-- ELO LIST -->
+    <div id="eloList">
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">LOADING ELO RATINGS...</div>
       </div>
     </div>
-    <div style="text-align:right">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold)" id="myRankPoints">0</div>
-      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">POINTS</div>
-    </div>
   </div>
 
-  <!-- SET USERNAME CARD -->
-  <div class="profile-card" id="usernameCard" style="margin-bottom:16px">
-    <div class="profile-card-header">
-      <div class="profile-card-title">YOUR DISPLAY NAME</div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <input class="form-input" id="usernameInput" placeholder="Pick a username..." style="flex:1" />
-      <button class="setup-confirm-btn" onclick="saveUsername()">SAVE</button>
-    </div>
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:8px;letter-spacing:0.5px">
-      Shown on the leaderboard instead of your wallet address
-    </div>
-  </div>
-
-  <!-- LEADERBOARD TABS -->
-  <div class="lb-tabs">
-    <div class="lb-tab active" onclick="setLbTab(this,'all_time')">ALL TIME</div>
-    <div class="lb-tab" onclick="setLbTab(this,'weekly')">THIS WEEK</div>
-  </div>
-
-  <!-- LEADERBOARD LIST -->
-  <div id="leaderboardList">
-    <div class="loading-state">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">LOADING LEADERBOARD...</div>
+  <!-- USER LEADERBOARD VIEW -->
+  <div id="usersView" style="display:none">
+    <div class="leaderboard-coming-soon">
+      <div class="coming-soon-icon">🏆</div>
+      <div class="coming-soon-title">COMING SOON</div>
+      <div class="coming-soon-desc">
+        The EdgeSKR user leaderboard launches once we build our community.<br><br>
+        Follow <strong style="color:var(--accent)">@EdgeSKR</strong> on X for the launch announcement.<br><br>
+        Compete for weekly SOL prizes based on your betting accuracy.
+      </div>
+      <div class="coming-soon-badge" style="margin-top:20px">LAUNCHING THIS SEASON</div>
     </div>
   </div>
 
@@ -1233,7 +1351,7 @@
     if (navEl) navEl.classList.add('active');
 
     if (name === 'profile') renderProfile();
-    if (name === 'leaderboard') loadLeaderboard();
+    if (name === 'leaderboard') { loadEloRatings(); }
     if (name === 'games') renderTrackerBets();
     if (name === 'trends') loadTrends();
   }
@@ -2751,6 +2869,9 @@
     // Load premium picks (top 2 of the day)
     await loadPremiumPick();
 
+    // Load accuracy tracker
+    await loadAccuracyTracker();
+
     // Load sharp money
     renderSharpMoney();
   }
@@ -2843,6 +2964,172 @@
         <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--sol);letter-spacing:1px">${s.movement}%</div>
       </div>
     `).join('');
+  }
+
+  // ── ELO TRACKER ──────────────────────────────────────────────────────────
+  let allEloData = [];
+  let currentEloFilter = 'all';
+  let currentLeaderboardView = 'elo';
+
+  function setLeaderboardView(view, btn) {
+    currentLeaderboardView = view;
+    document.querySelectorAll('.elo-header-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('eloView').style.display = view === 'elo' ? 'block' : 'none';
+    document.getElementById('usersView').style.display = view === 'users' ? 'block' : 'none';
+    if (view === 'elo' && allEloData.length === 0) loadEloRatings();
+  }
+
+  function setEloFilter(filter, btn) {
+    currentEloFilter = filter;
+    document.querySelectorAll('.elo-filter-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderEloList(allEloData);
+  }
+
+  async function loadEloRatings() {
+    const list = document.getElementById('eloList');
+    list.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><div class="loading-text">LOADING ELO RATINGS...</div></div>';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/elo`);
+      const data = await res.json();
+      allEloData = data.ratings || [];
+      renderEloList(allEloData);
+    } catch (err) {
+      list.innerHTML = `<div class="error-state visible"><div class="error-icon">⚠️</div><div class="error-title">FAILED TO LOAD</div><div class="error-msg">${err.message}</div></div>`;
+    }
+  }
+
+  function renderEloList(ratings) {
+    const list = document.getElementById('eloList');
+
+    // Apply filter
+    let filtered = ratings;
+    if (currentEloFilter === 'al') filtered = ratings.filter(r => r.isAL);
+    if (currentEloFilter === 'nl') filtered = ratings.filter(r => r.isNL);
+
+    // Sort by Elo descending
+    filtered = [...filtered].sort((a, b) => b.elo - a.elo);
+
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty-state visible"><div class="empty-icon">⚾</div><div class="empty-title">NO DATA</div></div>';
+      return;
+    }
+
+    // Find max and min Elo for bar scaling
+    const maxElo = filtered[0].elo;
+    const minElo = filtered[filtered.length - 1].elo;
+    const eloRange = maxElo - minElo || 1;
+
+    let html = '';
+    let lastDivision = '';
+
+    filtered.forEach((team, i) => {
+      const rank = i + 1;
+      const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'normal';
+      const rankDisplay = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+      const barWidth = Math.round(((team.elo - minElo) / eloRange) * 80 + 20);
+      const change = team.last_change || 0;
+      const changeDisplay = change > 0 ? `+${change}` : change < 0 ? `${change}` : '—';
+      const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
+      const record = (team.wins || 0) > 0 || (team.losses || 0) > 0
+        ? `${team.wins}-${team.losses}`
+        : 'Opening Day';
+
+      html += `
+        <div class="elo-row" style="animation-delay:${i*0.04}s">
+          <div class="elo-rank ${rankClass}">${rankDisplay}</div>
+          <div class="elo-team-abbr" style="color:${team.tier_color || 'var(--text)'}">${team.team_abbr}</div>
+          <div class="elo-info">
+            <div class="elo-tier" style="color:${team.tier_color || 'var(--muted)'}">${team.tier || ''}</div>
+            <div class="elo-note">${record}</div>
+            <div class="elo-bar-wrap">
+              <div class="elo-bar-fill" style="width:${barWidth}%;background:${team.tier_color || 'var(--accent)'}"></div>
+            </div>
+          </div>
+          <div class="elo-right">
+            <div class="elo-number" style="color:${team.tier_color || 'var(--text)'}">${team.elo}</div>
+            <div class="elo-change ${changeClass}">${changeDisplay}</div>
+          </div>
+        </div>`;
+    });
+
+    list.innerHTML = html;
+  }
+
+  // Update showPage to load Elo when leaderboard tab is tapped
+  // ── ACCURACY TRACKER ─────────────────────────────────────────────────────
+  async function loadAccuracyTracker() {
+    try {
+      const res = await fetch(`${API_BASE}/api/accuracy`);
+      const data = await res.json();
+
+      updateTrackerCard('total', data.total);
+      updateTrackerCard('pick1', data.pick1);
+      updateTrackerCard('pick2', data.pick2);
+
+      document.getElementById('totalPicksCount').textContent =
+        `${data.totalPicks} TOTAL PICKS`;
+
+      renderRecentPicks(data.recent || []);
+
+    } catch (err) {
+      console.error('Accuracy tracker error:', err);
+    }
+  }
+
+  function updateTrackerCard(type, stats) {
+    if (!stats) return;
+    const record = document.getElementById(`${type}Record`);
+    const winRate = document.getElementById(`${type}WinRate`);
+    const roi = document.getElementById(`${type}ROI`);
+    if (!record) return;
+
+    record.textContent = `${stats.wins}-${stats.losses}`;
+    winRate.textContent = `${stats.winRate}% win`;
+
+    const roiVal = parseFloat(stats.roi);
+    roi.textContent = `${roiVal >= 0 ? '+' : ''}${stats.roi}u ROI`;
+    roi.className = `tracker-roi ${roiVal > 0 ? 'positive' : roiVal < 0 ? 'negative' : 'neutral'}`;
+  }
+
+  function renderRecentPicks(picks) {
+    const container = document.getElementById('recentPicksList');
+    if (!picks || picks.length === 0) {
+      container.innerHTML = `
+        <div class="accuracy-empty">
+          SEASON STARTS MARCH 25TH<br>
+          <span style="font-size:9px;margin-top:4px;display:block">Every premium pick will be tracked here</span>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = picks.map((pick, i) => {
+      const resultIcon = pick.result === 'win' ? 'W' :
+                         pick.result === 'loss' ? 'L' :
+                         pick.result === 'push' ? 'P' : '⏳';
+      const rankLabel = pick.rank === 1 ? '🥇 PICK 1' : '🥈 PICK 2';
+      const betTypeColor = pick.bet_type === 'MONEYLINE' ? 'var(--accent)' :
+                           pick.bet_type === 'OVER/UNDER' ? 'var(--gold)' : 'var(--sol)';
+      const date = pick.pick_date ? new Date(pick.pick_date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+
+      return `
+        <div class="recent-pick-row" style="animation-delay:${i*0.05}s">
+          <div class="recent-pick-result ${pick.result}">${resultIcon}</div>
+          <div class="recent-pick-info">
+            <div class="recent-pick-name">${pick.pick}</div>
+            <div class="recent-pick-meta">
+              ${pick.game} · ${pick.odds || ''} · ${pick.edge || ''}
+              <span style="color:${betTypeColor};margin-left:4px">${pick.bet_type}</span>
+            </div>
+          </div>
+          <div class="recent-pick-rank">
+            <div>${rankLabel}</div>
+            <div style="margin-top:2px;color:var(--muted)">${date}</div>
+          </div>
+        </div>`;
+    }).join('');
   }
 
   // ── LEADERBOARD ───────────────────────────────────────────────────────────
@@ -3069,4 +3356,3 @@
 </script>
 </body>
 </html>
- 

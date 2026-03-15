@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/update-stats",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/update-elo",
+      "schedule": "0 5 * * *"
     }
   ]
 }

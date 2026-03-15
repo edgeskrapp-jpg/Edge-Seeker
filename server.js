@@ -516,6 +516,125 @@ app.get("/api/agent/premium", async (req, res) => {
   }
 });
 
+
+/**
+ * GET /api/agent/game-analysis
+ * Premium per-game analysis — O/U best bet, pitcher props, hot batters
+ */
+app.get("/api/agent/game-analysis", async (req, res) => {
+  try {
+    const { home, away, wallet } = req.query;
+    if (!home || !away) return res.status(400).json({ error: "home and away required" });
+    if (!wallet) return res.status(401).json({ error: "Wallet required" });
+
+    // Verify payment
+    const payment = await verifyPayment(wallet);
+    if (!payment.paid) {
+      return res.status(402).json({
+        error: "Payment required",
+        price: PREMIUM_PRICE_SOL,
+        revenueWallet: REVENUE_WALLET,
+      });
+    }
+
+    // Get enriched data for this game
+    const { enrichPicks } = require("./mlbDataEnricher");
+    const { PREMIUM_SYSTEM_PROMPT } = require("./agentPrompt");
+
+    // Build picks for this specific game
+    let gamePicks = [];
+    if (isCacheValid(cache.picks)) {
+      gamePicks = (cache.picks.data?.picks || []).filter(p =>
+        p.homeTeam === home && p.awayTeam === away
+      );
+    }
+
+    // Fetch enriched data
+    const enrichedData = await enrichPicks([]);
+    const homeAbbr = home.split(" ").pop().substring(0, 3).toUpperCase();
+    const awayAbbr = away.split(" ").pop().substring(0, 3).toUpperCase();
+    const gameKey = `${awayAbbr}_${homeAbbr}`;
+    const gameEnriched = enrichedData[gameKey] || {};
+
+    // Build game-specific prompt
+    const gamePrompt = `You are EdgeSKR's premium MLB game analyst. Analyze this specific matchup and provide:
+1. Over/Under best bet with projected total runs
+2. Home pitcher analysis with strikeout prop recommendation
+3. Away pitcher analysis with strikeout prop recommendation  
+4. One hot batter from each team with a prop bet (hits, home runs, RBIs, or strikeouts)
+5. Weather impact
+6. Sharp money observation
+
+Game: ${away} @ ${home}
+${gamePicks.length > 0 ? `Moneyline Edge: ${gamePicks[0].pick} +${gamePicks[0].edgePct}% edge` : 'No moneyline edge detected'}
+${gameEnriched.homePitcher ? `Home Pitcher: ${gameEnriched.homePitcher.name} ERA:${gameEnriched.homePitcher.era} WHIP:${gameEnriched.homePitcher.whip} Last5:${gameEnriched.homePitcher.lastFive}` : ''}
+${gameEnriched.awayPitcher ? `Away Pitcher: ${gameEnriched.awayPitcher.name} ERA:${gameEnriched.awayPitcher.era} WHIP:${gameEnriched.awayPitcher.whip} Last5:${gameEnriched.awayPitcher.lastFive}` : ''}
+${gameEnriched.weather ? `Weather: ${gameEnriched.weather.temp}F, wind ${gameEnriched.weather.windSpeed}mph ${gameEnriched.weather.windDir} — ${gameEnriched.weather.impact}` : ''}
+
+Respond ONLY with valid JSON:
+{
+  "ouLine": "8.5",
+  "ouPick": "OVER 8.5",
+  "ouEdge": "+6.2%",
+  "ouReasoning": "2 sentence explanation",
+  "homePitcher": {
+    "name": "Max Fried",
+    "era": "2.80",
+    "whip": "1.05",
+    "kProp": "OVER 6.5 K",
+    "kEdge": "+8%",
+    "note": "1 sentence insight"
+  },
+  "awayPitcher": {
+    "name": "Logan Webb",
+    "era": "3.10",
+    "whip": "1.12",
+    "kProp": "OVER 5.5 K",
+    "kEdge": "+5%",
+    "note": "1 sentence insight"
+  },
+  "hotBatters": [
+    {
+      "name": "Giancarlo Stanton",
+      "team": "NYY",
+      "stats": ".285 AVG, 3 HR last 7 games",
+      "propType": "HOME RUNS",
+      "propPick": "OVER 0.5 HR",
+      "edge": "+7%",
+      "note": "1 sentence insight"
+    }
+  ],
+  "weather": "1 sentence weather impact",
+  "sharpMoney": "1 sentence sharp money observation"
+}`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-opus-4-5",
+        max_tokens: 1000,
+        system: PREMIUM_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: gamePrompt }],
+      }),
+    });
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || "{}";
+    const analysis = JSON.parse(text.replace(/```json|```/g, "").trim());
+
+    res.json({ analysis, game: { home, away }, cached: false });
+
+  } catch (err) {
+    console.error("❌ /api/agent/game-analysis error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /**
  * POST /api/agent/refresh
  * Force refresh the agent cache (admin only)
@@ -582,6 +701,305 @@ app.get("/api/stats/teams", async (req, res) => {
   } catch (err) {
     const { MLB_TEAM_STATS } = require("./mlbStats");
     res.json({ stats: MLB_TEAM_STATS, source: "projections_fallback" });
+  }
+});
+
+
+
+// ─── ELO ROUTES ──────────────────────────────────────────────────────────────
+
+const { OPENING_DAY_ELO, updateEloFromResults, getEloTier, AL_TEAMS, NL_TEAMS, DIVISIONS } = require("./eloSystem");
+
+/**
+ * GET /api/elo
+ * Returns current Elo ratings for all 30 MLB teams
+ * Falls back to Opening Day seeds if no live data yet
+ */
+app.get("/api/elo", async (req, res) => {
+  try {
+    const { supabaseQuery } = require("./supabase");
+
+    // Try to get live Elo from Supabase
+    let eloData = [];
+    try {
+      eloData = await supabaseQuery("elo_ratings", "GET", null, "?order=elo.desc");
+    } catch {}
+
+    if (!eloData || eloData.length < 30) {
+      // Return Opening Day seeds formatted for frontend
+      const seeds = Object.entries(OPENING_DAY_ELO).map(([abbr, data]) => {
+        const tier = getEloTier(data.elo);
+        return {
+          team_abbr: abbr,
+          elo: data.elo,
+          previous_elo: data.elo,
+          last_change: 0,
+          trend: data.trend,
+          wins: 0,
+          losses: 0,
+          note: data.note,
+          tier: tier.label,
+          tier_color: tier.color,
+          isAL: AL_TEAMS.includes(abbr),
+          isNL: NL_TEAMS.includes(abbr),
+        };
+      }).sort((a, b) => b.elo - a.elo);
+
+      return res.json({
+        ratings: seeds,
+        source: 'opening_day_seeds',
+        message: 'Season has not started — showing Opening Day projections',
+        lastUpdated: '2026-03-25',
+      });
+    }
+
+    // Enrich live data with tier info
+    const enriched = eloData.map(row => {
+      const tier = getEloTier(row.elo);
+      return {
+        ...row,
+        tier: tier.label,
+        tier_color: tier.color,
+        isAL: AL_TEAMS.includes(row.team_abbr),
+        isNL: NL_TEAMS.includes(row.team_abbr),
+      };
+    });
+
+    res.json({
+      ratings: enriched,
+      source: 'live',
+      lastUpdated: eloData[0]?.updated_at,
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/elo/seed
+ * Seeds Supabase with Opening Day Elo ratings
+ * Run this once before Opening Day
+ */
+app.post("/api/elo/seed", async (req, res) => {
+  const { secret } = req.body;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  try {
+    const { supabaseQuery } = require("./supabase");
+    const rows = Object.entries(OPENING_DAY_ELO).map(([abbr, data]) => ({
+      team_abbr: abbr,
+      elo: data.elo,
+      previous_elo: data.elo,
+      last_change: 0,
+      trend: data.trend,
+      wins: 0,
+      losses: 0,
+      note: data.note,
+      updated_at: new Date().toISOString(),
+    }));
+
+    await supabaseQuery("elo_ratings", "POST", rows);
+    res.json({ seeded: rows.length, message: "Opening Day Elo ratings seeded!" });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/cron/update-elo
+ * Updates Elo ratings based on today's game results
+ * Runs daily via Vercel Cron after games finish (~midnight ET)
+ */
+app.get("/api/cron/update-elo", async (req, res) => {
+  const cronSecret = req.headers.authorization === `Bearer ${process.env.CRON_SECRET}`;
+  const adminSecret = req.query.secret === process.env.ADMIN_SECRET;
+  if (!cronSecret && !adminSecret) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const { supabaseQuery } = require("./supabase");
+
+    // Get current Elo ratings
+    const current = await supabaseQuery("elo_ratings", "GET", null, "?order=elo.desc");
+    const eloMap = {};
+    for (const row of (current || [])) {
+      eloMap[row.team_abbr] = row;
+    }
+
+    // If no data seeded yet use Opening Day seeds
+    if (Object.keys(eloMap).length === 0) {
+      return res.json({ message: "No Elo data seeded yet. Run /api/elo/seed first." });
+    }
+
+    // Update from today's results
+    const { updatedElos, results, gamesProcessed } = await updateEloFromResults(eloMap);
+
+    // Save updates to Supabase
+    for (const [abbr, data] of Object.entries(updatedElos)) {
+      if (data.elo !== eloMap[abbr]?.elo) {
+        await supabaseQuery("elo_ratings", "PATCH", {
+          elo: data.elo,
+          previous_elo: eloMap[abbr]?.elo || data.elo,
+          last_change: data.lastChange || 0,
+          trend: data.trend,
+          updated_at: new Date().toISOString(),
+        }, `?team_abbr=eq.${abbr}`);
+      }
+    }
+
+    res.json({ gamesProcessed, results, updated: Object.keys(updatedElos).length });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── ACCURACY TRACKER ────────────────────────────────────────────────────────
+
+/**
+ * GET /api/accuracy
+ * Returns accuracy stats for all 3 trackers
+ * Total, Pick 1 only, Pick 2 only
+ */
+app.get("/api/accuracy", async (req, res) => {
+  try {
+    const { supabaseQuery } = require("./supabase");
+
+    // Fetch all resolved picks
+    const picks = await supabaseQuery(
+      "pick_results",
+      "GET",
+      null,
+      "?result=neq.pending&order=pick_date.desc"
+    );
+
+    const calcStats = (arr) => {
+      const resolved = arr.filter(p => p.result !== 'pending' && p.result !== 'void');
+      const wins = resolved.filter(p => p.result === 'win').length;
+      const losses = resolved.filter(p => p.result === 'loss').length;
+      const pushes = resolved.filter(p => p.result === 'push').length;
+      const total = resolved.length;
+      const winRate = total > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '0.0';
+
+      // Calculate ROI on 1 unit bets
+      let profit = 0;
+      resolved.forEach(p => {
+        const odds = parseInt(p.odds) || -110;
+        if (p.result === 'win') {
+          profit += odds > 0 ? odds / 100 : 100 / Math.abs(odds);
+        } else if (p.result === 'loss') {
+          profit -= 1;
+        }
+      });
+      const roi = total > 0 ? ((profit / (wins + losses)) * 100).toFixed(1) : '0.0';
+
+      return { wins, losses, pushes, total, winRate, roi: profit.toFixed(2), pending: arr.filter(p => p.result === 'pending').length };
+    };
+
+    const allPicks = picks || [];
+    const pick1 = allPicks.filter(p => p.rank === 1);
+    const pick2 = allPicks.filter(p => p.rank === 2);
+
+    // Recent picks (last 20 for display)
+    const recent = allPicks.slice(0, 20);
+
+    res.json({
+      total: calcStats(allPicks),
+      pick1: calcStats(pick1),
+      pick2: calcStats(pick2),
+      recent,
+      totalPicks: allPicks.length,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/accuracy/log
+ * Auto-logs a premium pick to the tracker
+ * Called internally when premium picks are generated
+ */
+app.post("/api/accuracy/log", async (req, res) => {
+  try {
+    const { secret } = req.body;
+    if (secret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { picks, date } = req.body;
+    if (!picks || !Array.isArray(picks)) {
+      return res.status(400).json({ error: "picks array required" });
+    }
+
+    const { supabaseQuery } = require("./supabase");
+    const pickDate = date || new Date().toISOString().split('T')[0];
+
+    // Check if already logged today
+    const existing = await supabaseQuery(
+      "pick_results",
+      "GET",
+      null,
+      `?pick_date=eq.${pickDate}`
+    );
+
+    if (existing && existing.length > 0) {
+      return res.json({ message: "Already logged for today", skipped: true });
+    }
+
+    const rows = picks
+      .filter(p => p.pick !== 'NO BET' && p.grade !== 'PASS')
+      .map(p => ({
+        pick_date: pickDate,
+        rank: p.rank,
+        bet_type: p.betType || 'MONEYLINE',
+        pick: p.pick,
+        game: p.game || '',
+        odds: p.odds || '',
+        edge: p.edge || '',
+        confidence: p.confidence || 0,
+        grade: p.grade || 'B',
+        result: 'pending',
+      }));
+
+    if (rows.length === 0) {
+      return res.json({ message: "No picks to log (all PASS)" });
+    }
+
+    await supabaseQuery("pick_results", "POST", rows);
+    res.json({ logged: rows.length, picks: rows });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * PATCH /api/accuracy/result/:id
+ * Update the result of a pick (win/loss/push/void)
+ * Called from admin dashboard
+ */
+app.patch("/api/accuracy/result/:id", async (req, res) => {
+  try {
+    const { secret, result, notes } = req.body;
+    if (secret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { supabaseQuery } = require("./supabase");
+    const updated = await supabaseQuery(
+      "pick_results",
+      "PATCH",
+      { result, notes, resolved_at: new Date().toISOString() },
+      `?id=eq.${req.params.id}`
+    );
+
+    res.json({ updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -719,11 +1137,50 @@ app.get("/admin", async (req, res) => {
 <div>
   <a class="btn" href="/api/health" target="_blank">🔍 Health Check</a>
   <a class="btn" href="/api/picks" target="_blank">⚡ View Picks</a>
-  <a class="btn" href="/api/agent/free" target="_blank">🤖 Test Free Agent</a>
+  <a class="btn" href="/api/agent/premium?wallet=8YPA4TV2rKkFdeJwvhQZPm6CNMNAm9sjP98p3DZSEgcL" target="_blank">🤖 Test Premium Agent</a>
   <a class="btn" href="/api/quota" target="_blank">📊 API Quota</a>
+  <a class="btn" href="/api/accuracy" target="_blank">🎯 Accuracy Stats</a>
   <a class="btn" href="/api/leaderboard" target="_blank">🏆 Leaderboard</a>
+  <a class="btn" href="/api/cron/update-stats?secret=${secret}" target="_blank">⚾ Run Stats Update</a>
   <a class="btn danger" href="/admin/refresh-agent?secret=${secret}" target="_blank">🔄 Refresh Agent Cache</a>
 </div>
+
+<!-- ACCURACY TRACKER ADMIN -->
+<div class="section-title">Update Pick Results</div>
+<div class="checklist" style="margin-bottom:24px">
+  <div class="check-item" style="flex-direction:column;align-items:flex-start;gap:8px">
+    <div class="check-text" style="color:var(--text)">Mark a pick as Win/Loss/Push after the game</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
+      <input id="pickId" placeholder="Pick ID (from /api/accuracy)" style="background:#141C2E;border:1px solid #1E2A40;border-radius:8px;color:#E8EDF5;font-family:monospace;font-size:12px;padding:8px 12px;flex:1;min-width:200px" />
+      <select id="pickResult" style="background:#141C2E;border:1px solid #1E2A40;border-radius:8px;color:#E8EDF5;font-family:monospace;font-size:12px;padding:8px 12px">
+        <option value="win">WIN ✓</option>
+        <option value="loss">LOSS ✗</option>
+        <option value="push">PUSH ~</option>
+        <option value="void">VOID</option>
+      </select>
+      <button onclick="updateResult()" style="background:linear-gradient(135deg,#00E5FF,#7B61FF);border:none;border-radius:8px;color:#080B10;font-family:monospace;font-size:12px;font-weight:bold;padding:8px 16px;cursor:pointer">UPDATE</button>
+    </div>
+    <div id="updateMsg" style="font-family:monospace;font-size:11px;color:#00FF88;display:none">✅ Updated!</div>
+  </div>
+</div>
+
+<script>
+async function updateResult() {
+  const id = document.getElementById('pickId').value.trim();
+  const result = document.getElementById('pickResult').value;
+  if (!id) { alert('Enter a pick ID'); return; }
+  const res = await fetch('/api/accuracy/result/' + id, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ secret: '${secret}', result })
+  });
+  const data = await res.json();
+  const msg = document.getElementById('updateMsg');
+  msg.style.display = 'block';
+  msg.textContent = res.ok ? '✅ Updated to ' + result.toUpperCase() : '❌ Error: ' + data.error;
+  setTimeout(() => msg.style.display = 'none', 3000);
+}
+</script>
 
 <!-- MAINTENANCE CHECKLIST -->
 <div class="section-title">Monthly Maintenance Checklist</div>
@@ -783,14 +1240,6 @@ app.get("/admin/refresh-agent", (req, res) => {
     <p>Next request will generate a fresh pick.</p>
     <a href="/admin?secret=${secret}" style="color:#00E5FF">← Back to Admin</a>
   </body></html>`);
-});const path = require('path');
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
-});
-
-app.get('/edge-seeker.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
 });
 
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
