@@ -412,15 +412,208 @@ app.post("/api/agent/refresh", (req, res) => {
   invalidateCache();
   res.json({ message: "Agent cache cleared" });
 });
-const path = require('path');
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+
+// ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
+
+/**
+ * GET /admin
+ * Admin dashboard — protected by ADMIN_SECRET query param
+ * Access: edge-seeker.vercel.app/admin?secret=YOUR_ADMIN_SECRET
+ */
+app.get("/admin", async (req, res) => {
+  const { secret } = req.query;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(401).send(`
+      <html><body style="background:#080B10;color:#FF3A5C;font-family:monospace;padding:40px;text-align:center">
+        <h1>⛔ UNAUTHORIZED</h1>
+        <p>Invalid admin secret.</p>
+      </body></html>
+    `);
+  }
+
+  // Fetch all stats in parallel
+  let oddsQuota = { remaining: 'N/A', used: 'N/A' };
+  let dbStats = { users: 0, bets: 0 };
+  let agentCacheStatus = { free: 'cold', premium: 'cold' };
+
+  try { oddsQuota = await fetchQuota(); } catch {}
+
+  try {
+    const usersRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/users?select=count`, {
+      headers: { apikey: process.env.SUPABASE_KEY, Authorization: `Bearer ${process.env.SUPABASE_KEY}`, Prefer: 'count=exact' }
+    });
+    const betsRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/bets?select=count`, {
+      headers: { apikey: process.env.SUPABASE_KEY, Authorization: `Bearer ${process.env.SUPABASE_KEY}`, Prefer: 'count=exact' }
+    });
+    const userCount = usersRes.headers.get('content-range')?.split('/')[1] || '0';
+    const betCount = betsRes.headers.get('content-range')?.split('/')[1] || '0';
+    dbStats = { users: userCount, bets: betCount };
+  } catch {}
+
+  const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+  const uptime = Math.floor(process.uptime() / 60);
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EdgeSKR Admin</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Courier New', monospace; background: #080B10; color: #E8EDF5; padding: 20px; min-height: 100vh; }
+  .header { border-bottom: 2px solid #00E5FF; padding-bottom: 20px; margin-bottom: 30px; }
+  .logo { font-size: 28px; letter-spacing: 4px; color: #00E5FF; font-weight: bold; }
+  .subtitle { font-size: 11px; color: #5A6A85; letter-spacing: 3px; margin-top: 4px; }
+  .time { font-size: 12px; color: #5A6A85; margin-top: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card { background: #0E1420; border: 1px solid #1E2A40; border-radius: 12px; padding: 20px; }
+  .card-title { font-size: 10px; letter-spacing: 2px; color: #5A6A85; text-transform: uppercase; margin-bottom: 12px; }
+  .card.green { border-top: 2px solid #00FF88; }
+  .card.cyan  { border-top: 2px solid #00E5FF; }
+  .card.gold  { border-top: 2px solid #FFD060; }
+  .card.red   { border-top: 2px solid #FF3A5C; }
+  .card.sol   { border-top: 2px solid #9945FF; }
+  .stat { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #141C2E; font-size: 13px; }
+  .stat:last-child { border-bottom: none; }
+  .stat-label { color: #5A6A85; }
+  .stat-value { font-weight: bold; }
+  .green  { color: #00FF88; }
+  .cyan   { color: #00E5FF; }
+  .gold   { color: #FFD060; }
+  .red    { color: #FF3A5C; }
+  .sol    { color: #9945FF; }
+  .white  { color: #E8EDF5; }
+  .btn { display: inline-block; background: #141C2E; border: 1px solid #1E2A40; border-radius: 8px; color: #E8EDF5; font-family: monospace; font-size: 11px; letter-spacing: 1px; padding: 8px 16px; cursor: pointer; text-decoration: none; margin-right: 8px; margin-top: 8px; transition: all 0.2s; }
+  .btn:hover { border-color: #00E5FF; color: #00E5FF; }
+  .btn.danger:hover { border-color: #FF3A5C; color: #FF3A5C; }
+  .section-title { font-size: 12px; letter-spacing: 3px; color: #5A6A85; text-transform: uppercase; margin: 24px 0 12px; }
+  .checklist { background: #0E1420; border: 1px solid #1E2A40; border-radius: 12px; padding: 20px; }
+  .check-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #141C2E; font-size: 13px; }
+  .check-item:last-child { border-bottom: none; }
+  .check-icon { font-size: 16px; }
+  .check-text { color: #8A9AB5; }
+  .check-action { margin-left: auto; font-size: 10px; color: #5A6A85; }
+  code { background: #141C2E; padding: 2px 6px; border-radius: 4px; color: #00E5FF; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">EDGESKR ADMIN</div>
+  <div class="subtitle">BACKEND DASHBOARD · RESTRICTED ACCESS</div>
+  <div class="time">🕐 ${now} ET · Server uptime: ${uptime} min</div>
+</div>
+
+<!-- STATS GRID -->
+<div class="grid">
+
+  <div class="card cyan">
+    <div class="card-title">Odds API</div>
+    <div class="stat"><span class="stat-label">Remaining</span><span class="stat-value cyan">${oddsQuota.remaining}</span></div>
+    <div class="stat"><span class="stat-label">Used</span><span class="stat-value white">${oddsQuota.used}</span></div>
+    <div class="stat"><span class="stat-label">Monthly limit</span><span class="stat-value white">500 (free)</span></div>
+    <div class="stat"><span class="stat-label">Status</span><span class="stat-value ${parseInt(oddsQuota.remaining) > 100 ? 'green' : 'red'}">${parseInt(oddsQuota.remaining) > 100 ? '✅ HEALTHY' : '⚠️ LOW'}</span></div>
+  </div>
+
+  <div class="card green">
+    <div class="card-title">Database (Supabase)</div>
+    <div class="stat"><span class="stat-label">Total users</span><span class="stat-value green">${dbStats.users}</span></div>
+    <div class="stat"><span class="stat-label">Total bets logged</span><span class="stat-value white">${dbStats.bets}</span></div>
+    <div class="stat"><span class="stat-label">Status</span><span class="stat-value green">✅ CONNECTED</span></div>
+  </div>
+
+  <div class="card gold">
+    <div class="card-title">AI Agent</div>
+    <div class="stat"><span class="stat-label">Free tier model</span><span class="stat-value white">claude-sonnet</span></div>
+    <div class="stat"><span class="stat-label">Premium tier model</span><span class="stat-value white">claude-opus</span></div>
+    <div class="stat"><span class="stat-label">Cost per free pick</span><span class="stat-value gold">~$0.003</span></div>
+    <div class="stat"><span class="stat-label">Cost per premium</span><span class="stat-value gold">~$0.015</span></div>
+    <div class="stat"><span class="stat-label">Cache</span><span class="stat-value green">Daily (1 call/day)</span></div>
+  </div>
+
+  <div class="card sol">
+    <div class="card-title">Server</div>
+    <div class="stat"><span class="stat-label">Environment</span><span class="stat-value white">Vercel (Production)</span></div>
+    <div class="stat"><span class="stat-label">Uptime</span><span class="stat-value green">${uptime} min</span></div>
+    <div class="stat"><span class="stat-label">Node version</span><span class="stat-value white">${process.version}</span></div>
+    <div class="stat"><span class="stat-label">Memory</span><span class="stat-value white">${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB</span></div>
+  </div>
+
+</div>
+
+<!-- ACTIONS -->
+<div class="section-title">Quick Actions</div>
+<div>
+  <a class="btn" href="/api/health" target="_blank">🔍 Health Check</a>
+  <a class="btn" href="/api/picks" target="_blank">⚡ View Picks</a>
+  <a class="btn" href="/api/agent/free" target="_blank">🤖 Test Free Agent</a>
+  <a class="btn" href="/api/quota" target="_blank">📊 API Quota</a>
+  <a class="btn" href="/api/leaderboard" target="_blank">🏆 Leaderboard</a>
+  <a class="btn danger" href="/admin/refresh-agent?secret=${secret}" target="_blank">🔄 Refresh Agent Cache</a>
+</div>
+
+<!-- MAINTENANCE CHECKLIST -->
+<div class="section-title">Monthly Maintenance Checklist</div>
+<div class="checklist">
+  <div class="check-item">
+    <div class="check-icon">📊</div>
+    <div class="check-text">Check Odds API quota — upgrade if below 100 remaining</div>
+    <div class="check-action"><a href="https://the-odds-api.com" target="_blank" style="color:#00E5FF">the-odds-api.com</a></div>
+  </div>
+  <div class="check-item">
+    <div class="check-icon">🤖</div>
+    <div class="check-text">Check Anthropic credit balance</div>
+    <div class="check-action"><a href="https://console.anthropic.com/settings/billing" target="_blank" style="color:#00E5FF">console.anthropic.com</a></div>
+  </div>
+  <div class="check-item">
+    <div class="check-icon">⚾</div>
+    <div class="check-text">Update mlbStats.js with real team run averages</div>
+    <div class="check-action"><a href="https://baseball-reference.com/leagues/majors/2026.shtml" target="_blank" style="color:#00E5FF">baseball-reference.com</a></div>
+  </div>
+  <div class="check-item">
+    <div class="check-icon">🗄️</div>
+    <div class="check-text">Check Supabase database size (free tier = 500MB)</div>
+    <div class="check-action"><a href="https://supabase.com/dashboard" target="_blank" style="color:#00E5FF">supabase.com</a></div>
+  </div>
+  <div class="check-item">
+    <div class="check-icon">🚀</div>
+    <div class="check-text">Check Vercel deployment health</div>
+    <div class="check-action"><a href="https://vercel.com/dashboard" target="_blank" style="color:#00E5FF">vercel.com</a></div>
+  </div>
+</div>
+
+<!-- HOW TO ACCESS -->
+<div class="section-title">Admin Access</div>
+<div class="checklist">
+  <div class="check-item">
+    <div class="check-icon">🔐</div>
+    <div class="check-text">This dashboard is protected by your <code>ADMIN_SECRET</code> environment variable. Never share the URL with the secret included. To access: <code>/admin?secret=YOUR_SECRET</code></div>
+  </div>
+</div>
+
+</body>
+</html>`);
 });
 
-app.get('/edge-seeker.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+/**
+ * GET /admin/refresh-agent
+ * Force refresh the AI agent cache
+ */
+app.get("/admin/refresh-agent", (req, res) => {
+  const { secret } = req.query;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  invalidateCache();
+  res.send(`<html><body style="background:#080B10;color:#00FF88;font-family:monospace;padding:40px;text-align:center">
+    <h1>✅ Agent Cache Cleared</h1>
+    <p>Next request will generate a fresh pick.</p>
+    <a href="/admin?secret=${secret}" style="color:#00E5FF">← Back to Admin</a>
+  </body></html>`);
 });
+
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
