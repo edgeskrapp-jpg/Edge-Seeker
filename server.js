@@ -16,6 +16,7 @@ const cors = require("cors");
 const fetch = require("node-fetch");
 const { analyzePicks } = require("./edgeAnalyzer");
 const { calculateBetPoints, getAccuracyBonus } = require("./pointsConfig");
+const { getFreePick, getPremiumPick, invalidateCache } = require("./agentRouter");
 const {
   getUser, upsertUser,
   saveBet, getUserBets, updateBetResult,
@@ -338,21 +339,86 @@ app.get("/api/points/:wallet", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-const path = require('path');
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+
+// ─── AI AGENT ROUTES ─────────────────────────────────────────────────────────
+
+/**
+ * GET /api/agent/free
+ * Free tier — Claude Sonnet pick of the day
+ * Cached daily so we only call Claude once per day
+ */
+app.get("/api/agent/free", async (req, res) => {
+  try {
+    // Get today's picks first
+    let picks = [];
+    if (isCacheValid(cache.picks)) {
+      picks = cache.picks.data?.picks || [];
+    } else {
+      const { games } = await fetchMLBOdds();
+      picks = games?.length ? analyzePicks(games) : [];
+    }
+
+    const pick = await getFreePick(picks);
+    res.json({ pick, tier: 'free', model: 'claude-sonnet' });
+  } catch (err) {
+    console.error("❌ /api/agent/free error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.get('/edge-seeker.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+/**
+ * GET /api/agent/premium
+ * Premium tier — Claude Opus pick with full enriched data
+ * Requires valid payment verification (wallet + tx signature)
+ */
+app.get("/api/agent/premium", async (req, res) => {
+  try {
+    const { wallet } = req.query;
+
+    // TODO: Verify SOL payment on-chain before serving premium pick
+    // For now, we'll add payment verification in the next phase
+    // Uncomment this block when payment gating is ready:
+    //
+    // if (!wallet) return res.status(401).json({ error: "Wallet required" });
+    // const hasPaid = await verifyPayment(wallet);
+    // if (!hasPaid) return res.status(402).json({ error: "Payment required", price: "0.01 SOL" });
+
+    let picks = [];
+    if (isCacheValid(cache.picks)) {
+      picks = cache.picks.data?.picks || [];
+    } else {
+      const { games } = await fetchMLBOdds();
+      picks = games?.length ? analyzePicks(games) : [];
+    }
+
+    const pick = await getPremiumPick(picks);
+    res.json({ pick, tier: 'premium', model: 'claude-opus' });
+  } catch (err) {
+    console.error("❌ /api/agent/premium error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
+
+/**
+ * POST /api/agent/refresh
+ * Force refresh the agent cache (admin only)
+ */
+app.post("/api/agent/refresh", (req, res) => {
+  const { secret } = req.body;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  invalidateCache();
+  res.json({ message: "Agent cache cleared" });
+});
+
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
   res.status(404).json({
     error: "Route not found",
-    availableRoutes: ["/api/health", "/api/picks", "/api/odds/raw", "/api/quota", "/api/leaderboard", "/api/bets/:wallet", "/api/points/:wallet", "/api/users/:wallet"],
+    availableRoutes: ["/api/health", "/api/picks", "/api/odds/raw", "/api/quota", "/api/leaderboard", "/api/bets/:wallet", "/api/points/:wallet", "/api/users/:wallet", "/api/agent/free", "/api/agent/premium"],
   });
 });
 
