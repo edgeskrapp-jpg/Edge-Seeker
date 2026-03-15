@@ -2201,19 +2201,24 @@
       const agentData = await agentRes.json();
       let aiPick = agentData.pick;
 
-      // If PASS or no pick, use top model pick as fallback display
-      if (!aiPick || aiPick.grade === 'PASS') {
-        aiPick = {
-          pick: picks[0]?.pick || 'NO PICK',
-          team: picks[0]?.team || '',
-          opponent: picks[0]?.opponent || '',
-          edge: (picks[0]?.edgePct || 0) + '%',
-          odds: picks[0]?.bookOddsAmerican || 'N/A',
-          confidence: picks[0]?.confidence || 0,
-          reasoning: aiPick?.reasoning || (picks[0] ? `Our model finds a ${picks[0].edgePct}% edge on ${picks[0].pick} but confidence is ${picks[0].confidence}/100 — below the 50 threshold for a strong recommendation. Check back when more games are available.` : 'No picks today.'),
-          warning: aiPick?.warning || '',
-          grade: aiPick?.grade || 'PASS',
-        };
+      // Display PASS or real pick
+      if (!aiPick) {
+        container.innerHTML = `<div class="ai-pick-result"><div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);text-align:center;padding:16px">No agent data available. Try again shortly.</div></div>`;
+        return;
+      }
+
+      if (aiPick.grade === 'PASS') {
+        container.innerHTML = `
+          <div class="ai-pick-result">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--muted)">PASS TODAY</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--muted);letter-spacing:1px">PASS</div>
+            </div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.7">${aiPick.reasoning || 'No bet meets our minimum threshold today.'}</div>
+            ${aiPick.warning ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);margin-top:8px">⚠️ ${aiPick.warning}</div>` : ''}
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:10px;letter-spacing:1px">CHECK BACK WHEN MORE GAMES POST · MARCH 25TH</div>
+          </div>`;
+        return;
       }
 
     } catch (err) {
