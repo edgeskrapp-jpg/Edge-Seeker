@@ -321,6 +321,70 @@
   .team-chip-remove:hover { color: var(--red); }
   .teams-wrap { display: flex; flex-wrap: wrap; }
 
+  /* ── GAME CARDS & DETAIL SCREEN ──────────────────────────────────────── */
+  .games-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .game-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; cursor: pointer; transition: all 0.2s; animation: slideIn 0.3s ease both; position: relative; overflow: hidden; }
+  .game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .game-card.has-edge { border-color: rgba(0,255,136,0.3); }
+  .game-card.has-edge::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--green), transparent); }
+  .game-card-time { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-bottom: 10px; }
+  .game-card-teams { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .game-card-team { text-align: center; }
+  .game-card-abbr { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; }
+  .game-card-odds { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .game-card-vs { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+  .game-card-edge { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .game-card-edge-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+  .game-card-edge-val { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--green); letter-spacing: 1px; }
+  .game-card-no-edge { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); text-align: center; padding-top: 8px; border-top: 1px solid var(--border); letter-spacing: 1px; }
+
+  /* GAME DETAIL SCREEN */
+  .game-detail-screen { position: fixed; inset: 0; background: var(--bg); z-index: 500; overflow-y: auto; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.34,1.2,0.64,1); }
+  .game-detail-screen.active { transform: translateY(0); }
+  .game-detail-header { position: sticky; top: 0; background: rgba(8,11,16,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 14px; z-index: 10; }
+  .game-detail-back { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1px; padding: 8px 14px; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+  .game-detail-back:hover { border-color: var(--accent); color: var(--accent); }
+  .game-detail-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; }
+  .game-detail-body { padding: 20px 16px 100px; max-width: 480px; margin: 0 auto; }
+
+  /* MATCHUP HERO */
+  .matchup-hero { background: linear-gradient(135deg, rgba(0,229,255,0.06), rgba(123,97,255,0.06)); border: 1px solid rgba(0,229,255,0.15); border-radius: 20px; padding: 24px; text-align: center; margin-bottom: 16px; position: relative; overflow: hidden; }
+  .matchup-hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .matchup-teams { display: flex; align-items: center; justify-content: space-around; margin-bottom: 12px; }
+  .matchup-team { text-align: center; }
+  .matchup-abbr { font-family: 'Bebas Neue', sans-serif; font-size: 40px; letter-spacing: 2px; }
+  .matchup-full { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.5px; margin-top: 2px; }
+  .matchup-odds { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px; margin-top: 4px; }
+  .matchup-vs { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--muted); letter-spacing: 2px; }
+  .matchup-meta { display: flex; justify-content: center; gap: 20px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+  /* FREE ANALYSIS CARD */
+  .analysis-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+  .analysis-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .analysis-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .analysis-row:last-child { border-bottom: none; }
+  .analysis-label { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+  .analysis-value { font-weight: 600; }
+  .analysis-value.green { color: var(--green); }
+  .analysis-value.cyan  { color: var(--accent); }
+  .analysis-value.gold  { color: var(--gold); }
+  .analysis-value.red   { color: var(--red); }
+
+  /* PREMIUM GAME ANALYSIS */
+  .premium-game-card { background: linear-gradient(135deg, rgba(153,69,255,0.06), rgba(0,229,255,0.04)); border: 1px solid rgba(153,69,255,0.25); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+  .premium-game-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px; color: var(--sol); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .prop-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .prop-player { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .prop-team { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+  .prop-line { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .prop-stat { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+  .prop-pick { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px; }
+  .prop-edge { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--green); background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); padding: 2px 8px; border-radius: 10px; }
+  .ou-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+  .ou-line { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 2px; color: var(--accent); }
+  .ou-pick { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; }
+  .ou-reasoning { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+
   /* ── PAYWALL STYLES ──────────────────────────────────────────────────── */
   .paywall-card { background: linear-gradient(135deg, rgba(153,69,255,0.08), rgba(0,229,255,0.05)); border: 1px solid rgba(153,69,255,0.3); border-radius: 16px; padding: 24px; text-align: center; }
   .paywall-icon { font-size: 40px; margin-bottom: 12px; }
@@ -596,7 +660,7 @@
   </div>
 
   <div class="section-header">
-    <div class="section-title">TODAY'S EDGES</div>
+    <div class="section-title">TODAY'S GAMES</div>
     <div class="badge live">● LIVE ODDS</div>
   </div>
 
@@ -617,10 +681,10 @@
     </div>
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">⚾</div>
-      <div class="empty-title">NO EDGES RIGHT NOW</div>
-      <div class="empty-msg">No picks meet the 3% edge threshold today.<br>MLB regular season starts April 1st.</div>
+      <div class="empty-title">NO GAMES TODAY</div>
+      <div class="empty-msg">No MLB games with odds available right now.<br>Check back closer to Opening Night March 25th.</div>
     </div>
-    <div id="picksList"></div>
+    <div class="games-grid" id="picksList"></div>
   </div>
 
   <div class="bottom-spacer"></div>
@@ -637,22 +701,7 @@
     <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">AI ANALYSIS · SHARP MONEY · HOT PLAYERS</div>
   </div>
 
-  <!-- AI PICK OF THE DAY -->
-  <div class="trends-ai-card">
-    <div class="trends-ai-header">
-      <div class="trends-ai-badge">🤖 AI AGENT</div>
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px" id="aiPickDate">—</div>
-    </div>
-    <div class="trends-ai-title">EDGE PICK OF THE DAY</div>
-    <div id="aiPickContent">
-      <div class="loading-state" style="padding:24px 0">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">ANALYZING ODDS...</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PREMIUM PICK OF THE DAY -->
+  <!-- PREMIUM PICKS OF THE DAY -->
   <div style="margin-top:20px">
     <div class="section-header">
       <div class="section-title" style="color:var(--sol)">⚡ PREMIUM PICK</div>
@@ -1021,6 +1070,18 @@
   <div class="bottom-spacer"></div>
 </main>
 
+
+
+<!-- GAME DETAIL SCREEN -->
+<div class="game-detail-screen" id="gameDetailScreen">
+  <div class="game-detail-header">
+    <button class="game-detail-back" onclick="closeGameDetail()">← BACK</button>
+    <div class="game-detail-title" id="gameDetailTitle">GAME ANALYSIS</div>
+  </div>
+  <div class="game-detail-body" id="gameDetailBody">
+    <!-- Populated dynamically -->
+  </div>
+</div>
 
 <!-- EDIT PROFILE SCREEN -->
 <div class="edit-profile-screen" id="editProfileScreen">
@@ -1960,6 +2021,501 @@
     applyProfileSettings(settings);
   });
 
+  // ── ALL GAMES DISPLAY ────────────────────────────────────────────────────
+  let allGamesData = [];  // full raw games from API
+  let allPicksData = [];  // analyzed picks
+
+  // Updated loadPicks to fetch ALL games not just edges
+  async function loadAllGames() {
+    showLoading();
+    try {
+      // Fetch picks (edges)
+      const res = await fetch(`${API_BASE}/api/picks`);
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+
+      allPicksData = data.picks || [];
+      updateStats(data);
+
+      if (data.fetchedAt) {
+        const t = new Date(data.fetchedAt);
+        document.getElementById('updatedTime').textContent =
+          t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('lastUpdated').style.display = 'block';
+      }
+
+      // Fetch raw odds to get ALL games
+      const rawRes = await fetch(`${API_BASE}/api/odds/raw`);
+      const rawData = await rawRes.json();
+      allGamesData = rawData.data || [];
+
+      renderAllGames();
+    } catch (err) {
+      console.error(err);
+      showError(err.message);
+    }
+  }
+
+  function renderAllGames() {
+    hideAll();
+
+    // Build a map of game edges by team
+    const edgeMap = {};
+    for (const pick of allPicksData) {
+      const key = `${pick.homeTeam}_${pick.awayTeam}`;
+      if (!edgeMap[key]) edgeMap[key] = [];
+      edgeMap[key].push(pick);
+    }
+
+    if (allGamesData.length === 0 && allPicksData.length === 0) {
+      document.getElementById('emptyState').classList.add('visible');
+      return;
+    }
+
+    // Use raw games if available, else build from picks
+    const games = allGamesData.length > 0 ? allGamesData : buildGamesFromPicks(allPicksData);
+
+    const list = document.getElementById('picksList');
+    list.innerHTML = '';
+
+    games.forEach((game, i) => {
+      const key = `${game.home_team}_${game.away_team}`;
+      const picks = edgeMap[key] || [];
+      const bestPick = picks.sort((a,b) => b.edgePct - a.edgePct)[0] || null;
+
+      const card = buildGameCard(game, bestPick, i);
+      list.appendChild(card);
+    });
+  }
+
+  function buildGamesFromPicks(picks) {
+    // Deduplicate games from picks array
+    const seen = new Set();
+    const games = [];
+    for (const p of picks) {
+      const key = `${p.homeTeam}_${p.awayTeam}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        games.push({
+          home_team: p.homeTeam,
+          away_team: p.awayTeam,
+          commence_time: p.gameTime,
+          bookmakers: [],
+        });
+      }
+    }
+    return games;
+  }
+
+  function buildGameCard(game, bestPick, index) {
+    const homeAbbr = getTeamAbbr(game.home_team);
+    const awayAbbr = getTeamAbbr(game.away_team);
+    const gameTime = fmtTime(game.commence_time);
+    const hasEdge = bestPick && bestPick.edgePct >= 3;
+
+    // Get best odds for display
+    let homeOdds = '—', awayOdds = '—';
+    if (game.bookmakers?.length > 0) {
+      const bk = game.bookmakers[0];
+      const ml = bk.markets?.find(m => m.key === 'h2h');
+      if (ml) {
+        for (const o of ml.outcomes || []) {
+          if (o.name === game.home_team) homeOdds = decimalToAmerican(o.price);
+          if (o.name === game.away_team) awayOdds = decimalToAmerican(o.price);
+        }
+      }
+    }
+
+    const card = document.createElement('div');
+    card.className = `game-card${hasEdge ? ' has-edge' : ''}`;
+    card.style.animationDelay = `${index * 0.06}s`;
+    card.innerHTML = `
+      <div class="game-card-time">⚾ ${gameTime}</div>
+      <div class="game-card-teams">
+        <div class="game-card-team">
+          <div class="game-card-abbr">${awayAbbr}</div>
+          <div class="game-card-odds">${awayOdds}</div>
+        </div>
+        <div class="game-card-vs">@</div>
+        <div class="game-card-team">
+          <div class="game-card-abbr">${homeAbbr}</div>
+          <div class="game-card-odds">${homeOdds}</div>
+        </div>
+      </div>
+      ${hasEdge
+        ? `<div class="game-card-edge">
+            <span class="game-card-edge-label">EDGE · ${bestPick.pick}</span>
+            <span class="game-card-edge-val">+${bestPick.edgePct}%</span>
+           </div>`
+        : `<div class="game-card-no-edge">TAP FOR ANALYSIS</div>`
+      }
+    `;
+    card.addEventListener('click', () => openGameDetail(game, bestPick));
+    return card;
+  }
+
+  function decimalToAmerican(decimal) {
+    if (!decimal) return '—';
+    if (decimal >= 2.0) return '+' + Math.round((decimal - 1) * 100);
+    return String(Math.round(-100 / (decimal - 1)));
+  }
+
+  function getTeamAbbr(fullName) {
+    const map = {
+      "New York Yankees":"NYY","Boston Red Sox":"BOS","Toronto Blue Jays":"TOR",
+      "Tampa Bay Rays":"TB","Baltimore Orioles":"BAL","Cleveland Guardians":"CLE",
+      "Minnesota Twins":"MIN","Chicago White Sox":"CWS","Kansas City Royals":"KC",
+      "Detroit Tigers":"DET","Houston Astros":"HOU","Texas Rangers":"TEX",
+      "Seattle Mariners":"SEA","Oakland Athletics":"OAK","Los Angeles Angels":"LAA",
+      "Atlanta Braves":"ATL","New York Mets":"NYM","Philadelphia Phillies":"PHI",
+      "Miami Marlins":"MIA","Washington Nationals":"WSH","Chicago Cubs":"CHC",
+      "Milwaukee Brewers":"MIL","St. Louis Cardinals":"STL","Cincinnati Reds":"CIN",
+      "Pittsburgh Pirates":"PIT","Los Angeles Dodgers":"LAD","San Francisco Giants":"SF",
+      "San Diego Padres":"SD","Arizona Diamondbacks":"ARI","Colorado Rockies":"COL",
+    };
+    return map[fullName] || fullName.split(' ').pop().slice(0,3).toUpperCase();
+  }
+
+  // ── GAME DETAIL SCREEN ────────────────────────────────────────────────────
+  let currentGameData = null;
+
+  function openGameDetail(game, bestPick) {
+    currentGameData = { game, bestPick };
+    const homeAbbr = getTeamAbbr(game.home_team);
+    const awayAbbr = getTeamAbbr(game.away_team);
+
+    document.getElementById('gameDetailTitle').textContent = `${awayAbbr} @ ${homeAbbr}`;
+    document.getElementById('gameDetailScreen').classList.add('active');
+
+    renderGameDetail(game, bestPick);
+  }
+
+  function closeGameDetail() {
+    document.getElementById('gameDetailScreen').classList.remove('active');
+    currentGameData = null;
+  }
+
+  function renderGameDetail(game, bestPick) {
+    const body = document.getElementById('gameDetailBody');
+    const homeAbbr = getTeamAbbr(game.home_team);
+    const awayAbbr = getTeamAbbr(game.away_team);
+    const gameTime = fmtTime(game.commence_time);
+    const hasEdge = bestPick && bestPick.edgePct >= 3;
+
+    // Get odds
+    let homeOdds = '—', awayOdds = '—', overUnder = '—';
+    if (game.bookmakers?.length > 0) {
+      for (const bk of game.bookmakers) {
+        const ml = bk.markets?.find(m => m.key === 'h2h');
+        const ou = bk.markets?.find(m => m.key === 'totals');
+        if (ml) {
+          for (const o of ml.outcomes || []) {
+            if (o.name === game.home_team) homeOdds = decimalToAmerican(o.price);
+            if (o.name === game.away_team) awayOdds = decimalToAmerican(o.price);
+          }
+        }
+        if (ou) {
+          const overOutcome = ou.outcomes?.find(o => o.name === 'Over');
+          if (overOutcome) overUnder = overOutcome.point;
+        }
+        if (homeOdds !== '—') break;
+      }
+    } else if (bestPick) {
+      if (bestPick.side === 'home') homeOdds = bestPick.bookOddsAmerican;
+      if (bestPick.side === 'away') awayOdds = bestPick.bookOddsAmerican;
+    }
+
+    const gradeColor = hasEdge
+      ? (bestPick.edgePct >= 8 ? 'var(--green)' : bestPick.edgePct >= 5 ? 'var(--gold)' : 'var(--accent)')
+      : 'var(--muted)';
+
+    body.innerHTML = `
+      <!-- MATCHUP HERO -->
+      <div class="matchup-hero">
+        <div class="matchup-teams">
+          <div class="matchup-team">
+            <div class="matchup-abbr">${awayAbbr}</div>
+            <div class="matchup-full">${game.away_team}</div>
+            <div class="matchup-odds" style="color:${bestPick?.side==='away'?'var(--green)':'var(--text)'}">${awayOdds}</div>
+          </div>
+          <div class="matchup-vs">@</div>
+          <div class="matchup-team">
+            <div class="matchup-abbr">${homeAbbr}</div>
+            <div class="matchup-full">${game.home_team}</div>
+            <div class="matchup-odds" style="color:${bestPick?.side==='home'?'var(--green)':'var(--text)'}">${homeOdds}</div>
+          </div>
+        </div>
+        <div class="matchup-meta">
+          <span>🕐 ${gameTime}</span>
+          ${overUnder !== '—' ? `<span>O/U ${overUnder}</span>` : ''}
+        </div>
+      </div>
+
+      <!-- FREE EDGE ANALYSIS -->
+      <div class="analysis-card">
+        <div class="analysis-card-title">
+          EDGE ANALYSIS
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">FREE</div>
+        </div>
+        ${hasEdge ? `
+          <div class="analysis-row">
+            <span class="analysis-label">Best Pick</span>
+            <span class="analysis-value cyan">${bestPick.pick}</span>
+          </div>
+          <div class="analysis-row">
+            <span class="analysis-label">Edge</span>
+            <span class="analysis-value green">+${bestPick.edgePct}%</span>
+          </div>
+          <div class="analysis-row">
+            <span class="analysis-label">Book Odds</span>
+            <span class="analysis-value">${bestPick.bookOddsAmerican}</span>
+          </div>
+          <div class="analysis-row">
+            <span class="analysis-label">True Win Prob</span>
+            <span class="analysis-value cyan">${bestPick.trueWinProb}%</span>
+          </div>
+          <div class="analysis-row">
+            <span class="analysis-label">Kelly Sizing</span>
+            <span class="analysis-value gold">${bestPick.kellyPct}% of bankroll</span>
+          </div>
+          <div class="analysis-row">
+            <span class="analysis-label">Confidence</span>
+            <span class="analysis-value" style="color:${gradeColor}">${bestPick.confidence}/100</span>
+          </div>
+        ` : `
+          <div style="text-align:center;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px">
+            NO EDGE DETECTED FOR THIS GAME<br>
+            <span style="font-size:10px;margin-top:4px;display:block">Edge threshold not met — below 3%</span>
+          </div>
+        `}
+      </div>
+
+      <!-- PREMIUM ANALYSIS -->
+      <div class="premium-game-card" id="premiumGameAnalysis">
+        <div class="premium-game-title">
+          ⚡ PREMIUM ANALYSIS
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--sol);background:rgba(153,69,255,0.1);border:1px solid rgba(153,69,255,0.2);padding:3px 8px;border-radius:10px;letter-spacing:1px">CLAUDE OPUS</div>
+        </div>
+        <div id="premiumGameContent">
+          ${buildGamePaywall(game, homeAbbr, awayAbbr)}
+        </div>
+      </div>
+
+      <!-- LOG BET BUTTON -->
+      ${hasEdge ? `
+      <button class="log-bet-btn" onclick="prefillBet('${bestPick.pick}','${bestPick.bookOddsAmerican}')">
+        + LOG THIS BET
+      </button>` : ''}
+    `;
+  }
+
+  function buildGamePaywall(game, homeAbbr, awayAbbr) {
+    const provider = window.phantom?.solana || window.solana;
+    const walletConnected = document.getElementById('walletBar').classList.contains('visible');
+
+    if (!walletConnected || !provider?.publicKey) {
+      return `<div style="text-align:center;padding:16px">
+        <div style="font-size:24px;margin-bottom:8px">🔐</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">CONNECT WALLET TO UNLOCK</div>
+        <button class="pay-btn" onclick="openWalletModal()">CONNECT WALLET</button>
+      </div>`;
+    }
+
+    return `
+      <div style="margin-bottom:16px">
+        <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:16px">
+          Claude Opus deep-dives this specific matchup with pitcher stats, weather, line movement, over/under analysis, and player prop recommendations.
+        </div>
+        <div class="paywall-features" style="margin-bottom:16px">
+          <div class="paywall-feature"><div class="paywall-feature-icon">📊</div><div class="paywall-feature-text">Over/Under best bet with projected total</div></div>
+          <div class="paywall-feature"><div class="paywall-feature-icon">⚾</div><div class="paywall-feature-text">Top pitcher to target (K's, ERA matchup)</div></div>
+          <div class="paywall-feature"><div class="paywall-feature-icon">🔥</div><div class="paywall-feature-text">Hot batter to watch (hits, HR, RBI)</div></div>
+          <div class="paywall-feature"><div class="paywall-feature-icon">🌤️</div><div class="paywall-feature-text">Weather impact on scoring</div></div>
+          <div class="paywall-feature"><div class="paywall-feature-icon">📈</div><div class="paywall-feature-text">Sharp money line movement</div></div>
+        </div>
+        <div class="paywall-price">${PREMIUM_PRICE_SOL} SOL</div>
+        <div class="paywall-price-sub">ONE-TIME · TODAY ONLY · RESETS MIDNIGHT ET</div>
+        <button class="pay-btn" id="gamePayBtn" onclick="payForGameAnalysis('${game.home_team}','${game.away_team}')">
+          UNLOCK GAME ANALYSIS
+        </button>
+        <div id="gameTxStatus"></div>
+      </div>`;
+  }
+
+  async function payForGameAnalysis(homeTeam, awayTeam) {
+    const provider = window.phantom?.solana || window.solana;
+    const wallet = provider?.publicKey?.toString();
+    const btn = document.getElementById('gamePayBtn');
+    const statusEl = document.getElementById('gameTxStatus');
+
+    if (!wallet) { showToast('Connect wallet first'); return; }
+
+    // Check whitelist first
+    if (wallet === '8YPA4TV2rKkFdeJwvhQZPm6CNMNAm9sjP98p3DZSEgcL') {
+      loadGamePremiumAnalysis(homeTeam, awayTeam, wallet);
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'SENDING...';
+    statusEl.className = 'tx-status pending';
+    statusEl.textContent = '👻 Approve in Phantom...';
+
+    try {
+      const lamports = Math.floor(PREMIUM_PRICE_SOL * LAMPORTS_PER_SOL);
+      const tx = await buildSOLTransfer(wallet, REVENUE_WALLET, lamports);
+      const signed = await provider.signAndSendTransaction(tx);
+
+      statusEl.textContent = `⏳ Confirming... ${signed.signature.slice(0,8)}...`;
+      await new Promise(r => setTimeout(r, 3000));
+
+      loadGamePremiumAnalysis(homeTeam, awayTeam, wallet);
+
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'UNLOCK GAME ANALYSIS';
+      statusEl.className = 'tx-status error';
+      statusEl.textContent = err.code === 4001 ? '❌ Cancelled' : `❌ ${err.message}`;
+    }
+  }
+
+  async function loadGamePremiumAnalysis(homeTeam, awayTeam, wallet) {
+    const content = document.getElementById('premiumGameContent');
+    content.innerHTML = '<div class="loading-state" style="padding:20px 0"><div class="loading-spinner"></div><div class="loading-text">CLAUDE OPUS ANALYZING...</div></div>';
+
+    try {
+      const homeAbbr = getTeamAbbr(homeTeam);
+      const awayAbbr = getTeamAbbr(awayTeam);
+
+      // Call Claude Opus for this specific game analysis
+      const res = await fetch(`${API_BASE}/api/agent/game-analysis?home=${encodeURIComponent(homeTeam)}&away=${encodeURIComponent(awayTeam)}&wallet=${wallet}`);
+      const data = await res.json();
+
+      if (data.error) {
+        // Fallback — generate analysis from picks data
+        renderFallbackGameAnalysis(content, homeAbbr, awayAbbr, homeTeam, awayTeam);
+        return;
+      }
+
+      renderGamePremiumAnalysis(content, data.analysis, homeAbbr, awayAbbr);
+
+    } catch (err) {
+      const homeAbbr = getTeamAbbr(homeTeam);
+      const awayAbbr = getTeamAbbr(awayTeam);
+      renderFallbackGameAnalysis(content, homeAbbr, awayAbbr, homeTeam, awayTeam);
+    }
+  }
+
+  function renderGamePremiumAnalysis(container, analysis, homeAbbr, awayAbbr) {
+    if (!analysis) { renderFallbackGameAnalysis(container, homeAbbr, awayAbbr); return; }
+
+    container.innerHTML = `
+      <!-- OVER/UNDER -->
+      <div class="ou-card">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">OVER/UNDER BEST BET</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <div class="ou-line">${analysis.ouLine || '—'}</div>
+          <div>
+            <div class="ou-pick" style="color:${analysis.ouPick?.includes('OVER')?'var(--green)':'var(--red)'}">${analysis.ouPick || '—'}</div>
+            ${analysis.ouEdge ? `<div class="prop-edge">${analysis.ouEdge} edge</div>` : ''}
+          </div>
+        </div>
+        <div class="ou-reasoning">${analysis.ouReasoning || ''}</div>
+      </div>
+
+      <!-- HOME PITCHER -->
+      ${analysis.homePitcher ? `
+      <div class="prop-card">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px;margin-bottom:6px">${homeAbbr} PITCHER</div>
+        <div class="prop-player">${analysis.homePitcher.name}</div>
+        <div class="prop-team">ERA ${analysis.homePitcher.era} · WHIP ${analysis.homePitcher.whip}</div>
+        <div class="prop-line">
+          <span class="prop-stat">STRIKEOUTS PROP</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="prop-pick" style="color:var(--accent)">${analysis.homePitcher.kProp || '—'}</span>
+            ${analysis.homePitcher.kEdge ? `<span class="prop-edge">${analysis.homePitcher.kEdge}</span>` : ''}
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">${analysis.homePitcher.note || ''}</div>
+      </div>` : ''}
+
+      <!-- AWAY PITCHER -->
+      ${analysis.awayPitcher ? `
+      <div class="prop-card">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px;margin-bottom:6px">${awayAbbr} PITCHER</div>
+        <div class="prop-player">${analysis.awayPitcher.name}</div>
+        <div class="prop-team">ERA ${analysis.awayPitcher.era} · WHIP ${analysis.awayPitcher.whip}</div>
+        <div class="prop-line">
+          <span class="prop-stat">STRIKEOUTS PROP</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="prop-pick" style="color:var(--accent)">${analysis.awayPitcher.kProp || '—'}</span>
+            ${analysis.awayPitcher.kEdge ? `<span class="prop-edge">${analysis.awayPitcher.kEdge}</span>` : ''}
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">${analysis.awayPitcher.note || ''}</div>
+      </div>` : ''}
+
+      <!-- HOT BATTERS -->
+      ${analysis.hotBatters?.map(b => `
+      <div class="prop-card">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px;margin-bottom:6px">${b.team} HOT BATTER</div>
+        <div class="prop-player">${b.name}</div>
+        <div class="prop-team">${b.stats || ''}</div>
+        <div class="prop-line">
+          <span class="prop-stat">${b.propType || 'HITS'} PROP</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="prop-pick" style="color:var(--gold)">${b.propPick || '—'}</span>
+            ${b.edge ? `<span class="prop-edge">${b.edge}</span>` : ''}
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">${b.note || ''}</div>
+      </div>`).join('') || ''}
+
+      <!-- WEATHER -->
+      ${analysis.weather ? `
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px;margin-bottom:6px">WEATHER IMPACT</div>
+        <div style="font-size:13px;color:var(--text)">${analysis.weather}</div>
+      </div>` : ''}
+
+      <!-- SHARP MONEY -->
+      ${analysis.sharpMoney ? `
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px;margin-bottom:6px">SHARP MONEY</div>
+        <div style="font-size:13px;color:var(--text)">${analysis.sharpMoney}</div>
+      </div>` : ''}
+    `;
+  }
+
+  function renderFallbackGameAnalysis(container, homeAbbr, awayAbbr, homeTeam, awayTeam) {
+    // Find picks for this game
+    const gamePicks = allPicksData.filter(p =>
+      p.homeTeam === homeTeam && p.awayTeam === awayTeam
+    );
+    const pick = gamePicks[0];
+
+    container.innerHTML = `
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:32px;margin-bottom:12px">✅</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--green);margin-bottom:8px">ACCESS UNLOCKED</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:16px">
+          Full game analysis will be available once the MLB season starts March 25th when pitcher stats, weather, and line movement data become available.
+        </div>
+        ${pick ? `
+        <div class="ai-pick-result" style="text-align:left;border:1px solid rgba(153,69,255,0.3)">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--sol);margin-bottom:4px">${pick.pick}</div>
+          <div style="font-size:13px;color:var(--muted)">Edge: ${pick.edgePct}% · Odds: ${pick.bookOddsAmerican} · Kelly: ${pick.kellyPct}%</div>
+        </div>` : ''}
+      </div>`;
+  }
+
+  function prefillBet(pick, odds) {
+    document.getElementById('betPick').value = pick;
+    document.getElementById('betOdds').value = odds;
+    closeGameDetail();
+    openBetModal();
+  }
+
   // ── PREMIUM PAYWALL ───────────────────────────────────────────────────────
   const REVENUE_WALLET = "HzqJgHrrzRXbLnBvAueFKvTx4Fn6PKcZL36tJ4Npx7Cb";
   const PREMIUM_PRICE_SOL = 0.01;
@@ -2118,40 +2674,51 @@
     return tx;
   }
 
-  function renderPremiumPick(container, pick) {
-    if (!pick || pick.grade === 'PASS') {
+  function renderPremiumPick(container, pickData) {
+    // Handle both single pick and array of 2 picks
+    const picks = pickData?.picks || (pickData ? [pickData] : []);
+
+    if (!picks || picks.length === 0) {
       container.innerHTML = `
         <div class="ai-pick-result" style="border:1px solid rgba(153,69,255,0.3);background:rgba(153,69,255,0.04)">
           <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px">
-            Claude Opus says PASS today — no bet meets premium standards.
+            Claude Opus says PASS today — no bets meet premium standards across today's slate.
           </div>
         </div>`;
       return;
     }
 
-    const gradeColor = pick.grade?.includes('A') ? 'var(--green)' : pick.grade?.includes('B') ? 'var(--gold)' : 'var(--muted)';
+    container.innerHTML = picks.map((pick, idx) => {
+      if (!pick || pick.grade === 'PASS') return '';
+      const gradeColor = pick.grade?.includes('A') ? 'var(--green)' : pick.grade?.includes('B') ? 'var(--gold)' : 'var(--muted)';
+      const betTypeColor = pick.betType === 'MONEYLINE' ? 'var(--accent)' : pick.betType === 'OVER/UNDER' ? 'var(--gold)' : 'var(--sol)';
+      const rankLabel = idx === 0 ? '🥇 TOP PICK' : '🥈 2ND PICK';
 
-    container.innerHTML = `
-      <div class="ai-pick-result" style="border:1px solid rgba(153,69,255,0.4);background:rgba(153,69,255,0.04)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div class="ai-pick-team" style="color:var(--sol)">${pick.pick}</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${gradeColor};letter-spacing:1px">${pick.grade || 'B'}</div>
-        </div>
-        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:12px">
-          ${pick.team || ''} ${pick.opponent ? 'vs ' + pick.opponent : ''}
-        </div>
-        <div class="ai-pick-stats">
-          <div class="ai-pick-stat"><div class="ai-pick-stat-val" style="color:var(--sol)">${pick.edge || '—'}</div><div class="ai-pick-stat-lbl">EDGE</div></div>
-          <div class="ai-pick-stat"><div class="ai-pick-stat-val">${pick.odds || '—'}</div><div class="ai-pick-stat-lbl">ODDS</div></div>
-          <div class="ai-pick-stat"><div class="ai-pick-stat-val">${pick.kelly || '—'}</div><div class="ai-pick-stat-lbl">KELLY</div></div>
-        </div>
-        <div class="ai-pick-reasoning" style="margin-top:10px">${pick.reasoning || ''}</div>
-        ${pick.pitcher_edge ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px">⚾ ${pick.pitcher_edge}</div>` : ''}
-        ${pick.weather_impact ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px">🌤️ ${pick.weather_impact}</div>` : ''}
-        ${pick.line_movement ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px">📈 ${pick.line_movement}</div>` : ''}
-        ${pick.premium_insight ? `<div style="font-size:13px;color:var(--sol);margin-top:10px;padding:10px;background:rgba(153,69,255,0.06);border-radius:8px;border:1px solid rgba(153,69,255,0.15);font-style:italic">"${pick.premium_insight}"</div>` : ''}
-        ${pick.key_risk ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);margin-top:8px">⚠️ ${pick.key_risk}</div>` : ''}
-      </div>`;
+      return `
+        <div class="ai-pick-result" style="border:1px solid rgba(153,69,255,0.4);background:rgba(153,69,255,0.04);margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted)">${rankLabel}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:${betTypeColor};background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:10px">${pick.betType || 'PICK'}</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${gradeColor};letter-spacing:1px">${pick.grade || 'B'}</div>
+            </div>
+          </div>
+          <div class="ai-pick-team" style="color:var(--sol);margin-bottom:4px">${pick.pick}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px">${pick.game || (pick.team ? pick.team + ' vs ' + pick.opponent : '')}</div>
+          <div class="ai-pick-stats">
+            <div class="ai-pick-stat"><div class="ai-pick-stat-val" style="color:var(--sol)">${pick.edge || '—'}</div><div class="ai-pick-stat-lbl">EDGE</div></div>
+            <div class="ai-pick-stat"><div class="ai-pick-stat-val">${pick.odds || '—'}</div><div class="ai-pick-stat-lbl">ODDS</div></div>
+            <div class="ai-pick-stat"><div class="ai-pick-stat-val">${pick.kelly || '—'}</div><div class="ai-pick-stat-lbl">KELLY</div></div>
+          </div>
+          <div class="ai-pick-reasoning" style="margin-top:10px">${pick.reasoning || ''}</div>
+          ${pick.key_factor ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);margin-top:8px;padding:8px;background:rgba(0,229,255,0.05);border-radius:8px">🔑 ${pick.key_factor}</div>` : ''}
+          ${pick.statcast_edge ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px">📊 ${pick.statcast_edge}</div>` : ''}
+          ${pick.pitcher_edge ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">⚾ ${pick.pitcher_edge}</div>` : ''}
+          ${pick.weather_impact ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">🌤️ ${pick.weather_impact}</div>` : ''}
+          ${pick.premium_insight ? `<div style="font-size:13px;color:var(--sol);margin-top:10px;padding:10px;background:rgba(153,69,255,0.06);border-radius:8px;border:1px solid rgba(153,69,255,0.15);font-style:italic">"${pick.premium_insight}"</div>` : ''}
+          ${pick.warning ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);margin-top:8px">⚠️ ${pick.warning}</div>` : ''}
+        </div>`;
+    }).join('');
   }
 
   // ── TRENDS + AI AGENT ────────────────────────────────────────────────────
@@ -2165,10 +2732,7 @@
     document.getElementById('aiPickDate').textContent =
       new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
 
-    // Load free AI pick
-    await loadAIPick();
-
-    // Load premium pick
+    // Load premium picks (top 2 of the day)
     await loadPremiumPick();
 
     // Load sharp money (placeholder data until season starts)
@@ -2489,4 +3053,3 @@
 </script>
 </body>
 </html>
- 

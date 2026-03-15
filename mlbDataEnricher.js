@@ -193,6 +193,121 @@ const MLB_API_TEAM_MAP = {
   "San Diego Padres": "SD", "Arizona Diamondbacks": "ARI", "Colorado Rockies": "COL",
 };
 
+
+// ─── BASEBALL SAVANT INTEGRATION ─────────────────────────────────────────────
+
+/**
+ * Fetch pitcher statcast data from Baseball Savant
+ * Returns whiff rate, strikeout rate, hard hit rate, spin rate, velocity
+ */
+async function fetchPitcherStatcast(pitcherName, season) {
+  try {
+    // Baseball Savant search API
+    const url = `https://baseballsavant.mlb.com/leader/custom?year=${season}&type=pitcher&filter=&sort=4&sortDir=desc&min=10&selections=k_percent,whiff_percent,hard_hit_percent,avg_best_speed,spin_rate_formatted&limit=500`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'EdgeSKR/1.0' }
+    });
+    const data = await res.json();
+
+    // Find pitcher by name
+    const pitcher = data?.find(p =>
+      p.player_name?.toLowerCase().includes(pitcherName.toLowerCase().split(' ').pop()) ||
+      pitcherName.toLowerCase().includes(p.player_name?.toLowerCase().split(', ')[0] || '')
+    );
+
+    if (!pitcher) return null;
+
+    return {
+      kPercent: parseFloat(pitcher.k_percent || 0).toFixed(1),
+      whiffPercent: parseFloat(pitcher.whiff_percent || 0).toFixed(1),
+      hardHitPercent: parseFloat(pitcher.hard_hit_percent || 0).toFixed(1),
+      avgVelocity: parseFloat(pitcher.avg_best_speed || 0).toFixed(1),
+      spinRate: pitcher.spin_rate_formatted || 'N/A',
+    };
+  } catch (err) {
+    console.error('Savant pitcher fetch error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Fetch team batting statcast data
+ * Returns hard hit rate, barrel rate, chase rate, platoon splits
+ */
+async function fetchTeamBattingStatcast(teamAbbr, season) {
+  try {
+    const url = `https://baseballsavant.mlb.com/leader/custom?year=${season}&type=batter&filter=&sort=4&sortDir=desc&min=50&selections=batting_avg,on_base_plus_slg,k_percent,bb_percent,hard_hit_percent,barrel_batted_rate,chase_percent&limit=1000`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'EdgeSKR/1.0' }
+    });
+    const data = await res.json();
+
+    // Filter by team
+    const teamPlayers = data?.filter(p => p.team_abbrev === teamAbbr) || [];
+    if (teamPlayers.length === 0) return null;
+
+    // Calculate team averages
+    const avg = (key) => {
+      const vals = teamPlayers.map(p => parseFloat(p[key] || 0)).filter(v => v > 0);
+      return vals.length > 0 ? (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1) : 'N/A';
+    };
+
+    // Find hottest batter (highest OPS)
+    const hotBatter = teamPlayers.sort((a,b) =>
+      parseFloat(b.on_base_plus_slg || 0) - parseFloat(a.on_base_plus_slg || 0)
+    )[0];
+
+    return {
+      teamHardHitPct: avg('hard_hit_percent'),
+      teamBarrelRate: avg('barrel_batted_rate'),
+      teamChasePct: avg('chase_percent'),
+      teamKPct: avg('k_percent'),
+      hotBatter: hotBatter ? {
+        name: hotBatter.player_name?.split(', ').reverse().join(' ') || 'Unknown',
+        avg: hotBatter.batting_avg || '.000',
+        ops: hotBatter.on_base_plus_slg || '.000',
+        hardHitPct: hotBatter.hard_hit_percent || '0',
+        barrelRate: hotBatter.barrel_batted_rate || '0',
+        kPct: hotBatter.k_percent || '0',
+      } : null,
+    };
+  } catch (err) {
+    console.error('Savant batting fetch error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Fetch platoon splits for a pitcher
+ * vs LHB and vs RHB stats
+ */
+async function fetchPlatoonSplits(pitcherName, season) {
+  try {
+    const url = `https://baseballsavant.mlb.com/platoon-usage?year=${season}&type=pitcher&min=10`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'EdgeSKR/1.0' }
+    });
+    const data = await res.json();
+
+    const pitcher = data?.find(p =>
+      p.player_name?.toLowerCase().includes(pitcherName.toLowerCase().split(' ').pop())
+    );
+
+    if (!pitcher) return null;
+
+    return {
+      vsLHB_avg: pitcher.batting_avg_L || '.000',
+      vsRHB_avg: pitcher.batting_avg_R || '.000',
+      vsLHB_slg: pitcher.slg_L || '.000',
+      vsRHB_slg: pitcher.slg_R || '.000',
+      vsLHB_kPct: pitcher.k_percent_L || '0',
+      vsRHB_kPct: pitcher.k_percent_R || '0',
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
 // ─── MAIN ENRICHER ────────────────────────────────────────────────────────────
 
 /**
@@ -230,28 +345,47 @@ async function enrichPicks(picks) {
       const homePitcherName = game.teams?.home?.probablePitcher?.fullName || 'TBD';
       const awayPitcherName = game.teams?.away?.probablePitcher?.fullName || 'TBD';
 
-      // Fetch stats in parallel
-      const [homePitcherStats, awayPitcherStats, homeLog, awayLog, weather] = await Promise.all([
+      // Fetch all data in parallel including Baseball Savant
+      const [
+        homePitcherStats, awayPitcherStats,
+        homeLog, awayLog,
+        weather,
+        homeSavant, awaySavant,
+        homeBatting, awayBatting,
+        homePlatoon, awayPlatoon,
+      ] = await Promise.all([
         fetchPitcherStats(homePitcherId),
         fetchPitcherStats(awayPitcherId),
         fetchRecentPitcherLog(homePitcherId),
         fetchRecentPitcherLog(awayPitcherId),
         fetchWeather(homeAbbr),
+        fetchPitcherStatcast(homePitcherName, season),
+        fetchPitcherStatcast(awayPitcherName, season),
+        fetchTeamBattingStatcast(homeAbbr, season),
+        fetchTeamBattingStatcast(awayAbbr, season),
+        fetchPlatoonSplits(homePitcherName, season),
+        fetchPlatoonSplits(awayPitcherName, season),
       ]);
 
+      const season = new Date().getFullYear();
+
       enriched[gameKey] = {
-        homePitcher: homePitcherStats ? {
+        homePitcher: {
           name: homePitcherName,
-          ...homePitcherStats,
+          ...(homePitcherStats || { era: 'N/A', whip: 'N/A' }),
           lastFive: homeLog || 'N/A',
-        } : { name: homePitcherName, era: 'N/A', whip: 'N/A', lastFive: 'N/A' },
-
-        awayPitcher: awayPitcherStats ? {
+          statcast: homeSavant,
+          platoon: homePlatoon,
+        },
+        awayPitcher: {
           name: awayPitcherName,
-          ...awayPitcherStats,
+          ...(awayPitcherStats || { era: 'N/A', whip: 'N/A' }),
           lastFive: awayLog || 'N/A',
-        } : { name: awayPitcherName, era: 'N/A', whip: 'N/A', lastFive: 'N/A' },
-
+          statcast: awaySavant,
+          platoon: awayPlatoon,
+        },
+        homeBatting,
+        awayBatting,
         weather,
         homeTeam,
         awayTeam,
@@ -272,4 +406,4 @@ async function enrichPicks(picks) {
   }
 }
 
-module.exports = { enrichPicks, fetchWeather, STADIUM_COORDS };
+module.exports = { enrichPicks, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, STADIUM_COORDS };

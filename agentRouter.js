@@ -133,11 +133,18 @@ async function getPremiumPick(picks) {
   const userMessage = buildPremiumPrompt(picks, enrichedData);
   const result = await callClaude(PREMIUM_SYSTEM_PROMPT, userMessage, 'claude-opus-4-5');
 
-  // Add enriched data to result for frontend display
-  result.enrichedData = enrichedData;
-
-  agentCache.premium = { data: result, date: getTodayDate() };
-  return { ...result, cached: false };
+  // Handle both old single pick format and new 2-pick format
+  if (result.picks && Array.isArray(result.picks)) {
+    // New format — array of picks
+    result.enrichedData = enrichedData;
+    agentCache.premium = { data: result, date: getTodayDate() };
+    return { ...result, cached: false };
+  } else {
+    // Wrap single pick in array for consistency
+    const wrapped = { picks: [result], enrichedData };
+    agentCache.premium = { data: wrapped, date: getTodayDate() };
+    return { ...wrapped, cached: false };
+  }
 }
 
 /**

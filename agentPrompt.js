@@ -113,7 +113,9 @@ Respond with ONLY valid JSON:
   "key_risk": "One specific risk factor that could invalidate this pick.",
   "if_line_moves": "What line movement would make you abandon this pick.",
   "warning": "Important caveat. Empty string if none.",
-  "premium_insight": "One sharp observation that free users do not get — a specific angle that makes this pick particularly interesting."
+  "premium_insight": "One sharp observation that free users do not get."
+    }
+  ]
 }
 
 ## Premium Grading Scale
@@ -141,24 +143,76 @@ function buildFreePrompt(picks) {
 }
 
 function buildPremiumPrompt(picks, enrichedData = {}) {
-  const topPicks = picks.slice(0, 8);
+  const topPicks = picks.slice(0, 15); // All games
 
   const picksText = topPicks.map(p => {
     const gameKey = `${p.teamAbbr}_${p.opponentAbbr}`;
     const g = enrichedData[gameKey] || {};
+    const hp = g.homePitcher || {};
+    const ap = g.awayPitcher || {};
+    const hpSavant = hp.statcast || {};
+    const apSavant = ap.statcast || {};
+    const hpPlatoon = hp.platoon || {};
+    const apPlatoon = ap.platoon || {};
+    const hBat = g.homeBatting || {};
+    const aBat = g.awayBatting || {};
 
     return `GAME: ${p.homeTeam} vs ${p.awayTeam}
-Pick: ${p.pick} | Odds: ${p.bookOddsAmerican} | Edge: ${p.edgePct}% | Kelly: ${p.kellyPct}% | Confidence: ${p.confidence}/100
-True Win Prob: ${p.trueWinProb}% vs Book Implied: ${p.bookImpliedProb}%
-${g.homePitcher ? `Home Pitcher: ${g.homePitcher.name} | ERA: ${g.homePitcher.era} | WHIP: ${g.homePitcher.whip} | Last 5: ${g.homePitcher.lastFive}` : 'Home Pitcher: Data pending'}
-${g.awayPitcher ? `Away Pitcher: ${g.awayPitcher.name} | ERA: ${g.awayPitcher.era} | WHIP: ${g.awayPitcher.whip} | Last 5: ${g.awayPitcher.lastFive}` : 'Away Pitcher: Data pending'}
-${g.weather ? `Weather: ${g.weather.temp}F, wind ${g.weather.windSpeed}mph ${g.weather.windDir}` : 'Weather: N/A'}
-${g.lineMovement ? `Line Movement: opened ${g.lineMovement.open}, current ${p.bookOddsAmerican} (${g.lineMovement.direction})` : 'Line Movement: N/A'}
-${g.h2h ? `H2H Last 10: ${g.h2h}` : ''}
-${g.injuries ? `Injuries: ${g.injuries}` : ''}`;
-  }).join('\n---\n');
+Moneyline: ${p.pick} | Odds: ${p.bookOddsAmerican} | Edge: ${p.edgePct}% | Kelly: ${p.kellyPct}% | Confidence: ${p.confidence}/100
 
-  return `Today's comprehensive MLB analysis. Use ALL available data to find the single best premium edge bet:\n\n${picksText}\n\nApply your full analytical framework. Respond with JSON only.`;
+HOME PITCHER: ${hp.name || 'TBD'}
+  ERA: ${hp.era || 'N/A'} | WHIP: ${hp.whip || 'N/A'} | Last 5: ${hp.lastFive || 'N/A'}
+  Statcast: K%=${hpSavant.kPercent || 'N/A'} | Whiff%=${hpSavant.whiffPercent || 'N/A'} | HardHit%=${hpSavant.hardHitPercent || 'N/A'} | Velo=${hpSavant.avgVelocity || 'N/A'}
+  Platoon: vsLHB avg=${hpPlatoon.vsLHB_avg || 'N/A'} | vsRHB avg=${hpPlatoon.vsRHB_avg || 'N/A'}
+
+AWAY PITCHER: ${ap.name || 'TBD'}
+  ERA: ${ap.era || 'N/A'} | WHIP: ${ap.whip || 'N/A'} | Last 5: ${ap.lastFive || 'N/A'}
+  Statcast: K%=${apSavant.kPercent || 'N/A'} | Whiff%=${apSavant.whiffPercent || 'N/A'} | HardHit%=${apSavant.hardHitPercent || 'N/A'} | Velo=${apSavant.avgVelocity || 'N/A'}
+  Platoon: vsLHB avg=${apPlatoon.vsLHB_avg || 'N/A'} | vsRHB avg=${apPlatoon.vsRHB_avg || 'N/A'}
+
+HOME TEAM BATTING: HardHit%=${hBat.teamHardHitPct || 'N/A'} | Barrel%=${hBat.teamBarrelRate || 'N/A'} | Chase%=${hBat.teamChasePct || 'N/A'}
+${hBat.hotBatter ? `Hot Batter: ${hBat.hotBatter.name} | AVG ${hBat.hotBatter.avg} | OPS ${hBat.hotBatter.ops} | HardHit% ${hBat.hotBatter.hardHitPct}` : ''}
+
+AWAY TEAM BATTING: HardHit%=${aBat.teamHardHitPct || 'N/A'} | Barrel%=${aBat.teamBarrelRate || 'N/A'} | Chase%=${aBat.teamChasePct || 'N/A'}
+${aBat.hotBatter ? `Hot Batter: ${aBat.hotBatter.name} | AVG ${aBat.hotBatter.avg} | OPS ${aBat.hotBatter.ops} | HardHit% ${aBat.hotBatter.hardHitPct}` : ''}
+
+${g.weather ? `Weather: ${g.weather.temp}F | Wind: ${g.weather.windSpeed}mph ${g.weather.windDir} | ${g.weather.impact}` : ''}`;
+  }).join('\n═══\n');
+
+  return `Today\'s full MLB slate analysis with Baseball Savant statcast data. Scan ALL games and find the TOP 2 BEST BETS of the day. Bets can be moneyline, over/under, or player props (strikeouts, hits, home runs, RBIs).
+
+${picksText}
+
+Find the 2 highest-confidence value bets across all bet types. Respond with JSON only:
+{
+  "picks": [
+    {
+      "rank": 1,
+      "betType": "MONEYLINE" or "OVER/UNDER" or "PLAYER PROP",
+      "pick": "NYY ML" or "OVER 8.5 runs" or "Skenes OVER 7.5 K",
+      "game": "NYY @ SF",
+      "team": "New York Yankees",
+      "opponent": "San Francisco Giants",
+      "edge": "8.2%",
+      "true_edge_estimate": "9.5%",
+      "odds": "-118",
+      "kelly": "3.1%",
+      "confidence": 78,
+      "grade": "A",
+      "reasoning": "3-4 sentences using specific statcast data points",
+      "key_factor": "The single most important reason this bet wins",
+      "pitcher_edge": "Pitcher matchup insight if relevant",
+      "statcast_edge": "Specific statcast data supporting this pick",
+      "weather_impact": "Weather effect if relevant",
+      "warning": "Main risk factor or empty string",
+      "premium_insight": "One sharp observation only premium users get"
+    },
+    {
+      "rank": 2,
+      ...same format...
+    }
+  ]
+}`;
 }
 
 module.exports = {
