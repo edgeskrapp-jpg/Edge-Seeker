@@ -73,30 +73,30 @@ const MLB_TEAM_STATS = {
  * Source: CBS Sports Opening Day Starter Tracker
  */
 const OPENING_DAY_STARTERS = {
-  NYY: { name: "Weathers",   hand: "L", note: "Cole/Rodón out until May/June (TJS)" },
+  NYY: { name: "Fried",      hand: "L", note: "Cole/Rodón out — Fried is clear #1 starter" },
   BOS: { name: "Crochet",    hand: "L", note: "3rd consecutive Opening Day start" },
   TOR: { name: "Gausman",    hand: "R", note: "Scherzer joining rotation later" },
-  TB:  { name: "Severino",   hand: "R", note: "" },
-  BAL: { name: "Eflin",      hand: "R", note: "" },
+  TB:  { name: "Rasmussen",  hand: "R", note: "2.76 ERA, 1.02 WHIP in 2025, All-Star" },
+  BAL: { name: "Rogers",     hand: "L", note: "Reigning Most Valuable Pitcher award" },
   CLE: { name: "Cantillo",   hand: "L", note: "Young rotation, high upside" },
   MIN: { name: "Paddack",    hand: "R", note: "" },
-  CWS: { name: "TBD",        hand: "R", note: "Full rebuild" },
+  CWS: { name: "Smith",      hand: "R", note: "Rule 5 pick from MIL, All-Star rookie 2025" },
   KC:  { name: "Wacha",      hand: "R", note: "" },
   DET: { name: "Skubal",     hand: "L", note: "AL Cy Young 2025" },
-  HOU: { name: "Brown",      hand: "R", note: "" },
+  HOU: { name: "Brown",      hand: "R", note: "3rd place AL Cy Young 2025, first OD start" },
   TEX: { name: "Eovaldi",    hand: "R", note: "" },
   SEA: { name: "Gilbert",    hand: "R", note: "Cal Raleigh MVP candidate" },
   OAK: { name: "Civale",     hand: "R", note: "" },
   LAA: { name: "Detmers",    hand: "L", note: "Healthy Trout in CF" },
   ATL: { name: "Sale",       hand: "L", note: "Acuña back healthy" },
-  NYM: { name: "Megill",     hand: "R", note: "Soto + Bichette + Lindor lineup" },
+  NYM: { name: "Peralta",    hand: "R", note: "Two-time All-Star, top-5 NL Cy Young 2025, Soto+Bichette+Lindor" },
   PHI: { name: "Sanchez",    hand: "L", note: "NL Cy Young candidate, 2.50 ERA in 2025" },
   MIA: { name: "Alcantara",  hand: "R", note: "Returning from Tommy John surgery" },
   WSH: { name: "Cavalli",    hand: "R", note: "Impressive TJS return, 4.25 ERA in 10 starts" },
-  CHC: { name: "Imanaga",    hand: "L", note: "Bregman massive addition at 3B" },
-  MIL: { name: "Peralta",    hand: "R", note: "" },
+  CHC: { name: "Boyd",       hand: "L", note: "3.21 ERA in 2025, career year, Bregman added" },
+  MIL: { name: "Chourio",    hand: "R", note: "Peralta traded to NYM" },
   STL: { name: "Gray",       hand: "R", note: "Wetherholt top prospect" },
-  CIN: { name: "Abbott",     hand: "R", note: "De La Cruz elite speed/power" },
+  CIN: { name: "Abbott",     hand: "L", note: "2.87 ERA in 2025, Greene injured — Abbott steps up" },
   PIT: { name: "Skenes",     hand: "R", note: "NL Cy Young 2025, generational talent" },
   LAD: { name: "Yamamoto",   hand: "R", note: "Ohtani+Tucker+Betts+Freeman — best lineup ever" },
   SF:  { name: "Webb",       hand: "R", note: "" },
@@ -144,12 +144,32 @@ const TEAM_NAME_MAP = {
 /**
  * Get team stats by full name (as returned by The Odds API)
  */
-function getTeamStats(fullName) {
+function getTeamStats(fullName, liveStats = null) {
   const abbr = TEAM_NAME_MAP[fullName];
-  if (abbr && MLB_TEAM_STATS[abbr]) {
-    return { ...MLB_TEAM_STATS[abbr], abbr };
+  if (!abbr) {
+    return { runsPerGame: 4.3, runsAllowedPerGame: 4.3, homeBonus: 0.10, abbr: fullName.split(" ").pop().substring(0, 3).toUpperCase() };
   }
-  return { runsPerGame: 4.3, runsAllowedPerGame: 4.3, homeBonus: 0.10, abbr: fullName.split(" ").pop().substring(0, 3).toUpperCase() };
+
+  // Use live stats from MLB API if available (updated daily by cron)
+  if (liveStats && liveStats[abbr]) {
+    const live = liveStats[abbr];
+    const projection = MLB_TEAM_STATS[abbr] || {};
+    return {
+      runsPerGame: live.runs_per_game || projection.runsPerGame || 4.3,
+      runsAllowedPerGame: live.runs_allowed_per_game || projection.runsAllowedPerGame || 4.3,
+      homeBonus: projection.homeBonus || 0.10,
+      abbr,
+      source: 'live',
+      gamesPlayed: live.games_played || 0,
+    };
+  }
+
+  // Fall back to pre-season projections
+  if (MLB_TEAM_STATS[abbr]) {
+    return { ...MLB_TEAM_STATS[abbr], abbr, source: 'projection' };
+  }
+
+  return { runsPerGame: 4.3, runsAllowedPerGame: 4.3, homeBonus: 0.10, abbr, source: 'fallback' };
 }
 
 module.exports = { MLB_TEAM_STATS, TEAM_NAME_MAP, OPENING_DAY_STARTERS, getTeamStats };

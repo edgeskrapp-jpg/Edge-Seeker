@@ -17,6 +17,7 @@ const fetch = require("node-fetch");
 const { analyzePicks } = require("./edgeAnalyzer");
 const { calculateBetPoints, getAccuracyBonus } = require("./pointsConfig");
 const { getFreePick, getPremiumPick, invalidateCache } = require("./agentRouter");
+const { updateMLBStats } = require("./cron");
 const {
   getUser, upsertUser,
   saveBet, getUserBets, updateBetResult,
@@ -414,6 +415,61 @@ app.post("/api/agent/refresh", (req, res) => {
 });
 
 
+
+// ─── CRON ROUTES ─────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/cron/update-stats
+ * Runs daily at 6AM ET via Vercel Cron
+ * Also callable manually from admin dashboard
+ */
+app.get("/api/cron/update-stats", async (req, res) => {
+  // Vercel cron sends authorization header, manual calls need secret
+  const cronSecret = req.headers.authorization === `Bearer ${process.env.CRON_SECRET}`;
+  const adminSecret = req.query.secret === process.env.ADMIN_SECRET;
+
+  if (!cronSecret && !adminSecret) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  try {
+    console.log("🕐 Daily stats update triggered...");
+    const result = await updateMLBStats();
+    console.log("✅ Daily stats update complete:", result);
+    res.json({
+      success: true,
+      ...result,
+      triggeredAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("❌ Cron error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/stats/teams
+ * Returns live team stats from Supabase
+ * Falls back to mlbStats.js projections if season hasn't started
+ */
+app.get("/api/stats/teams", async (req, res) => {
+  try {
+    const { supabaseQuery } = require("./supabase");
+    const rows = await supabaseQuery("team_stats", "GET", null,
+      "?order=updated_at.desc"
+    );
+    if (rows && rows.length > 0) {
+      res.json({ stats: rows, source: "live", updatedAt: rows[0]?.updated_at });
+    } else {
+      const { MLB_TEAM_STATS } = require("./mlbStats");
+      res.json({ stats: MLB_TEAM_STATS, source: "projections" });
+    }
+  } catch (err) {
+    const { MLB_TEAM_STATS } = require("./mlbStats");
+    res.json({ stats: MLB_TEAM_STATS, source: "projections_fallback" });
+  }
+});
+
 // ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
 
 /**
@@ -613,15 +669,7 @@ app.get("/admin/refresh-agent", (req, res) => {
     <a href="/admin?secret=${secret}" style="color:#00E5FF">← Back to Admin</a>
   </body></html>`);
 });
-const path = require('path');
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
-});
-
-app.get('/edge-seeker.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
-});
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {

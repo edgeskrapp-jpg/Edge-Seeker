@@ -73,15 +73,23 @@ function formatAmerican(odds) {
 /**
  * Analyze a single game and return a structured pick object
  */
+// In-memory cache for live stats (populated by cron)
+let liveTeamStats = null;
+
+function setLiveStats(stats) {
+  liveTeamStats = stats;
+  console.log(`📊 Poisson model updated with live stats for ${Object.keys(stats).length} teams`);
+}
+
 function analyzeGame(game) {
   const { homeOdds, awayOdds, bookmaker } = getBestMoneyline(game);
 
   // Need both sides to analyze
   if (!homeOdds || !awayOdds) return null;
 
-  // Get team stats for Poisson model
-  const homeStats = getTeamStats(game.home_team);
-  const awayStats = getTeamStats(game.away_team);
+  // Get team stats — use live stats if available, fall back to projections
+  const homeStats = getTeamStats(game.home_team, liveTeamStats);
+  const awayStats = getTeamStats(game.away_team, liveTeamStats);
 
   // Home team gets a run bonus for playing at home
   const homeRunRate = homeStats.runsPerGame + homeStats.homeBonus;
@@ -187,4 +195,4 @@ function analyzePicks(games) {
   return allPicks;
 }
 
-module.exports = { analyzePicks };
+module.exports = { analyzePicks, setLiveStats };
