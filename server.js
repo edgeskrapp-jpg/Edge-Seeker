@@ -412,7 +412,15 @@ app.post("/api/agent/refresh", (req, res) => {
   invalidateCache();
   res.json({ message: "Agent cache cleared" });
 });
+const path = require('path');
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+});
+
+app.get('/edge-seeker.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+});
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
