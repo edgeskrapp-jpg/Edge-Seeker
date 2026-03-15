@@ -2728,14 +2728,10 @@
     if (trendsLoaded) return;
     trendsLoaded = true;
 
-    // Set date
-    document.getElementById('aiPickDate').textContent =
-      new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
-
     // Load premium picks (top 2 of the day)
     await loadPremiumPick();
 
-    // Load sharp money (placeholder data until season starts)
+    // Load sharp money
     renderSharpMoney();
   }
 
@@ -3053,3 +3049,4 @@
 </script>
 </body>
 </html>
+ 
