@@ -2682,14 +2682,34 @@
       container.innerHTML = `
         <div class="ai-pick-result" style="border:1px solid rgba(153,69,255,0.3);background:rgba(153,69,255,0.04)">
           <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px">
-            Claude Opus says PASS today — no bets meet premium standards across today's slate.
+            Claude Opus says PASS today — no bets meet premium standards.
           </div>
         </div>`;
       return;
     }
 
+    // Check if all picks are PASS
+    const allPass = picks.every(p => !p || p.grade === 'PASS' || p.pick === 'NO BET');
+    if (allPass) {
+      const mainReason = picks[0]?.reasoning || 'No bets meet premium standards today.';
+      const insight = picks[0]?.premium_insight || '';
+      const warning = picks[0]?.warning || '';
+      container.innerHTML = `
+        <div class="ai-pick-result" style="border:1px solid rgba(153,69,255,0.3);background:rgba(153,69,255,0.04)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--muted)">PASS TODAY</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--muted);letter-spacing:1px">CLAUDE OPUS</div>
+          </div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:10px">${mainReason}</div>
+          ${warning ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);margin-bottom:8px">⚠️ ${warning}</div>` : ''}
+          ${insight ? `<div style="font-size:13px;color:var(--sol);padding:10px;background:rgba(153,69,255,0.06);border-radius:8px;border:1px solid rgba(153,69,255,0.15);font-style:italic">"${insight}"</div>` : ''}
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:10px;letter-spacing:1px">CHECK BACK CLOSER TO FIRST PITCH · MARCH 25TH</div>
+        </div>`;
+      return;
+    }
+
     container.innerHTML = picks.map((pick, idx) => {
-      if (!pick || pick.grade === 'PASS') return '';
+      if (!pick || pick.grade === 'PASS' || pick.pick === 'NO BET') return '';
       const gradeColor = pick.grade?.includes('A') ? 'var(--green)' : pick.grade?.includes('B') ? 'var(--gold)' : 'var(--muted)';
       const betTypeColor = pick.betType === 'MONEYLINE' ? 'var(--accent)' : pick.betType === 'OVER/UNDER' ? 'var(--gold)' : 'var(--sol)';
       const rankLabel = idx === 0 ? '🥇 TOP PICK' : '🥈 2ND PICK';
