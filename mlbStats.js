@@ -1,64 +1,112 @@
 /**
  * mlbStats.js
- * MLB team run averages for the current season.
+ * Edge Seeker — 2026 MLB Team Statistics
  *
- * These drive the Poisson model. Update these periodically
- * (weekly is fine) as the season progresses.
+ * Updated for 2026 Opening Day using:
+ * - FanGraphs ZiPS/Steamer projected team run totals
+ * - Bleacher Report Opening Day lineup projections (Version 4.0)
+ * - CBS Sports Opening Day starter tracker
+ * - ESPN lineup rankings
  *
- * Source: Baseball Reference / FanGraphs team stats
- * Last updated: March 2026 (Opening Day estimates — update after ~2 weeks of play)
+ * Key 2026 offseason moves factored in:
+ * - Kyle Tucker → LAD (massive offensive upgrade)
+ * - Alex Bregman → CHC
+ * - Cody Bellinger → NYY
+ * - Bo Bichette → NYM
+ * - Nolan Arenado → ARI
+ * - Gerrit Cole (TJS recovery, back May/June) — NYY weaker to start
+ * - Carlos Rodón (elbow surgery, back April/May) — NYY weaker to start
+ * - Juan Soto → NYM (6.1 WAR projected)
+ * - Pete Alonso → BAL
+ * - Christian Walker → HOU
  *
- * Format: "TEAM_ABBR": { runsPerGame, runsAllowedPerGame, homeBonus }
- * homeBonus: small boost applied when team is at home (~0.1-0.2 runs)
+ * Update weekly during season from:
+ * baseball-reference.com/leagues/majors/2026.shtml
  */
 
 const MLB_TEAM_STATS = {
-  // American League East
-  NYY: { runsPerGame: 4.8, runsAllowedPerGame: 4.1, homeBonus: 0.15 },
-  BOS: { runsPerGame: 4.5, runsAllowedPerGame: 4.4, homeBonus: 0.12 },
-  TOR: { runsPerGame: 4.3, runsAllowedPerGame: 4.3, homeBonus: 0.10 },
-  TB:  { runsPerGame: 4.2, runsAllowedPerGame: 3.9, homeBonus: 0.10 },
-  BAL: { runsPerGame: 4.6, runsAllowedPerGame: 4.0, homeBonus: 0.12 },
+  // ── AMERICAN LEAGUE EAST ──────────────────────────────────────────────────
+  NYY: { runsPerGame: 4.7, runsAllowedPerGame: 4.4, homeBonus: 0.15 },
+  BOS: { runsPerGame: 4.6, runsAllowedPerGame: 4.2, homeBonus: 0.12 },
+  TOR: { runsPerGame: 4.1, runsAllowedPerGame: 4.3, homeBonus: 0.10 },
+  TB:  { runsPerGame: 4.2, runsAllowedPerGame: 3.9, homeBonus: 0.08 },
+  BAL: { runsPerGame: 4.5, runsAllowedPerGame: 4.0, homeBonus: 0.12 },
 
-  // American League Central
-  CLE: { runsPerGame: 4.2, runsAllowedPerGame: 3.7, homeBonus: 0.10 },
-  MIN: { runsPerGame: 4.4, runsAllowedPerGame: 4.2, homeBonus: 0.12 },
-  CWS: { runsPerGame: 3.8, runsAllowedPerGame: 5.0, homeBonus: 0.08 },
-  KC:  { runsPerGame: 4.3, runsAllowedPerGame: 4.4, homeBonus: 0.10 },
-  DET: { runsPerGame: 4.1, runsAllowedPerGame: 4.0, homeBonus: 0.10 },
+  // ── AMERICAN LEAGUE CENTRAL ───────────────────────────────────────────────
+  CLE: { runsPerGame: 4.3, runsAllowedPerGame: 3.8, homeBonus: 0.10 },
+  MIN: { runsPerGame: 4.2, runsAllowedPerGame: 4.3, homeBonus: 0.10 },
+  CWS: { runsPerGame: 3.7, runsAllowedPerGame: 5.1, homeBonus: 0.08 },
+  KC:  { runsPerGame: 4.4, runsAllowedPerGame: 4.3, homeBonus: 0.10 },
+  DET: { runsPerGame: 4.3, runsAllowedPerGame: 3.9, homeBonus: 0.12 },
 
-  // American League West
-  HOU: { runsPerGame: 4.6, runsAllowedPerGame: 3.8, homeBonus: 0.15 },
-  TEX: { runsPerGame: 4.4, runsAllowedPerGame: 4.3, homeBonus: 0.12 },
-  SEA: { runsPerGame: 4.2, runsAllowedPerGame: 3.9, homeBonus: 0.12 },
-  OAK: { runsPerGame: 3.9, runsAllowedPerGame: 4.6, homeBonus: 0.08 },
-  LAA: { runsPerGame: 4.0, runsAllowedPerGame: 4.5, homeBonus: 0.10 },
+  // ── AMERICAN LEAGUE WEST ──────────────────────────────────────────────────
+  HOU: { runsPerGame: 4.7, runsAllowedPerGame: 3.8, homeBonus: 0.15 },
+  TEX: { runsPerGame: 4.3, runsAllowedPerGame: 4.4, homeBonus: 0.12 },
+  SEA: { runsPerGame: 4.1, runsAllowedPerGame: 3.7, homeBonus: 0.12 },
+  OAK: { runsPerGame: 4.0, runsAllowedPerGame: 4.5, homeBonus: 0.08 },
+  LAA: { runsPerGame: 4.2, runsAllowedPerGame: 4.6, homeBonus: 0.10 },
 
-  // National League East
-  ATL: { runsPerGame: 5.1, runsAllowedPerGame: 3.9, homeBonus: 0.15 },
-  NYM: { runsPerGame: 4.4, runsAllowedPerGame: 4.1, homeBonus: 0.12 },
-  PHI: { runsPerGame: 4.7, runsAllowedPerGame: 4.0, homeBonus: 0.15 },
-  MIA: { runsPerGame: 3.8, runsAllowedPerGame: 4.8, homeBonus: 0.08 },
-  WSH: { runsPerGame: 4.0, runsAllowedPerGame: 4.7, homeBonus: 0.08 },
+  // ── NATIONAL LEAGUE EAST ──────────────────────────────────────────────────
+  ATL: { runsPerGame: 5.0, runsAllowedPerGame: 3.9, homeBonus: 0.15 },
+  NYM: { runsPerGame: 4.8, runsAllowedPerGame: 4.0, homeBonus: 0.12 },
+  PHI: { runsPerGame: 4.7, runsAllowedPerGame: 3.8, homeBonus: 0.15 },
+  MIA: { runsPerGame: 3.7, runsAllowedPerGame: 4.6, homeBonus: 0.08 },
+  WSH: { runsPerGame: 4.0, runsAllowedPerGame: 4.8, homeBonus: 0.08 },
 
-  // National League Central
-  CHC: { runsPerGame: 4.3, runsAllowedPerGame: 4.3, homeBonus: 0.12 },
-  MIL: { runsPerGame: 4.4, runsAllowedPerGame: 4.1, homeBonus: 0.12 },
-  STL: { runsPerGame: 4.2, runsAllowedPerGame: 4.2, homeBonus: 0.10 },
-  CIN: { runsPerGame: 4.5, runsAllowedPerGame: 4.6, homeBonus: 0.10 },
-  PIT: { runsPerGame: 3.9, runsAllowedPerGame: 4.5, homeBonus: 0.08 },
+  // ── NATIONAL LEAGUE CENTRAL ───────────────────────────────────────────────
+  CHC: { runsPerGame: 4.6, runsAllowedPerGame: 4.1, homeBonus: 0.14 },
+  MIL: { runsPerGame: 4.3, runsAllowedPerGame: 4.0, homeBonus: 0.12 },
+  STL: { runsPerGame: 4.0, runsAllowedPerGame: 4.4, homeBonus: 0.10 },
+  CIN: { runsPerGame: 4.4, runsAllowedPerGame: 4.5, homeBonus: 0.10 },
+  PIT: { runsPerGame: 4.1, runsAllowedPerGame: 4.2, homeBonus: 0.10 },
 
-  // National League West
-  LAD: { runsPerGame: 5.2, runsAllowedPerGame: 3.7, homeBonus: 0.15 },
-  SF:  { runsPerGame: 4.2, runsAllowedPerGame: 4.2, homeBonus: 0.12 },
+  // ── NATIONAL LEAGUE WEST ──────────────────────────────────────────────────
+  LAD: { runsPerGame: 5.5, runsAllowedPerGame: 3.6, homeBonus: 0.15 },
+  SF:  { runsPerGame: 4.1, runsAllowedPerGame: 4.3, homeBonus: 0.12 },
   SD:  { runsPerGame: 4.4, runsAllowedPerGame: 4.0, homeBonus: 0.12 },
-  ARI: { runsPerGame: 4.5, runsAllowedPerGame: 4.3, homeBonus: 0.12 },
-  COL: { runsPerGame: 4.6, runsAllowedPerGame: 5.3, homeBonus: 0.20 }, // Coors Field boost
+  ARI: { runsPerGame: 4.5, runsAllowedPerGame: 4.2, homeBonus: 0.12 },
+  COL: { runsPerGame: 5.0, runsAllowedPerGame: 6.2, homeBonus: 0.25 },
+};
+
+/**
+ * 2026 Opening Day starting pitchers
+ * Source: CBS Sports Opening Day Starter Tracker
+ */
+const OPENING_DAY_STARTERS = {
+  NYY: { name: "Weathers",   hand: "L", note: "Cole/Rodón out until May/June (TJS)" },
+  BOS: { name: "Crochet",    hand: "L", note: "3rd consecutive Opening Day start" },
+  TOR: { name: "Gausman",    hand: "R", note: "Scherzer joining rotation later" },
+  TB:  { name: "Severino",   hand: "R", note: "" },
+  BAL: { name: "Eflin",      hand: "R", note: "" },
+  CLE: { name: "Cantillo",   hand: "L", note: "Young rotation, high upside" },
+  MIN: { name: "Paddack",    hand: "R", note: "" },
+  CWS: { name: "TBD",        hand: "R", note: "Full rebuild" },
+  KC:  { name: "Wacha",      hand: "R", note: "" },
+  DET: { name: "Skubal",     hand: "L", note: "AL Cy Young 2025" },
+  HOU: { name: "Brown",      hand: "R", note: "" },
+  TEX: { name: "Eovaldi",    hand: "R", note: "" },
+  SEA: { name: "Gilbert",    hand: "R", note: "Cal Raleigh MVP candidate" },
+  OAK: { name: "Civale",     hand: "R", note: "" },
+  LAA: { name: "Detmers",    hand: "L", note: "Healthy Trout in CF" },
+  ATL: { name: "Sale",       hand: "L", note: "Acuña back healthy" },
+  NYM: { name: "Megill",     hand: "R", note: "Soto + Bichette + Lindor lineup" },
+  PHI: { name: "Sanchez",    hand: "L", note: "NL Cy Young candidate, 2.50 ERA in 2025" },
+  MIA: { name: "Alcantara",  hand: "R", note: "Returning from Tommy John surgery" },
+  WSH: { name: "Cavalli",    hand: "R", note: "Impressive TJS return, 4.25 ERA in 10 starts" },
+  CHC: { name: "Imanaga",    hand: "L", note: "Bregman massive addition at 3B" },
+  MIL: { name: "Peralta",    hand: "R", note: "" },
+  STL: { name: "Gray",       hand: "R", note: "Wetherholt top prospect" },
+  CIN: { name: "Abbott",     hand: "R", note: "De La Cruz elite speed/power" },
+  PIT: { name: "Skenes",     hand: "R", note: "NL Cy Young 2025, generational talent" },
+  LAD: { name: "Yamamoto",   hand: "R", note: "Ohtani+Tucker+Betts+Freeman — best lineup ever" },
+  SF:  { name: "Webb",       hand: "R", note: "" },
+  SD:  { name: "King",       hand: "R", note: "Tatis/Machado/Bogaerts core" },
+  ARI: { name: "Gallen",     hand: "R", note: "Arenado trade, Carroll health concern" },
+  COL: { name: "Freeland",   hand: "L", note: "Coors effect — always factor wind direction" },
 };
 
 /**
  * Map from The Odds API team name strings → our abbreviations
- * The API returns full city+team names like "New York Yankees"
  */
 const TEAM_NAME_MAP = {
   "New York Yankees": "NYY",
@@ -95,15 +143,13 @@ const TEAM_NAME_MAP = {
 
 /**
  * Get team stats by full name (as returned by The Odds API)
- * Falls back to league average if team not found
  */
 function getTeamStats(fullName) {
   const abbr = TEAM_NAME_MAP[fullName];
   if (abbr && MLB_TEAM_STATS[abbr]) {
     return { ...MLB_TEAM_STATS[abbr], abbr };
   }
-  // League average fallback
   return { runsPerGame: 4.3, runsAllowedPerGame: 4.3, homeBonus: 0.10, abbr: fullName.split(" ").pop().substring(0, 3).toUpperCase() };
 }
 
-module.exports = { MLB_TEAM_STATS, TEAM_NAME_MAP, getTeamStats };
+module.exports = { MLB_TEAM_STATS, TEAM_NAME_MAP, OPENING_DAY_STARTERS, getTeamStats };
