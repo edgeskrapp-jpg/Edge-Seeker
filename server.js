@@ -1296,7 +1296,15 @@ app.get("/admin/refresh-agent", (req, res) => {
     <a href="/admin?secret=${secret}" style="color:#00E5FF">← Back to Admin</a>
   </body></html>`);
 });
+const path = require('path');
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+});
+
+app.get('/edge-seeker.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+});
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
