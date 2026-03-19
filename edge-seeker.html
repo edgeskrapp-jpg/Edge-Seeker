@@ -388,6 +388,78 @@
   .recent-pick-rank { font-family: "DM Mono", monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; }
   .accuracy-empty { text-align: center; padding: 30px; font-family: "DM Mono", monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; background: var(--surface); border: 1px dashed var(--border); border-radius: 12px; }
 
+  /* ── CATEGORY SWITCHER ───────────────────────────────────────────────── */
+  .category-switcher { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 16px; }
+  .category-switcher::-webkit-scrollbar { display: none; }
+  .cat-tab { display: flex; align-items: center; gap: 6px; font-family: "DM Mono", monospace; font-size: 11px; letter-spacing: 1px; padding: 9px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+  .cat-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.08); }
+  .cat-tab.active.so  { border-color: var(--sol); color: var(--sol); background: rgba(153,69,255,0.08); }
+  .cat-tab.active.hr  { border-color: var(--red); color: var(--red); background: rgba(255,58,92,0.08); }
+  .cat-tab.active.hit { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.08); }
+  .cat-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ── BET SLIP ─────────────────────────────────────────────────────────── */
+  .bet-slip-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 800; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .bet-slip-overlay.active { opacity: 1; pointer-events: all; }
+  .bet-slip { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 0 0 90px; z-index: 900; max-height: 85vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.34,1.2,0.64,1); }
+  .bet-slip.active { transform: translateY(0); }
+  .bet-slip-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 16px auto 0; }
+  .bet-slip-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+  .bet-slip-title { font-family: "Bebas Neue", sans-serif; font-size: 20px; letter-spacing: 2px; }
+  .bet-slip-count { font-family: "DM Mono", monospace; font-size: 11px; color: var(--accent); background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.2); padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; }
+  .bet-slip-clear { font-family: "DM Mono", monospace; font-size: 10px; color: var(--red); cursor: pointer; letter-spacing: 1px; padding: 4px 8px; }
+  .bet-slip-body { padding: 16px 20px; }
+  .slip-item { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; animation: slideIn 0.2s ease both; }
+  .slip-item-left { flex: 1; }
+  .slip-item-pick { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .slip-item-meta { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+  .slip-item-remove { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; transition: color 0.2s; margin-left: 8px; }
+  .slip-item-remove:hover { color: var(--red); }
+  .slip-stake-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .slip-stake-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: "Instrument Sans", sans-serif; font-size: 15px; padding: 10px 14px; }
+  .slip-stake-input:focus { outline: none; border-color: var(--accent); }
+  .slip-log-btn { width: 100%; background: linear-gradient(135deg, var(--green), var(--accent)); border: none; border-radius: 12px; color: var(--bg); font-family: "Bebas Neue", sans-serif; font-size: 18px; letter-spacing: 2px; padding: 14px; cursor: pointer; transition: all 0.2s; }
+  .slip-log-btn:hover { opacity: 0.9; }
+  .slip-empty { text-align: center; padding: 30px; font-family: "DM Mono", monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+
+  /* ADD TO SLIP button on cards */
+  .add-to-slip-btn { display: flex; align-items: center; gap: 6px; font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: 1px; color: var(--accent); background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.2); padding: 5px 12px; border-radius: 20px; cursor: pointer; transition: all 0.2s; margin-top: 10px; width: fit-content; }
+  .add-to-slip-btn:hover { background: rgba(0,229,255,0.15); }
+  .add-to-slip-btn.added { color: var(--green); background: rgba(0,255,136,0.08); border-color: rgba(0,255,136,0.2); }
+
+  /* FLOATING BET SLIP BUTTON */
+  .slip-fab { position: fixed; bottom: 90px; right: 20px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 20px rgba(0,229,255,0.3); z-index: 200; transition: all 0.2s; font-size: 22px; }
+  .slip-fab:hover { transform: scale(1.1); }
+  .slip-fab-badge { position: absolute; top: -4px; right: -4px; background: var(--red); color: white; border-radius: 50%; width: 20px; height: 20px; font-family: "DM Mono", monospace; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+  .slip-fab.hidden { display: none; }
+
+  /* STRIKEOUT PROP CARD */
+  .prop-pick-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 12px; animation: slideIn 0.4s ease both; cursor: default; }
+  .prop-pick-card.grade-a { border-color: rgba(0,255,136,0.35); }
+  .prop-pick-card.grade-b { border-color: rgba(255,208,96,0.35); }
+  .prop-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .prop-grade-badge { font-family: "Bebas Neue", sans-serif; font-size: 13px; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; }
+  .prop-grade-badge.a { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+  .prop-grade-badge.b { background: rgba(255,208,96,0.1); color: var(--gold); border: 1px solid rgba(255,208,96,0.3); }
+  .prop-pitcher-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .prop-pitcher-name { font-family: "Bebas Neue", sans-serif; font-size: 24px; letter-spacing: 1px; }
+  .prop-pitcher-team { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .prop-rec { text-align: right; }
+  .prop-rec-line { font-family: "Bebas Neue", sans-serif; font-size: 28px; letter-spacing: 1px; color: var(--sol); }
+  .prop-rec-label { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+  .prop-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .prop-metric { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; }
+  .prop-metric-val { font-family: "Bebas Neue", sans-serif; font-size: 16px; letter-spacing: 0.5px; color: var(--sol); }
+  .prop-metric-lbl { font-family: "DM Mono", monospace; font-size: 8px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  .prop-reasoning { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
+  .prop-summary { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; font-family: "DM Mono", monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.5px; line-height: 1.6; }
+
+  /* COMING SOON OVERLAY for Trends */
+  .coming-soon-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; padding: 40px 20px; }
+  .coming-soon-overlay .cs-icon { font-size: 56px; margin-bottom: 20px; }
+  .coming-soon-overlay .cs-title { font-family: "Bebas Neue", sans-serif; font-size: 32px; letter-spacing: 3px; color: var(--muted); margin-bottom: 12px; }
+  .coming-soon-overlay .cs-desc { font-size: 14px; color: var(--muted); line-height: 1.8; max-width: 320px; }
+
   /* ── GAME CARDS & DETAIL SCREEN ──────────────────────────────────────── */
   .games-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .game-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; cursor: pointer; transition: all 0.2s; animation: slideIn 0.3s ease both; position: relative; overflow: hidden; }
@@ -719,15 +791,16 @@
     </div>
   </div>
 
-  <div class="filter-tabs">
-    <div class="tab active" onclick="setTab(this,'ALL')">ALL PICKS</div>
-    <div class="tab" onclick="setTab(this,'HIGH')">HIGH CONF</div>
-    <div class="tab" onclick="setTab(this,'MEDIUM')">MEDIUM</div>
-    <div class="tab" onclick="setTab(this,'LOW')">LOW</div>
+  <!-- CATEGORY SWITCHER -->
+  <div class="category-switcher">
+    <div class="cat-tab active" onclick="setCategory('games', this)"><div class="cat-dot"></div>GAME EDGES</div>
+    <div class="cat-tab" onclick="setCategory('strikeouts', this)" id="catSO"><div class="cat-dot"></div>STRIKEOUTS</div>
+    <div class="cat-tab" onclick="setCategory('homeruns', this)" id="catHR"><div class="cat-dot"></div>HOME RUNS</div>
+    <div class="cat-tab" onclick="setCategory('hits', this)" id="catHIT"><div class="cat-dot"></div>HITS</div>
   </div>
 
   <div class="section-header">
-    <div class="section-title">TODAY'S GAMES</div>
+    <div class="section-title" id="picksPageTitle">TODAY'S GAMES</div>
     <div class="badge live">● LIVE ODDS</div>
   </div>
 
@@ -761,95 +834,16 @@
 <!-- PAGE: BANKROLL -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <main id="page-trends" class="page">
-
-  <!-- AI EDGE PICK OF THE DAY -->
-  <div style="margin-bottom:16px">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px">TRENDS</div>
-    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">AI ANALYSIS · SHARP MONEY · HOT PLAYERS</div>
+  <div class="coming-soon-overlay">
+    <div class="cs-icon">📈</div>
+    <div class="cs-title">TRENDS</div>
+    <div class="cs-desc">
+      Sharp money tracking, trending players, and AI market analysis.<br><br>
+      Launching once we have real season data.<br><br>
+      <span style="color:var(--accent)">Check back after Opening Day March 25th.</span>
+    </div>
+    <div class="coming-soon-badge" style="margin-top:24px">COMING SOON</div>
   </div>
-
-  <!-- PREMIUM PICKS OF THE DAY -->
-  <div style="margin-top:20px">
-    <div class="section-header">
-      <div class="section-title" style="color:var(--sol)">⚡ PREMIUM PICK</div>
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--sol);letter-spacing:1px;background:rgba(153,69,255,0.1);border:1px solid rgba(153,69,255,0.2);padding:4px 10px;border-radius:20px">CLAUDE OPUS</div>
-    </div>
-    <div id="premiumPickContent"></div>
-  </div>
-
-  <!-- ACCURACY TRACKER -->
-  <div class="accuracy-section" style="margin-top:20px">
-    <div class="section-header">
-      <div class="section-title">AGENT ACCURACY</div>
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px" id="accuracySeasonLabel">2026 SEASON</div>
-    </div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-family:'DM Mono',monospace;letter-spacing:0.5px">
-      Live tracking of every premium pick. Results updated after each game.
-    </div>
-
-    <!-- 3 TRACKER CARDS -->
-    <div class="tracker-grid">
-      <div class="tracker-card total">
-        <div class="tracker-label">TOTAL</div>
-        <div class="tracker-record total" id="totalRecord">0-0</div>
-        <div class="tracker-winrate" id="totalWinRate">0% win</div>
-        <div class="tracker-roi neutral" id="totalROI">+0.00u ROI</div>
-      </div>
-      <div class="tracker-card pick1">
-        <div class="tracker-label">🥇 PICK 1</div>
-        <div class="tracker-record pick1" id="pick1Record">0-0</div>
-        <div class="tracker-winrate" id="pick1WinRate">0% win</div>
-        <div class="tracker-roi neutral" id="pick1ROI">+0.00u ROI</div>
-      </div>
-      <div class="tracker-card pick2">
-        <div class="tracker-label">🥈 PICK 2</div>
-        <div class="tracker-record pick2" id="pick2Record">0-0</div>
-        <div class="tracker-winrate" id="pick2WinRate">0% win</div>
-        <div class="tracker-roi neutral" id="pick2ROI">+0.00u ROI</div>
-      </div>
-    </div>
-
-    <!-- RECENT PICKS -->
-    <div class="section-header">
-      <div class="section-title" style="font-size:14px">RECENT PICKS</div>
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)" id="totalPicksCount"></div>
-    </div>
-    <div id="recentPicksList">
-      <div class="accuracy-empty">
-        SEASON STARTS MARCH 25TH<br>
-        <span style="font-size:9px;margin-top:4px;display:block">Every premium pick will be tracked here</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- SHARP MONEY MOVEMENT -->
-  <div class="section-header" style="margin-top:20px">
-    <div class="section-title">SHARP MONEY</div>
-    <div class="badge live">● LIVE</div>
-  </div>
-
-  <div id="sharpMoneyList">
-    <div class="trends-placeholder-card">
-      <div class="placeholder-icon">💰</div>
-      <div class="placeholder-title">SHARP MONEY TRACKER</div>
-      <div class="placeholder-desc">Tracks where professional bettors are placing large wagers — coming with full season data April 1st.</div>
-    </div>
-  </div>
-
-  <!-- TRENDING PLAYERS -->
-  <div class="section-header" style="margin-top:20px">
-    <div class="section-title">TRENDING PLAYERS</div>
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">MLB</div>
-  </div>
-
-  <div id="trendingPlayersList">
-    <div class="trends-placeholder-card">
-      <div class="placeholder-icon">⚾</div>
-      <div class="placeholder-title">PLAYER TRENDS</div>
-      <div class="placeholder-desc">Hot and cold streaks, batting averages, ERA trends — powered by live MLB stats starting Opening Day.</div>
-    </div>
-  </div>
-
   <div class="bottom-spacer"></div>
 </main>
 
@@ -1200,6 +1194,39 @@
     <!-- Populated dynamically -->
   </div>
 </div>
+
+
+<!-- BET SLIP OVERLAY -->
+<div class="bet-slip-overlay" id="betSlipOverlay" onclick="closeBetSlip()"></div>
+
+<!-- BET SLIP -->
+<div class="bet-slip" id="betSlip">
+  <div class="bet-slip-handle"></div>
+  <div class="bet-slip-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="bet-slip-title">BET SLIP</div>
+      <div class="bet-slip-count" id="slipCount">0 PICKS</div>
+    </div>
+    <div class="bet-slip-clear" onclick="clearSlip()">CLEAR ALL</div>
+  </div>
+  <div class="bet-slip-body">
+    <div id="slipItems">
+      <div class="slip-empty">NO PICKS ADDED YET<br><span style="font-size:9px;margin-top:4px;display:block">TAP + ADD on any pick card</span></div>
+    </div>
+    <div id="slipActions" style="display:none">
+      <div class="slip-stake-row">
+        <input class="slip-stake-input" id="slipStake" type="number" placeholder="Stake per pick ($)" />
+      </div>
+      <button class="slip-log-btn" onclick="logAllSlipBets()">LOG ALL TO TRACKER</button>
+    </div>
+  </div>
+</div>
+
+<!-- FLOATING BET SLIP BUTTON -->
+<button class="slip-fab hidden" id="slipFab" onclick="openBetSlip()">
+  🎟️
+  <div class="slip-fab-badge" id="slipFabBadge">0</div>
+</button>
 
 <!-- EDIT PROFILE SCREEN -->
 <div class="edit-profile-screen" id="editProfileScreen">
@@ -2139,6 +2166,257 @@
     applyProfileSettings(settings);
   });
 
+  // ── CATEGORY SWITCHER ────────────────────────────────────────────────────
+  let currentCategory = 'games';
+
+  function setCategory(cat, el) {
+    currentCategory = cat;
+    document.querySelectorAll('.cat-tab').forEach(t => {
+      t.classList.remove('active', 'so', 'hr', 'hit');
+    });
+    el.classList.add('active');
+    if (cat === 'strikeouts') el.classList.add('so');
+    if (cat === 'homeruns')   el.classList.add('hr');
+    if (cat === 'hits')       el.classList.add('hit');
+
+    const titles = {
+      games: "TODAY'S GAMES",
+      strikeouts: "STRIKEOUT PROPS",
+      homeruns: "HOME RUN PROPS",
+      hits: "HITS PROPS",
+    };
+    document.getElementById('picksPageTitle').textContent = titles[cat] || "TODAY'S PICKS";
+
+    if (cat === 'games') {
+      renderAllGames();
+    } else if (cat === 'strikeouts') {
+      loadStrikeoutProps();
+    } else {
+      showComingSoonPicks(cat);
+    }
+  }
+
+  function showComingSoonPicks(cat) {
+    hideAll();
+    const labels = { homeruns: 'Home Run', hits: 'Hits' };
+    const list = document.getElementById('picksList');
+    list.className = '';
+    list.innerHTML = `
+      <div style="text-align:center;padding:50px 20px">
+        <div style="font-size:40px;margin-bottom:16px">${cat === 'homeruns' ? '💣' : '⚾'}</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">${labels[cat]?.toUpperCase()} PROPS</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.7">
+          Launching after 2 weeks of Opening Day data.<br>
+          The agent needs real season stats to calibrate.<br><br>
+          <span style="color:var(--accent)">Expected: ~April 7th</span>
+        </div>
+      </div>`;
+  }
+
+  // ── STRIKEOUT PROPS ───────────────────────────────────────────────────────
+  let strikeoutData = null;
+
+  async function loadStrikeoutProps() {
+    hideAll();
+    document.getElementById('loadingState').style.display = 'block';
+    const list = document.getElementById('picksList');
+    list.className = '';
+
+    try {
+      if (!strikeoutData) {
+        const res = await fetch(`${API_BASE}/api/props/strikeouts`);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        strikeoutData = await res.json();
+      }
+
+      hideAll();
+      list.innerHTML = '';
+
+      // Daily summary
+      if (strikeoutData.dailySummary) {
+        list.innerHTML += `<div class="prop-summary">📊 ${strikeoutData.dailySummary}</div>`;
+      }
+
+      const props = strikeoutData.props || [];
+      if (props.length === 0) {
+        list.innerHTML += `
+          <div class="empty-state visible">
+            <div class="empty-icon">⚾</div>
+            <div class="empty-title">NO K PROPS TODAY</div>
+            <div class="empty-msg">No strikeout props meet our edge threshold today.<br>Check back closer to first pitch when pitcher data is confirmed.</div>
+          </div>`;
+        return;
+      }
+
+      props.forEach((prop, i) => {
+        const card = buildStrikeoutCard(prop, i);
+        list.innerHTML += card;
+      });
+
+    } catch (err) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorMsg').innerHTML = `Strikeout agent error: ${err.message}`;
+      document.getElementById('errorState').classList.add('visible');
+    }
+  }
+
+  function buildStrikeoutCard(prop, i) {
+    const gradeClass = prop.grade?.startsWith('A') ? 'grade-a' : 'grade-b';
+    const gradeBadgeClass = prop.grade?.startsWith('A') ? 'a' : 'b';
+    const m = prop.keyMetrics || {};
+    const pickStr = `${prop.pitcher} ${prop.recommendation} ${prop.propLine} K`;
+    const slipKey = `so_${i}`;
+
+    return `
+      <div class="prop-pick-card ${gradeClass}" style="animation-delay:${i*0.08}s">
+        <div class="prop-header">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px">
+            ⚾ ${prop.game} · STRIKEOUT PROP
+          </div>
+          <div class="prop-grade-badge ${gradeBadgeClass}">${prop.grade} · ${prop.confidence}/100</div>
+        </div>
+        <div class="prop-pitcher-row">
+          <div>
+            <div class="prop-pitcher-name">${prop.pitcher}</div>
+            <div class="prop-pitcher-team">${prop.team} vs ${prop.opponent}</div>
+          </div>
+          <div class="prop-rec">
+            <div class="prop-rec-line">${prop.recommendation} ${prop.propLine}</div>
+            <div class="prop-rec-label">STRIKEOUTS · ${prop.edge}</div>
+          </div>
+        </div>
+        <div class="prop-metrics">
+          <div class="prop-metric">
+            <div class="prop-metric-val">${m.whiffRate || '—'}</div>
+            <div class="prop-metric-lbl">WHIFF%</div>
+          </div>
+          <div class="prop-metric">
+            <div class="prop-metric-val">${m.kPercent || '—'}</div>
+            <div class="prop-metric-lbl">K%</div>
+          </div>
+          <div class="prop-metric">
+            <div class="prop-metric-val">${m.oppKPercent || '—'}</div>
+            <div class="prop-metric-lbl">OPP K%</div>
+          </div>
+        </div>
+        <div class="prop-reasoning">${prop.reasoning}</div>
+        ${prop.premium_insight ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--sol);margin-bottom:10px;padding:8px;background:rgba(153,69,255,0.06);border-radius:8px">💡 ${prop.premium_insight}</div>` : ''}
+        ${prop.warning ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);margin-bottom:10px">⚠️ ${prop.warning}</div>` : ''}
+        <div class="add-to-slip-btn" id="slip-${slipKey}" onclick="addToSlip('${slipKey}', '${pickStr.replace(/'/g,"\'")}', '${prop.edge}', 'STRIKEOUT PROP')">
+          + ADD TO SLIP
+        </div>
+      </div>`;
+  }
+
+  // ── BET SLIP ──────────────────────────────────────────────────────────────
+  let betSlipItems = [];
+
+  function openBetSlip() {
+    document.getElementById('betSlip').classList.add('active');
+    document.getElementById('betSlipOverlay').classList.add('active');
+  }
+
+  function closeBetSlip() {
+    document.getElementById('betSlip').classList.remove('active');
+    document.getElementById('betSlipOverlay').classList.remove('active');
+  }
+
+  function addToSlip(key, pick, edge, betType) {
+    // Check if already added
+    if (betSlipItems.find(i => i.key === key)) {
+      removeFromSlip(key);
+      return;
+    }
+
+    betSlipItems.push({ key, pick, edge, betType });
+    updateSlipUI();
+
+    const btn = document.getElementById(`slip-${key}`);
+    if (btn) {
+      btn.classList.add('added');
+      btn.textContent = '✓ ADDED';
+    }
+
+    showToast(`Added to slip · ${betSlipItems.length} pick${betSlipItems.length > 1 ? 's' : ''}`);
+  }
+
+  function removeFromSlip(key) {
+    betSlipItems = betSlipItems.filter(i => i.key !== key);
+    updateSlipUI();
+    const btn = document.getElementById(`slip-${key}`);
+    if (btn) {
+      btn.classList.remove('added');
+      btn.textContent = '+ ADD TO SLIP';
+    }
+  }
+
+  function clearSlip() {
+    betSlipItems = [];
+    updateSlipUI();
+    document.querySelectorAll('.add-to-slip-btn').forEach(btn => {
+      btn.classList.remove('added');
+      btn.textContent = '+ ADD TO SLIP';
+    });
+  }
+
+  function updateSlipUI() {
+    const count = betSlipItems.length;
+    document.getElementById('slipCount').textContent = `${count} PICK${count !== 1 ? 'S' : ''}`;
+    document.getElementById('slipFabBadge').textContent = count;
+
+    const fab = document.getElementById('slipFab');
+    fab.classList.toggle('hidden', count === 0);
+
+    const actionsEl = document.getElementById('slipActions');
+    actionsEl.style.display = count > 0 ? 'block' : 'none';
+
+    const itemsEl = document.getElementById('slipItems');
+    if (count === 0) {
+      itemsEl.innerHTML = '<div class="slip-empty">NO PICKS ADDED YET<br><span style="font-size:9px;margin-top:4px;display:block">TAP + ADD on any pick card</span></div>';
+      return;
+    }
+
+    itemsEl.innerHTML = betSlipItems.map(item => `
+      <div class="slip-item">
+        <div class="slip-item-left">
+          <div class="slip-item-pick">${item.pick}</div>
+          <div class="slip-item-meta">${item.betType} · ${item.edge} edge</div>
+        </div>
+        <button class="slip-item-remove" onclick="removeFromSlip('${item.key}')">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function logAllSlipBets() {
+    const stake = parseFloat(document.getElementById('slipStake').value) || 0;
+    if (stake <= 0) { showToast('Enter a stake amount'); return; }
+
+    const bankData = getBankrollData();
+    if (!bankData) { showToast('Set your bankroll first'); return; }
+
+    let logged = 0;
+    betSlipItems.forEach(item => {
+      bankData.bets.push({
+        pick: item.pick,
+        amount: stake,
+        odds: 'N/A',
+        book: item.betType,
+        result: 'pending',
+        source: 'manual',
+        date: new Date().toISOString(),
+      });
+      logged++;
+    });
+
+    saveBankrollData(bankData);
+    showToast(`✅ ${logged} bet${logged > 1 ? 's' : ''} logged to tracker!`);
+    clearSlip();
+    closeBetSlip();
+  }
+
+  // Update buildGameCard to add "Add to Slip" button
+  const _origBuildGameCard = buildGameCard;
+
   // ── ALL GAMES DISPLAY ────────────────────────────────────────────────────
   let allGamesData = [];  // full raw games from API
   let allPicksData = [];  // analyzed picks
@@ -2268,7 +2546,25 @@
         : `<div class="game-card-no-edge">TAP FOR ANALYSIS</div>`
       }
     `;
-    card.addEventListener('click', () => openGameDetail(game, bestPick));
+    // Add to slip button
+    if (hasEdge) {
+      const slipKey = `game_${homeAbbr}_${awayAbbr}`;
+      const pickStr = bestPick.pick;
+      const slipBtn = document.createElement('div');
+      slipBtn.className = 'add-to-slip-btn';
+      slipBtn.id = `slip-${slipKey}`;
+      slipBtn.innerHTML = '+ ADD TO SLIP';
+      slipBtn.onclick = (e) => {
+        e.stopPropagation();
+        addToSlip(slipKey, pickStr, `+${bestPick.edgePct}%`, 'GAME EDGE');
+      };
+      card.appendChild(slipBtn);
+    }
+
+    card.addEventListener('click', (e) => {
+      if (e.target.classList.contains('add-to-slip-btn')) return;
+      openGameDetail(game, bestPick);
+    });
     return card;
   }
 

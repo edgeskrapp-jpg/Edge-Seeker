@@ -17,6 +17,7 @@ const fetch = require("node-fetch");
 const { analyzePicks } = require("./edgeAnalyzer");
 const { calculateBetPoints, getAccuracyBonus } = require("./pointsConfig");
 const { getFreePick, getPremiumPick, invalidateCache } = require("./agentRouter");
+const { getStrikeoutProps } = require("./strikeoutAgent");
 const { updateMLBStats } = require("./cron");
 const {
   getUser, upsertUser,
@@ -52,6 +53,7 @@ app.use(
 const cache = {
   picks: { data: null, fetchedAt: null },
   raw: { data: null, fetchedAt: null },
+  strikeouts: { data: null, date: null },
 };
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -706,6 +708,59 @@ app.get("/api/stats/teams", async (req, res) => {
 
 
 
+
+// ─── STRIKEOUT PROPS ROUTE ───────────────────────────────────────────────────
+
+/**
+ * GET /api/props/strikeouts
+ * Returns today's best strikeout prop opportunities
+ * Uses Claude Opus + Baseball Savant data
+ * Cached once per day
+ */
+app.get("/api/props/strikeouts", async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Return cache if valid
+    if (cache.strikeouts.data && cache.strikeouts.date === today) {
+      return res.json({ ...cache.strikeouts.data, cached: true });
+    }
+
+    // Get raw games
+    let games = [];
+    if (isCacheValid(cache.raw)) {
+      games = cache.raw.data || [];
+    } else {
+      const { games: rawGames } = await fetchMLBOdds();
+      games = rawGames || [];
+      cache.raw = { data: games, fetchedAt: Date.now() };
+    }
+
+    if (games.length === 0) {
+      return res.json({
+        props: [],
+        dailySummary: 'No MLB games today.',
+        cached: false,
+      });
+    }
+
+    // Get enriched data (pitcher stats + Savant)
+    const { enrichPicks } = require("./mlbDataEnricher");
+    const enrichedData = await enrichPicks([]);
+
+    // Run strikeout agent
+    console.log('⚾ Running Strikeout Agent...');
+    const result = await getStrikeoutProps(games, enrichedData);
+
+    cache.strikeouts = { data: result, date: today };
+    res.json({ ...result, cached: false, fetchedAt: new Date().toISOString() });
+
+  } catch (err) {
+    console.error("❌ /api/props/strikeouts error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── ELO ROUTES ──────────────────────────────────────────────────────────────
 
 const { OPENING_DAY_ELO, updateEloFromResults, getEloTier, AL_TEAMS, NL_TEAMS, DIVISIONS } = require("./eloSystem");
@@ -1241,15 +1296,7 @@ app.get("/admin/refresh-agent", (req, res) => {
     <a href="/admin?secret=${secret}" style="color:#00E5FF">← Back to Admin</a>
   </body></html>`);
 });
-const path = require('path');
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
-});
-
-app.get('/edge-seeker.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
-});
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
