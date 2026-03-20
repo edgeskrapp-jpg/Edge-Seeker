@@ -558,6 +558,24 @@
   .tracker-source-badge.polymarket { background: rgba(123,97,255,0.1); color: var(--accent2); border: 1px solid rgba(123,97,255,0.2); }
   .tracker-source-badge.manual     { background: rgba(90,106,133,0.1); color: var(--muted); border: 1px solid var(--border); }
 
+  /* ── EDGESEEKER MASCOT TAB ─────────────────────────────────────────────── */
+  .es-briefing-card { background: linear-gradient(135deg, rgba(0,229,255,0.06), rgba(123,97,255,0.08)); border: 1px solid rgba(0,229,255,0.25); border-radius: 20px; padding: 20px; margin-bottom: 20px; position: relative; overflow: hidden; }
+  .es-briefing-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2), var(--sol)); }
+  .es-briefing-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .es-briefing-badge { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--accent); background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.25); padding: 4px 10px; border-radius: 20px; }
+  .es-briefing-date { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+  .es-briefing-msg { font-size: 13px; color: var(--text); line-height: 1.8; font-style: italic; }
+  .es-streak-msg { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); text-align: center; padding: 12px 16px; letter-spacing: 0.5px; line-height: 1.7; background: rgba(0,229,255,0.05); border: 1px solid rgba(0,229,255,0.15); border-radius: 12px; margin-top: 12px; }
+  .es-take { font-size: 12px; color: var(--accent); font-style: italic; padding: 8px 14px; margin-top: 4px; margin-bottom: 8px; border-left: 2px solid rgba(0,229,255,0.3); background: rgba(0,229,255,0.04); border-radius: 0 8px 8px 0; }
+  .es-method-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px; margin-bottom: 14px; }
+  .es-method-header { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; margin-bottom: 16px; }
+  .es-layer { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .es-layer:last-child { border-bottom: none; }
+  .es-layer-title { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 1px; margin-bottom: 4px; }
+  .es-layer-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .es-signoff { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: center; letter-spacing: 1px; line-height: 1.9; padding: 20px 0; border-top: 1px solid var(--border); margin-top: 8px; }
+  .es-signoff strong { color: var(--accent); }
+
   /* BOTTOM NAV */
   .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(8,11,16,0.95); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 10px 0 24px; z-index: 100; }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 0; transition: all 0.2s; }
@@ -1256,6 +1274,89 @@
   </div>
 </div>
 
+<!-- PAGE: EDGESEEKER MASCOT -->
+<main id="page-edgeseeker" class="page">
+
+  <!-- DAILY BRIEFING CARD -->
+  <div class="es-briefing-card">
+    <div class="es-briefing-header">
+      <div class="es-briefing-badge">🤖 DAILY BRIEFING</div>
+      <div class="es-briefing-date" id="esBriefingDate">—</div>
+    </div>
+    <div class="es-briefing-msg" id="esBriefingMsg">Loading briefing...</div>
+  </div>
+
+  <!-- SEASON STATS -->
+  <div class="section-header">
+    <div class="section-title">SEASON ACCURACY</div>
+    <div class="badge" style="background:rgba(0,229,255,0.08);color:var(--accent);border:1px solid rgba(0,229,255,0.2);font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:20px;letter-spacing:1px" id="esTotalPicksCount">— TOTAL PICKS</div>
+  </div>
+  <div class="tracker-grid">
+    <div class="tracker-card total">
+      <div class="tracker-label">OVERALL</div>
+      <div class="tracker-record total" id="totalRecord">0-0</div>
+      <div class="tracker-winrate" id="totalWinRate">—% win</div>
+      <div class="tracker-roi neutral" id="totalROI">—u ROI</div>
+    </div>
+    <div class="tracker-card pick1">
+      <div class="tracker-label">PICK 1</div>
+      <div class="tracker-record pick1" id="pick1Record">0-0</div>
+      <div class="tracker-winrate" id="pick1WinRate">—% win</div>
+      <div class="tracker-roi neutral" id="pick1ROI">—u ROI</div>
+    </div>
+    <div class="tracker-card pick2">
+      <div class="tracker-label">PICK 2</div>
+      <div class="tracker-record pick2" id="pick2Record">0-0</div>
+      <div class="tracker-winrate" id="pick2WinRate">—% win</div>
+      <div class="tracker-roi neutral" id="pick2ROI">—u ROI</div>
+    </div>
+  </div>
+
+  <!-- STREAK PERSONALITY -->
+  <div class="es-streak-msg" id="esStreakMsg">📊 No results yet. Every model starts here. Judge me by the end of the season not the beginning.</div>
+
+  <!-- EDGESEEKER'S TAKE — RECENT PICKS FEED -->
+  <div class="section-header" style="margin-top:20px">
+    <div class="section-title">RECENT PICKS</div>
+  </div>
+  <div id="esRecentPicksList">
+    <div class="accuracy-empty">SEASON STARTS MARCH 25TH<br><span style="font-size:9px;margin-top:4px;display:block">Every premium pick will be tracked here with my reasoning</span></div>
+  </div>
+
+  <!-- METHODOLOGY CARD -->
+  <div class="es-method-card" style="margin-top:20px">
+    <div class="es-method-header">MY METHODOLOGY</div>
+    <div class="es-layer">
+      <div class="es-layer-title">LAYER 1 — POISSON MODEL</div>
+      <div class="es-layer-desc">My foundation. I calculate how often teams score and let the math find where books are wrong.</div>
+    </div>
+    <div class="es-layer">
+      <div class="es-layer-title">LAYER 2 — PARK FACTORS</div>
+      <div class="es-layer-desc">Coors Field is not the same as Oracle Park. I adjust for every stadium's unique environment.</div>
+    </div>
+    <div class="es-layer">
+      <div class="es-layer-title">LAYER 3 — BASEBALL SAVANT</div>
+      <div class="es-layer-desc">Whiff rates don't lie. If a pitcher misses bats at 31% I want him facing a high chase-rate lineup.</div>
+    </div>
+    <div class="es-layer">
+      <div class="es-layer-title">LAYER 4 — ELO RATINGS</div>
+      <div class="es-layer-desc">Momentum is real. A team that beat three good opponents last week is not the same team from three weeks ago.</div>
+    </div>
+    <div class="es-layer">
+      <div class="es-layer-title">LAYER 5 — CLAUDE OPUS</div>
+      <div class="es-layer-desc">I synthesize all four layers and ask — does everything point the same direction? If yes I act. If not I pass.</div>
+    </div>
+  </div>
+
+  <!-- SIGN-OFF -->
+  <div class="es-signoff">
+    <strong>— EDGESEEKER, EdgeSKR AI Probability Model</strong><br>
+    Built on Solana · 2026 MLB Season · Statistical analysis only
+  </div>
+
+  <div class="bottom-spacer"></div>
+</main>
+
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <div class="nav-item active" onclick="showPage('picks', this)"><div class="nav-icon">⚡</div><div class="nav-label">Picks</div></div>
@@ -1263,6 +1364,7 @@
   <div class="nav-item" onclick="showPage('games', this)"><div class="nav-icon">🏟️</div><div class="nav-label">Tracker</div></div>
   <div class="nav-item" onclick="showPage('leaderboard', this)"><div class="nav-icon">🏆</div><div class="nav-label">Leaders</div></div>
   <div class="nav-item" onclick="showPage('profile', this)"><div class="nav-icon">👤</div><div class="nav-label">Profile</div></div>
+  <div class="nav-item" onclick="showPage('edgeseeker', this)"><div class="nav-icon">🤖</div><div class="nav-label">EdgeAI</div></div>
 </div>
 
 <script>
@@ -1300,6 +1402,7 @@
     if (name === 'leaderboard') { loadEloRatings(); }
     if (name === 'games') renderTrackerBets();
     if (name === 'trends') loadTrends();
+    if (name === 'edgeseeker') loadEdgeseekerPage();
   }
 
   // ── PICKS ─────────────────────────────────────────────────────────────────
@@ -3366,6 +3469,146 @@
       `;
       listEl.appendChild(el);
     });
+  }
+
+  // ── EDGESEEKER MASCOT PAGE ────────────────────────────────────────────────
+  async function loadEdgeseekerPage() {
+    // Set today's date
+    const today = new Date();
+    document.getElementById('esBriefingDate').textContent =
+      today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+
+    // Determine daily briefing based on current picks
+    try {
+      const picksRes = await fetch(`${API_BASE}/api/picks`);
+      const picksData = await picksRes.json();
+      const picks = picksData.picks || [];
+
+      let briefingMsg;
+      if (picks.length === 0) {
+        briefingMsg = "I've been running probability models since January. 2026 rosters are loaded — the Dodgers added Tucker to pair with Ohtani and Freeman. That lineup is historically good. I'll be watching closely for spots where books underprice opponents against their bullpen in the late innings. Opening Day March 25th. I'll be ready.";
+      } else {
+        const allPass = picks.every(p => !p || p.grade === 'PASS' || p.pick === 'NO BET');
+        const hasGradeA = picks.some(p => p.grade && p.grade.startsWith('A'));
+        const hasGradeB = picks.some(p => p.grade && p.grade.startsWith('B'));
+
+        if (allPass) {
+          briefingMsg = "I've scanned today's slate. The data doesn't support a high-confidence edge right now. I'd rather show you nothing than show you something weak. Check back closer to first pitch — lines sharpen and pitcher confirmations change the picture significantly.";
+        } else if (hasGradeA) {
+          briefingMsg = "I found something today. The numbers are clean on this one — multiple data points confirming the same direction. When Poisson, Elo, and statcast all agree I pay attention. Grade A means I'd put this in my top 5% of opportunities this season.";
+        } else if (hasGradeB) {
+          briefingMsg = "Solid opportunity today. Not my highest conviction but the edge is real and the data supports it. Size accordingly — Kelly says don't overbet a B grade.";
+        } else {
+          briefingMsg = "I've scanned today's slate. The data doesn't support a high-confidence edge right now. I'd rather show you nothing than show you something weak. Check back closer to first pitch — lines sharpen and pitcher confirmations change the picture significantly.";
+        }
+      }
+      document.getElementById('esBriefingMsg').textContent = briefingMsg;
+    } catch (err) {
+      document.getElementById('esBriefingMsg').textContent = "I've been running probability models since January. 2026 rosters are loaded — the Dodgers added Tucker to pair with Ohtani and Freeman. That lineup is historically good. I'll be watching closely for spots where books underprice opponents against their bullpen in the late innings. Opening Day March 25th. I'll be ready.";
+    }
+
+    // Fetch accuracy data for stats, streak, and recent picks
+    try {
+      const accRes = await fetch(`${API_BASE}/api/accuracy`);
+      const accData = await accRes.json();
+
+      updateTrackerCard('total', accData.total);
+      updateTrackerCard('pick1', accData.pick1);
+      updateTrackerCard('pick2', accData.pick2);
+
+      const totalPicks = accData.totalPicks || 0;
+      document.getElementById('esTotalPicksCount').textContent = `${totalPicks} TOTAL PICKS`;
+
+      const recent = accData.recent || [];
+      renderEsRecentPicks(recent);
+      renderStreakMessage(recent);
+    } catch (err) {
+      console.error('EdgeSeeker page error:', err);
+    }
+  }
+
+  function renderStreakMessage(picks) {
+    const el = document.getElementById('esStreakMsg');
+    const resolved = picks.filter(p => p.result === 'win' || p.result === 'loss');
+
+    if (resolved.length === 0) {
+      el.textContent = '📊 No results yet. Every model starts here. Judge me by the end of the season not the beginning.';
+      return;
+    }
+
+    // Count current streak from most recent picks
+    let streak = 0;
+    const streakType = resolved[0].result;
+    for (const p of resolved) {
+      if (p.result === streakType) streak++;
+      else break;
+    }
+
+    let msg;
+    if (streakType === 'win' && streak >= 5) {
+      msg = "🔥 This is what happens when all the data layers align. Don't chase — size stays consistent.";
+    } else if (streakType === 'win' && streak >= 3) {
+      msg = "📈 I'm seeing the market clearly right now. Stay disciplined.";
+    } else if (streakType === 'loss' && streak >= 5) {
+      msg = "🧊 I'm reviewing my models. This variance is outside normal range. Reducing to highest confidence picks only.";
+    } else if (streakType === 'loss' && streak >= 3) {
+      msg = "📉 Variance happens. My edge calculations haven't changed. Trust the process.";
+    } else {
+      const wins = resolved.filter(p => p.result === 'win').length;
+      const losses = resolved.filter(p => p.result === 'loss').length;
+      if (wins > losses) {
+        msg = "📈 I'm seeing the market clearly right now. Stay disciplined.";
+      } else if (losses > wins) {
+        msg = "📉 Variance happens. My edge calculations haven't changed. Trust the process.";
+      } else {
+        msg = "📊 Even record. I track every data point. The edge compounds over a full season.";
+      }
+    }
+    el.textContent = msg;
+  }
+
+  function renderEsRecentPicks(picks) {
+    const container = document.getElementById('esRecentPicksList');
+    if (!picks || picks.length === 0) {
+      container.innerHTML = `
+        <div class="accuracy-empty">
+          SEASON STARTS MARCH 25TH<br>
+          <span style="font-size:9px;margin-top:4px;display:block">Every premium pick will be tracked here with my reasoning</span>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = picks.map((pick, i) => {
+      const resultIcon = pick.result === 'win' ? 'W' :
+                         pick.result === 'loss' ? 'L' :
+                         pick.result === 'push' ? 'P' : '⏳';
+      const rankLabel = pick.rank === 1 ? '🥇 PICK 1' : '🥈 PICK 2';
+      const betTypeColor = pick.bet_type === 'MONEYLINE' ? 'var(--accent)' :
+                           pick.bet_type === 'OVER/UNDER' ? 'var(--gold)' : 'var(--sol)';
+      const date = pick.pick_date ? new Date(pick.pick_date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+      const takeHtml = pick.notes
+        ? `<div class="es-take">My read: ${pick.notes}</div>`
+        : '';
+
+      return `
+        <div style="animation-delay:${i*0.05}s">
+          <div class="recent-pick-row">
+            <div class="recent-pick-result ${pick.result}">${resultIcon}</div>
+            <div class="recent-pick-info">
+              <div class="recent-pick-name">${pick.pick}</div>
+              <div class="recent-pick-meta">
+                ${pick.game} · ${pick.odds || ''} · ${pick.edge || ''}
+                <span style="color:${betTypeColor};margin-left:4px">${pick.bet_type}</span>
+              </div>
+            </div>
+            <div class="recent-pick-rank">
+              <div>${rankLabel}</div>
+              <div style="margin-top:2px;color:var(--muted)">${date}</div>
+            </div>
+          </div>
+          ${takeHtml}
+        </div>`;
+    }).join('');
   }
 
   // ── AUTO-REFRESH ──────────────────────────────────────────────────────────
