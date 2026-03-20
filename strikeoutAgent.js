@@ -14,6 +14,7 @@
 
 const fetch = require("node-fetch");
 const { fetchPitcherStatcast, fetchTeamBattingStatcast } = require("./mlbDataEnricher");
+const { TEAM_NAME_MAP } = require("./mlbStats");
 
 // Ballpark K factors (above 1.0 = pitcher friendly, below = hitter friendly)
 const BALLPARK_K_FACTORS = {
@@ -98,10 +99,8 @@ Return up to 5 props. Only recommend when edge is clear. Quality over quantity.`
 function buildStrikeoutPrompt(games, enrichedData) {
   const season = new Date().getFullYear();
   const gameData = games.map(g => {
-    const homeAbbr = Object.keys(require('./mlbStats').TEAM_NAME_MAP).includes(g.home_team)
-      ? require('./mlbStats').TEAM_NAME_MAP[g.home_team] || g.home_team.split(' ').pop().slice(0,3).toUpperCase()
-      : g.home_team.split(' ').pop().slice(0,3).toUpperCase();
-    const awayAbbr = require('./mlbStats').TEAM_NAME_MAP?.[g.away_team] || g.away_team.split(' ').pop().slice(0,3).toUpperCase();
+    const homeAbbr = TEAM_NAME_MAP[g.home_team] || g.home_team.split(' ').pop().slice(0,3).toUpperCase();
+    const awayAbbr = TEAM_NAME_MAP[g.away_team] || g.away_team.split(' ').pop().slice(0,3).toUpperCase();
     const gameKey = `${awayAbbr}_${homeAbbr}`;
     const enriched = enrichedData[gameKey] || {};
     const hp = enriched.homePitcher || {};

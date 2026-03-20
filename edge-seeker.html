@@ -2187,6 +2187,12 @@
     };
     document.getElementById('picksPageTitle').textContent = titles[cat] || "TODAY'S PICKS";
 
+    // Always fully reset the picks container first
+    const list = document.getElementById('picksList');
+    list.innerHTML = '';
+    list.className = cat === 'games' ? 'games-grid' : '';
+    hideAll();
+
     if (cat === 'games') {
       renderAllGames();
     } else if (cat === 'strikeouts') {
@@ -2197,10 +2203,8 @@
   }
 
   function showComingSoonPicks(cat) {
-    hideAll();
     const labels = { homeruns: 'Home Run', hits: 'Hits' };
     const list = document.getElementById('picksList');
-    list.className = '';
     list.innerHTML = `
       <div style="text-align:center;padding:50px 20px">
         <div style="font-size:40px;margin-bottom:16px">${cat === 'homeruns' ? '💣' : '⚾'}</div>
@@ -2217,10 +2221,10 @@
   let strikeoutData = null;
 
   async function loadStrikeoutProps() {
-    hideAll();
     document.getElementById('loadingState').style.display = 'block';
     const list = document.getElementById('picksList');
     list.className = '';
+    list.innerHTML = '';
 
     try {
       if (!strikeoutData) {
@@ -2454,6 +2458,9 @@
 
   function renderAllGames() {
     hideAll();
+    const list = document.getElementById('picksList');
+    list.className = 'games-grid';
+    list.innerHTML = '';
 
     // Build a map of game edges by team
     const edgeMap = {};
@@ -2470,9 +2477,6 @@
 
     // Use raw games if available, else build from picks
     const games = allGamesData.length > 0 ? allGamesData : buildGamesFromPicks(allPicksData);
-
-    const list = document.getElementById('picksList');
-    list.innerHTML = '';
 
     games.forEach((game, i) => {
       const key = `${game.home_team}_${game.away_team}`;
