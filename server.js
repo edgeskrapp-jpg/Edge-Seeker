@@ -104,6 +104,37 @@ async function fetchQuota() {
   };
 }
 
+// ─── PICK QUALITY FILTERS ────────────────────────────────────────────────────
+
+/**
+ * applyPickFilters(picks)
+ * Post-processes raw analyzePicks output with quality adjustments:
+ *  1. Coors Field adjustment  — reduce confidence 20pts for COL home games
+ *  2. Model anomaly flag      — warn when edgePct > 15%
+ *  3. Minimum confidence gate — drop picks below 40
+ */
+function applyPickFilters(picks) {
+  return picks
+    .map(pick => {
+      const adjusted = { ...pick };
+
+      // 1. Coors Field adjustment
+      if (adjusted.homeTeam === "Colorado Rockies") {
+        adjusted.confidence = Math.max(0, adjusted.confidence - 20);
+        adjusted.note = "Coors Field effect — inflated run environment, model may overestimate edge";
+      }
+
+      // 2. Model anomaly flag for suspiciously high edge
+      if (adjusted.edgePct > 15) {
+        adjusted.warning = "MODEL ANOMALY - verify before tracking";
+      }
+
+      return adjusted;
+    })
+    // 3. Minimum confidence threshold
+    .filter(pick => pick.confidence >= 40);
+}
+
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 
 /**
@@ -170,7 +201,7 @@ app.get("/api/picks", async (req, res) => {
       });
     }
 
-    const picks = analyzePicks(games);
+    const picks = applyPickFilters(analyzePicks(games));
 
     const responseData = {
       picks,
@@ -456,7 +487,7 @@ app.get("/api/agent/free", async (req, res) => {
       picks = cache.picks.data?.picks || [];
     } else {
       const { games } = await fetchMLBOdds();
-      picks = games?.length ? analyzePicks(games) : [];
+      picks = games?.length ? applyPickFilters(analyzePicks(games)) : [];
     }
 
     const pick = await getFreePick(picks);
@@ -508,7 +539,7 @@ app.get("/api/agent/premium", async (req, res) => {
       picks = cache.picks.data?.picks || [];
     } else {
       const { games } = await fetchMLBOdds();
-      picks = games?.length ? analyzePicks(games) : [];
+      picks = games?.length ? applyPickFilters(analyzePicks(games)) : [];
     }
 
     const pick = await getPremiumPick(picks);
