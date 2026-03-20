@@ -163,9 +163,39 @@ function analyzeGame(game) {
     ? "⚠️ Coors Field: extreme altitude distorts all Poisson models — confidence heavily penalized"
     : null;
 
+  /**
+   * Apply extreme edge filters to a pick's confidence and warning.
+   * edgeDecimal: raw edge as decimal (e.g. 0.21)
+   * probGap: trueWinProb - bookImpliedProb as decimal (e.g. 0.27)
+   * Returns { confidence, warning }
+   */
+  function applyExtremeEdgeFilters(edgeDecimal, probGap, baseConfidence, existingWarning) {
+    let confidence = baseConfidence;
+    let warning = existingWarning;
+
+    // Large prob gap usually means bad data or model error, not real edge
+    if (probGap > 0.25) {
+      confidence -= 40;
+    }
+
+    // Edge above 20% is almost certainly a model error — cap and flag it
+    if (edgeDecimal > 0.20) {
+      confidence = Math.min(confidence, 30);
+      warning = "EXTREME EDGE - likely model error, do not track";
+    }
+
+    return { confidence: Math.max(0, confidence), warning };
+  }
+
   // Home team pick
   if (homeEdge >= MIN_EDGE_THRESHOLD) {
-    const baseConfidence = confidenceScore(homeEdge, homeKelly);
+    const baseConfidence = confidenceScore(homeEdge, homeKelly) - coorsConfidencePenalty;
+    const { confidence, warning } = applyExtremeEdgeFilters(
+      homeEdge,
+      homeWin - bookTrueHome,
+      baseConfidence,
+      coorsWarning || parkWarning || null
+    );
     picks.push({
       side: "home",
       team: game.home_team,
@@ -180,8 +210,8 @@ function analyzeGame(game) {
       bookImpliedProb: Math.round(bookTrueHome * 1000) / 10,
       edgePct: Math.round(homeEdge * 1000) / 10,          // e.g. 8.4
       kellyPct: Math.round(homeKelly * 1000) / 10,        // e.g. 3.2
-      confidence: Math.max(0, baseConfidence - coorsConfidencePenalty),
-      warning: coorsWarning || parkWarning || null,
+      confidence,
+      warning,
       bookmaker,
       gameTime: game.commence_time,
       homeTeam: game.home_team,
@@ -193,7 +223,13 @@ function analyzeGame(game) {
 
   // Away team pick
   if (awayEdge >= MIN_EDGE_THRESHOLD) {
-    const baseConfidence = confidenceScore(awayEdge, awayKelly);
+    const baseConfidence = confidenceScore(awayEdge, awayKelly) - coorsConfidencePenalty;
+    const { confidence, warning } = applyExtremeEdgeFilters(
+      awayEdge,
+      awayWin - bookTrueAway,
+      baseConfidence,
+      coorsWarning || parkWarning || null
+    );
     picks.push({
       side: "away",
       team: game.away_team,
@@ -208,8 +244,8 @@ function analyzeGame(game) {
       bookImpliedProb: Math.round(bookTrueAway * 1000) / 10,
       edgePct: Math.round(awayEdge * 1000) / 10,
       kellyPct: Math.round(awayKelly * 1000) / 10,
-      confidence: Math.max(0, baseConfidence - coorsConfidencePenalty),
-      warning: coorsWarning || parkWarning || null,
+      confidence,
+      warning,
       bookmaker,
       gameTime: game.commence_time,
       homeTeam: game.home_team,
