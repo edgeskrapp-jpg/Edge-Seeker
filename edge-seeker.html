@@ -1928,7 +1928,7 @@
     clearPicksContainer(cat === 'games' ? 'games-grid' : '');
 
     if (cat === 'games') {
-      renderAllGames();
+      loadAllGames();
     } else if (cat === 'strikeouts') {
       loadStrikeoutProps();
     } else {
