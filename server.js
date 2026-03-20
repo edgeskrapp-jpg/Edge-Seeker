@@ -386,6 +386,22 @@ const FREE_ACCESS_WALLETS = [
 const PREMIUM_PRICE_SOL = 0.01; // 0.01 SOL per day
 const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
 
+const OPERATIONS_WALLET = "5r2Pz7A3EYsvSZrusoWwkEiaMWcMXUEn9CAxc8p1qDrB";
+const PRIZE_POOL_WALLET = "ATjh5UUu8bof58mGRECHcZdYGVxYLVKvxAR3Nhy6vUWv";
+const PRIZE_POOL_ENABLED = false; // Toggle to true when legal clears
+
+// Split config - easy to update
+const SPLIT_CONFIG = {
+  operations: 0.80,   // 80% to operations
+  prizePool: 0.00,    // 0% until enabled
+  treasury: 0.20,     // 20% stays in revenue wallet as treasury
+};
+
+// When PRIZE_POOL_ENABLED is true use this split instead:
+// operations: 0.70
+// prizePool: 0.20
+// treasury: 0.10
+
 /**
  * Check if a wallet has paid today
  * Looks for a SOL transfer to the revenue wallet in the last 24 hours
@@ -472,6 +488,85 @@ async function verifyPayment(walletAddress) {
   }
 }
 
+// ─── WALLET SPLIT ────────────────────────────────────────────────────────────
+
+/**
+ * splitPayment(amountSol, payerWallet)
+ * Best-effort: splits an incoming SOL payment from REVENUE_WALLET to configured destinations.
+ * Treasury portion stays in REVENUE_WALLET (no transfer needed).
+ * Requires REVENUE_WALLET_PRIVATE_KEY env var (base58 encoded).
+ */
+async function splitPayment(amountSol, payerWallet) {
+  try {
+    const { Connection, PublicKey, Transaction, SystemProgram, Keypair, sendAndConfirmTransaction } = require("@solana/web3.js");
+    const bs58 = require("bs58");
+
+    const privateKeyEnv = process.env.REVENUE_WALLET_PRIVATE_KEY;
+    if (!privateKeyEnv) {
+      console.warn("⚠️  REVENUE_WALLET_PRIVATE_KEY not set — skipping split");
+      return;
+    }
+
+    const connection = new Connection(SOLANA_RPC, "confirmed");
+    const revenueKeypair = Keypair.fromSecretKey(bs58.decode(privateKeyEnv));
+
+    const activeSplit = PRIZE_POOL_ENABLED
+      ? { operations: 0.70, prizePool: 0.20, treasury: 0.10 }
+      : SPLIT_CONFIG;
+
+    const LAMPORTS = 1_000_000_000;
+    const operationsLamports = Math.floor(amountSol * activeSplit.operations * LAMPORTS);
+    const prizePoolLamports  = Math.floor(amountSol * activeSplit.prizePool  * LAMPORTS);
+    const treasuryLamports   = Math.floor(amountSol * activeSplit.treasury   * LAMPORTS);
+
+    console.log(`💸 Split for ${payerWallet} — ${amountSol} SOL:`);
+    console.log(`   Operations (${(activeSplit.operations * 100).toFixed(0)}%): ${operationsLamports / LAMPORTS} SOL → ${OPERATIONS_WALLET}`);
+    if (PRIZE_POOL_ENABLED) {
+      console.log(`   Prize Pool (${(activeSplit.prizePool * 100).toFixed(0)}%): ${prizePoolLamports / LAMPORTS} SOL → ${PRIZE_POOL_WALLET}`);
+    } else {
+      console.log(`   Prize Pool: DISABLED (0 SOL)`);
+    }
+    console.log(`   Treasury  (${(activeSplit.treasury * 100).toFixed(0)}%): ${treasuryLamports / LAMPORTS} SOL stays in revenue wallet`);
+
+    const instructions = [];
+
+    // Operations transfer
+    if (operationsLamports > 0) {
+      instructions.push(
+        SystemProgram.transfer({
+          fromPubkey: revenueKeypair.publicKey,
+          toPubkey: new PublicKey(OPERATIONS_WALLET),
+          lamports: operationsLamports,
+        })
+      );
+    }
+
+    // Prize pool transfer — only when enabled
+    if (PRIZE_POOL_ENABLED && prizePoolLamports > 0) {
+      instructions.push(
+        SystemProgram.transfer({
+          fromPubkey: revenueKeypair.publicKey,
+          toPubkey: new PublicKey(PRIZE_POOL_WALLET),
+          lamports: prizePoolLamports,
+        })
+      );
+    }
+
+    if (instructions.length === 0) {
+      console.log("   No transfers to execute.");
+      return;
+    }
+
+    const tx = new Transaction().add(...instructions);
+    const sig = await sendAndConfirmTransaction(connection, tx, [revenueKeypair]);
+    console.log(`   ✅ Split tx confirmed: ${sig}`);
+
+  } catch (err) {
+    // Best-effort — log but never block premium access
+    console.error("❌ splitPayment error (non-blocking):", err.message);
+  }
+}
+
 // ─── AI AGENT ROUTES ─────────────────────────────────────────────────────────
 
 /**
@@ -532,6 +627,8 @@ app.get("/api/agent/premium", async (req, res) => {
       console.log(`🔓 Free access granted to whitelisted wallet: ${wallet}`);
     } else {
       console.log(`✅ Payment verified for wallet: ${wallet} — ${payment.amount} SOL`);
+      // Best-effort split — runs async, never blocks the response
+      splitPayment(payment.amount, wallet);
     }
 
     let picks = [];
@@ -1108,6 +1205,34 @@ app.patch("/api/accuracy/result/:id", async (req, res) => {
   }
 });
 
+// ─── SPLIT CONFIG ENDPOINT ───────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/split-config
+ * Returns current split configuration and prize pool status.
+ * Protected by admin secret.
+ */
+app.get("/api/admin/split-config", (req, res) => {
+  const { secret } = req.query;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  res.json({
+    prizePoolEnabled: PRIZE_POOL_ENABLED,
+    activeSplit: PRIZE_POOL_ENABLED
+      ? { operations: 0.70, prizePool: 0.20, treasury: 0.10 }
+      : SPLIT_CONFIG,
+    wallets: {
+      operations: OPERATIONS_WALLET,
+      prizePool: PRIZE_POOL_WALLET,
+      treasury: REVENUE_WALLET,
+    },
+    note: PRIZE_POOL_ENABLED
+      ? "Prize pool is ENABLED"
+      : "Prize pool is DISABLED — set PRIZE_POOL_ENABLED=true in server.js and redeploy to enable",
+  });
+});
+
 // ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
 
 /**
@@ -1233,6 +1358,17 @@ app.get("/admin", async (req, res) => {
     <div class="stat"><span class="stat-label">Uptime</span><span class="stat-value green">${uptime} min</span></div>
     <div class="stat"><span class="stat-label">Node version</span><span class="stat-value white">${process.version}</span></div>
     <div class="stat"><span class="stat-label">Memory</span><span class="stat-value white">${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB</span></div>
+  </div>
+
+  <div class="card" style="border-top:2px solid #9945FF">
+    <div class="card-title">Wallet Split Config</div>
+    <div class="stat"><span class="stat-label">Prize Pool</span><span class="stat-value ${PRIZE_POOL_ENABLED ? 'green' : 'red'}">${PRIZE_POOL_ENABLED ? '✅ ENABLED' : '⛔ DISABLED'}</span></div>
+    <div class="stat"><span class="stat-label">Operations</span><span class="stat-value sol">${PRIZE_POOL_ENABLED ? '70' : Math.round(SPLIT_CONFIG.operations * 100)}%</span></div>
+    <div class="stat"><span class="stat-label">Prize Pool</span><span class="stat-value sol">${PRIZE_POOL_ENABLED ? '20' : Math.round(SPLIT_CONFIG.prizePool * 100)}%</span></div>
+    <div class="stat"><span class="stat-label">Treasury</span><span class="stat-value sol">${PRIZE_POOL_ENABLED ? '10' : Math.round(SPLIT_CONFIG.treasury * 100)}%</span></div>
+    <div class="stat" style="flex-direction:column;align-items:flex-start;gap:4px">
+      <span class="stat-label" style="font-size:10px">To enable prize pool: set <code>PRIZE_POOL_ENABLED=true</code> in server.js and redeploy</span>
+    </div>
   </div>
 
 </div>
