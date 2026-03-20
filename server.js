@@ -14,6 +14,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
+const path = require("path");
 const { analyzePicks } = require("./edgeAnalyzer");
 const { calculateBetPoints, getAccuracyBonus } = require("./pointsConfig");
 const { getFreePick, getPremiumPick, invalidateCache } = require("./agentRouter");
@@ -1313,6 +1314,16 @@ app.get("/admin/refresh-agent", (req, res) => {
     <p>Next request will generate a fresh pick.</p>
     <a href="/admin?secret=${secret}" style="color:#00E5FF">← Back to Admin</a>
   </body></html>`);
+});
+
+// ─── HTML ROUTES (permanent — do not remove) ─────────────────────────────────
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
+});
+
+app.get('/edge-seeker.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
 });
 
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
