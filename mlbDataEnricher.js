@@ -345,6 +345,8 @@ async function enrichPicks(picks) {
       const homePitcherName = game.teams?.home?.probablePitcher?.fullName || 'TBD';
       const awayPitcherName = game.teams?.away?.probablePitcher?.fullName || 'TBD';
 
+      const season = new Date().getFullYear();
+
       // Fetch all data in parallel including Baseball Savant
       const [
         homePitcherStats, awayPitcherStats,
@@ -366,8 +368,6 @@ async function enrichPicks(picks) {
         fetchPlatoonSplits(homePitcherName, season),
         fetchPlatoonSplits(awayPitcherName, season),
       ]);
-
-      const season = new Date().getFullYear();
 
       enriched[gameKey] = {
         homePitcher: {
