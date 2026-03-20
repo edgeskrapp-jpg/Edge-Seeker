@@ -20,6 +20,28 @@ const { getTeamStats } = require("./mlbStats");
 const MIN_EDGE_THRESHOLD = 0.03; // 3%
 
 /**
+ * Park factors: how each ballpark affects run scoring, home runs, and strikeouts.
+ * Factors > 1.0 boost the stat, < 1.0 suppress it.
+ * homeOnly: true means the factor is extreme and should only apply to home team.
+ */
+const PARK_FACTORS = {
+  COL: { runs: 1.35, hr: 1.40, k: 0.88, note: "Coors Field — extreme altitude, ball carries significantly", homeOnly: true },
+  CIN: { runs: 1.12, hr: 1.18, k: 0.96, note: "Great American Ball Park — short right field porch" },
+  NYY: { runs: 1.08, hr: 1.15, k: 1.05, note: "Yankee Stadium — short right field porch favors lefties" },
+  BOS: { runs: 1.06, hr: 0.98, k: 0.97, note: "Fenway Park — Green Monster creates doubles, unpredictable" },
+  TEX: { runs: 1.10, hr: 1.12, k: 0.98, note: "Globe Life Field — heat and sea level boost scoring" },
+  HOU: { runs: 1.05, hr: 1.08, k: 1.05, note: "Minute Maid Park — Crawford Boxes favor left-handed pull hitters" },
+  SF:  { runs: 0.91, hr: 0.88, k: 1.08, note: "Oracle Park — marine layer and bay wind suppress scoring significantly" },
+  TB:  { runs: 0.94, hr: 0.92, k: 1.08, note: "Tropicana Field — dome, artificial turf, unique catwalk system" },
+  PIT: { runs: 0.93, hr: 0.90, k: 1.05, note: "PNC Park — large dimensions and river winds suppress scoring" },
+  SD:  { runs: 0.92, hr: 0.89, k: 1.06, note: "Petco Park — marine layer from Pacific, deep dimensions" },
+  SEA: { runs: 0.93, hr: 0.91, k: 1.06, note: "T-Mobile Park — Puget Sound marine air, pitcher friendly" },
+  CHC: { runs: 1.00, hr: 1.00, k: 0.94, note: "Wrigley Field — highly wind dependent, check wind direction before any pick" },
+  MIA: { runs: 0.95, hr: 0.93, k: 1.07, note: "loanDepot Park — dome, suppresses scoring" },
+  ARI: { runs: 1.02, hr: 1.04, k: 0.97, note: "Chase Field — retractable roof, warm desert air when open" },
+};
+
+/**
  * Find the best (sharpest) moneyline odds across all bookmakers
  * for each team — this is the "best available line" approach.
  * Returns { homeOdds: number, awayOdds: number, bookmaker: string }
@@ -91,9 +113,27 @@ function analyzeGame(game) {
   const homeStats = getTeamStats(game.home_team, liveTeamStats);
   const awayStats = getTeamStats(game.away_team, liveTeamStats);
 
-  // Home team gets a run bonus for playing at home
-  const homeRunRate = homeStats.runsPerGame + homeStats.homeBonus;
-  const awayRunRate = awayStats.runsPerGame; // no bonus for visiting team
+  // Apply park factors for the home team's ballpark
+  const parkFactor = PARK_FACTORS[homeStats.abbr] || null;
+  const parkRunsFactor = parkFactor ? parkFactor.runs : 1.0;
+
+  // Multiply home team runsPerGame and away team runsAllowedPerGame by park runs factor
+  const adjustedHomeRPG = homeStats.runsPerGame * parkRunsFactor;
+  const adjustedAwayRAPG = awayStats.runsAllowedPerGame * parkRunsFactor;
+
+  // Home team gets a run bonus for playing at home; away run rate uses park-adjusted pitching quality
+  const homeRunRate = adjustedHomeRPG + homeStats.homeBonus;
+  const awayRunRate = adjustedAwayRAPG;
+
+  // Build park warning if factor is extreme
+  let parkWarning = null;
+  if (parkFactor && (parkFactor.runs > 1.10 || parkFactor.runs < 0.93)) {
+    parkWarning = parkFactor.note;
+  }
+
+  // Colorado home games: extreme altitude, add confidence penalty
+  const isCoorsHome = homeStats.abbr === "COL";
+  const coorsConfidencePenalty = isCoorsHome ? 20 : 0;
 
   // Poisson-based true win probabilities
   const { homeWin, awayWin } = poissonWinProb(homeRunRate, awayRunRate);
@@ -118,8 +158,14 @@ function analyzeGame(game) {
 
   const picks = [];
 
+  // Coors warning string (used on both home and away picks for COL home games)
+  const coorsWarning = isCoorsHome
+    ? "⚠️ Coors Field: extreme altitude distorts all Poisson models — confidence heavily penalized"
+    : null;
+
   // Home team pick
   if (homeEdge >= MIN_EDGE_THRESHOLD) {
+    const baseConfidence = confidenceScore(homeEdge, homeKelly);
     picks.push({
       side: "home",
       team: game.home_team,
@@ -134,7 +180,8 @@ function analyzeGame(game) {
       bookImpliedProb: Math.round(bookTrueHome * 1000) / 10,
       edgePct: Math.round(homeEdge * 1000) / 10,          // e.g. 8.4
       kellyPct: Math.round(homeKelly * 1000) / 10,        // e.g. 3.2
-      confidence: confidenceScore(homeEdge, homeKelly),
+      confidence: Math.max(0, baseConfidence - coorsConfidencePenalty),
+      warning: coorsWarning || parkWarning || null,
       bookmaker,
       gameTime: game.commence_time,
       homeTeam: game.home_team,
@@ -146,6 +193,7 @@ function analyzeGame(game) {
 
   // Away team pick
   if (awayEdge >= MIN_EDGE_THRESHOLD) {
+    const baseConfidence = confidenceScore(awayEdge, awayKelly);
     picks.push({
       side: "away",
       team: game.away_team,
@@ -160,7 +208,8 @@ function analyzeGame(game) {
       bookImpliedProb: Math.round(bookTrueAway * 1000) / 10,
       edgePct: Math.round(awayEdge * 1000) / 10,
       kellyPct: Math.round(awayKelly * 1000) / 10,
-      confidence: confidenceScore(awayEdge, awayKelly),
+      confidence: Math.max(0, baseConfidence - coorsConfidencePenalty),
+      warning: coorsWarning || parkWarning || null,
       bookmaker,
       gameTime: game.commence_time,
       homeTeam: game.home_team,
