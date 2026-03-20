@@ -712,7 +712,7 @@
 <div class="modal-overlay" id="betModal" onclick="closeBetModal(event)">
   <div class="bet-modal">
     <div class="modal-handle"></div>
-    <h2>Log a Bet</h2>
+    <h2>Log a Pick</h2>
     <p>Track this pick against your bankroll</p>
 
     <div class="form-group">
@@ -911,7 +911,7 @@
 
     <!-- LOG BET BUTTON -->
     <button class="log-bet-btn" onclick="openBetModal()">
-      + LOG A BET
+      + LOG A PICK
     </button>
 
     <!-- BET HISTORY -->
@@ -985,7 +985,7 @@
       <div class="coming-soon-desc">
         The EdgeSKR user leaderboard launches once we build our community.<br><br>
         Follow <strong style="color:var(--accent)">@EdgeSKR</strong> on X for the launch announcement.<br><br>
-        Compete for weekly SOL prizes based on your betting accuracy.
+        Compete for weekly SOL prizes based on your pick accuracy.
       </div>
       <div class="coming-soon-badge" style="margin-top:20px">LAUNCHING THIS SEASON</div>
     </div>
@@ -997,7 +997,7 @@
 <!-- PAGE: GAMES (Tracker) -->
 <main id="page-games" class="page">
   <div style="margin-bottom:16px">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px">BET TRACKER</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px">PICK TRACKER</div>
     <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">KALSHI · POLYMARKET · MANUAL</div>
   </div>
 
@@ -1028,7 +1028,7 @@
     <div class="import-card" onclick="openBetModal()">
       <div class="import-icon">✏️</div>
       <div class="import-title">ADD MANUALLY</div>
-      <div class="import-desc">Log a bet from any sportsbook manually<br>including DraftKings, FanDuel, BetMGM</div>
+      <div class="import-desc">Log a pick from any sportsbook manually<br>including DraftKings, FanDuel, BetMGM</div>
     </div>
   </div>
 
@@ -1099,7 +1099,7 @@
 
   <div class="profile-card">
     <div class="profile-card-header">
-      <div class="profile-card-title">BETTING STATS</div>
+      <div class="profile-card-title">ANALYTICS STATS</div>
       <div class="profile-card-sub">This Season</div>
     </div>
     <div class="profile-stats-grid">
@@ -1204,7 +1204,7 @@
   <div class="bet-slip-handle"></div>
   <div class="bet-slip-header">
     <div style="display:flex;align-items:center;gap:10px">
-      <div class="bet-slip-title">BET SLIP</div>
+      <div class="bet-slip-title">EDGE SLIP</div>
       <div class="bet-slip-count" id="slipCount">0 PICKS</div>
     </div>
     <div class="bet-slip-clear" onclick="clearSlip()">CLEAR ALL</div>
@@ -1288,7 +1288,7 @@
         </div>
         <div class="edit-row">
           <div>
-            <div class="edit-row-label">Show Betting Stats</div>
+            <div class="edit-row-label">Show Analytics Stats</div>
             <div class="edit-row-sub">Display your W/L record publicly</div>
           </div>
           <div class="toggle active" id="editStatsToggle" onclick="toggleEditSetting('editStatsToggle','showStats')">
@@ -1906,7 +1906,7 @@
       document.getElementById('profileSolBadge').style.display = 'none';
     }
 
-    // Sync betting stats from bankroll
+    // Sync analytics stats from bankroll
     const bankData = getBankrollData();
     if (bankData && bankData.bets.length > 0) {
       const bets = bankData.bets.filter(b => b.result !== 'pending');
