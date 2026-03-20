@@ -728,25 +728,37 @@ app.get("/api/props/strikeouts", async (req, res) => {
 
     // Get raw games
     let games = [];
-    if (isCacheValid(cache.raw)) {
-      games = cache.raw.data || [];
-    } else {
-      const { games: rawGames } = await fetchMLBOdds();
-      games = rawGames || [];
-      cache.raw = { data: games, fetchedAt: Date.now() };
+    try {
+      if (isCacheValid(cache.raw)) {
+        games = cache.raw.data || [];
+      } else {
+        const { games: rawGames } = await fetchMLBOdds();
+        games = rawGames || [];
+        cache.raw = { data: games, fetchedAt: Date.now() };
+      }
+    } catch (oddsErr) {
+      console.error('Odds fetch error:', oddsErr.message);
     }
 
     if (games.length === 0) {
-      return res.json({
+      const result = {
         props: [],
-        dailySummary: 'No MLB games today.',
+        dailySummary: 'No MLB games available today. Check back on Opening Day March 25th.',
         cached: false,
-      });
+      };
+      cache.strikeouts = { data: result, date: today };
+      return res.json(result);
     }
 
-    // Get enriched data (pitcher stats + Savant)
-    const { enrichPicks } = require("./mlbDataEnricher");
-    const enrichedData = await enrichPicks([]);
+    // Get enriched data (pitcher stats + Savant) — with fallback
+    let enrichedData = {};
+    try {
+      const { enrichPicks } = require("./mlbDataEnricher");
+      enrichedData = await enrichPicks([]);
+    } catch (enrichErr) {
+      console.error('Enrichment error:', enrichErr.message);
+      enrichedData = {};
+    }
 
     // Run strikeout agent
     console.log('⚾ Running Strikeout Agent...');
@@ -757,7 +769,13 @@ app.get("/api/props/strikeouts", async (req, res) => {
 
   } catch (err) {
     console.error("❌ /api/props/strikeouts error:", err.message);
-    res.status(500).json({ error: err.message });
+    // Return empty instead of 500 so UI shows gracefully
+    res.json({
+      props: [],
+      dailySummary: 'Strikeout analysis unavailable right now. Check back soon.',
+      error: err.message,
+      cached: false,
+    });
   }
 });
 
@@ -1296,15 +1314,7 @@ app.get("/admin/refresh-agent", (req, res) => {
     <a href="/admin?secret=${secret}" style="color:#00E5FF">← Back to Admin</a>
   </body></html>`);
 });
-const path = require('path');
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
-});
-
-app.get('/edge-seeker.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'edge-seeker.html'));
-});
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
