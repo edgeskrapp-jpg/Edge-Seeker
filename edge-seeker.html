@@ -152,55 +152,6 @@
   .book-name { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
   .game-time { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
 
-  /* ── BANKROLL STYLES ──────────────────────────────────────────────────── */
-
-  /* BALANCE HERO */
-  .balance-hero {
-    background: linear-gradient(135deg, rgba(0,229,255,0.08), rgba(123,97,255,0.08));
-    border: 1px solid rgba(0,229,255,0.2);
-    border-radius: 20px;
-    padding: 28px 24px;
-    text-align: center;
-    margin-bottom: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-  .balance-hero::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-  }
-  .balance-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
-  .balance-amount { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 2px; color: var(--text); line-height: 1; }
-  .balance-amount.up   { color: var(--green); text-shadow: 0 0 30px rgba(0,255,136,0.3); }
-  .balance-amount.down { color: var(--red); }
-  .balance-change { font-family: 'DM Mono', monospace; font-size: 13px; margin-top: 8px; }
-  .balance-change.up   { color: var(--green); }
-  .balance-change.down { color: var(--red); }
-  .balance-meta { display: flex; justify-content: center; gap: 24px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .balance-meta-item { text-align: center; }
-  .balance-meta-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
-  .balance-meta-value { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px; }
-
-  /* LOG BET BUTTON */
-  .log-bet-btn {
-    width: 100%;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border: none; border-radius: 14px;
-    color: var(--bg); font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px; letter-spacing: 2px;
-    padding: 16px; cursor: pointer;
-    transition: all 0.2s;
-    margin-bottom: 20px;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-  }
-  .log-bet-btn:hover { opacity: 0.9; transform: translateY(-1px); }
-
-  /* BET LOG MODAL */
-  .bet-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 28px 24px 40px; width: 100%; max-width: 480px; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); }
-  .modal-overlay.active .bet-modal { transform: translateY(0); }
 
   /* FORM */
   .form-group { margin-bottom: 16px; }
@@ -217,64 +168,7 @@
 
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-  .result-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-  .result-btn {
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: 10px; color: var(--muted);
-    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px;
-    padding: 10px; cursor: pointer; transition: all 0.2s; text-align: center;
-  }
-  .result-btn.win.selected  { background: rgba(0,255,136,0.1); border-color: var(--green); color: var(--green); }
-  .result-btn.loss.selected { background: rgba(255,58,92,0.1); border-color: var(--red); color: var(--red); }
-  .result-btn.push.selected { background: rgba(255,208,96,0.1); border-color: var(--gold); color: var(--gold); }
-  .result-btn:hover { border-color: var(--accent); }
-
-  .submit-bet-btn {
-    width: 100%; background: linear-gradient(135deg, var(--green), var(--accent));
-    border: none; border-radius: 12px; color: var(--bg);
-    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px;
-    padding: 14px; cursor: pointer; margin-top: 8px; transition: all 0.2s;
-  }
-  .submit-bet-btn:hover { opacity: 0.9; }
-
-  /* BANKROLL SETUP */
-  .setup-card { background: var(--surface); border: 1px solid rgba(0,229,255,0.2); border-radius: 18px; padding: 24px; margin-bottom: 20px; text-align: center; }
-  .setup-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; margin-bottom: 8px; }
-  .setup-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.7; }
-  .setup-input-row { display: flex; gap: 10px; }
-  .setup-input-row .form-input { flex: 1; }
   .setup-confirm-btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 12px; color: var(--bg); font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px; padding: 12px 20px; cursor: pointer; white-space: nowrap; }
-
-  /* BET HISTORY LIST */
-  .history-item {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
-    display: flex; align-items: center; justify-content: space-between;
-    animation: slideIn 0.3s ease both;
-  }
-  .history-left { display: flex; align-items: center; gap: 12px; }
-  .history-result {
-    width: 36px; height: 36px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 1px;
-    flex-shrink: 0;
-  }
-  .history-result.win  { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
-  .history-result.loss { background: rgba(255,58,92,0.1);  color: var(--red);   border: 1px solid rgba(255,58,92,0.3); }
-  .history-result.push { background: rgba(255,208,96,0.1); color: var(--gold);  border: 1px solid rgba(255,208,96,0.3); }
-  .history-result.pending { background: rgba(90,106,133,0.1); color: var(--muted); border: 1px solid var(--border); }
-  .history-pick { font-weight: 600; font-size: 14px; }
-  .history-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.5px; }
-  .history-right { text-align: right; }
-  .history-amount { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px; }
-  .history-amount.win  { color: var(--green); }
-  .history-amount.loss { color: var(--red); }
-  .history-amount.push { color: var(--gold); }
-  .history-amount.pending { color: var(--muted); }
-  .history-odds { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; }
-
-  .delete-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px; margin-left: 8px; opacity: 0.5; transition: opacity 0.2s; }
-  .delete-btn:hover { opacity: 1; color: var(--red); }
 
   /* ROI BAR */
   .roi-bar-wrap { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; height: 8px; overflow: hidden; margin-top: 6px; }
@@ -603,12 +497,24 @@
   .edit-profile-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: 1px; padding: 6px 12px; cursor: pointer; transition: all 0.2s; margin-top: 8px; display: inline-block; }
   .edit-profile-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* ── BANKROLL PLACEHOLDER ─────────────────────────────────────────────── */
-  .bankroll-placeholder { background: linear-gradient(135deg, rgba(255,208,96,0.06), rgba(0,229,255,0.04)); border: 1px solid rgba(255,208,96,0.2); border-radius: 20px; padding: 32px 24px; text-align: center; margin-bottom: 20px; }
-  .bankroll-ph-icon { font-size: 48px; margin-bottom: 16px; }
-  .bankroll-ph-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 2px; color: var(--gold); margin-bottom: 8px; }
-  .bankroll-ph-desc { font-size: 14px; color: var(--muted); line-height: 1.8; }
   .coming-soon-badge { display: inline-block; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--gold); background: rgba(255,208,96,0.1); border: 1px solid rgba(255,208,96,0.25); padding: 6px 16px; border-radius: 20px; margin-top: 16px; }
+
+  /* ── SUBSCRIPTION / ACCESS CARD ─────────────────────────────────────────── */
+  .access-badge { display: inline-flex; align-items: center; gap: 8px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1.5px; padding: 8px 16px; border-radius: 10px; margin-bottom: 12px; }
+  .access-badge.free { background: rgba(90,106,133,0.15); border: 1px solid rgba(90,106,133,0.3); color: var(--muted); }
+  .access-badge.premium { background: linear-gradient(135deg, rgba(153,69,255,0.15), rgba(0,229,255,0.1)); border: 1px solid rgba(153,69,255,0.4); color: var(--sol); }
+  .access-desc { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+  .access-upgrade-btn { width: 100%; background: linear-gradient(135deg, var(--sol), var(--accent2)); border: none; border-radius: 12px; color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px; padding: 14px; cursor: pointer; transition: all 0.2s; }
+  .access-upgrade-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+  /* ── RESPONSIBLE ANALYTICS CARD ─────────────────────────────────────────── */
+  .responsible-card { background: var(--surface); border: 1px solid rgba(255,208,96,0.35); border-radius: 18px; padding: 20px; margin-bottom: 14px; }
+  .responsible-helpline { background: rgba(255,208,96,0.06); border: 1px solid rgba(255,208,96,0.2); border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  .responsible-helpline-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); margin-bottom: 4px; }
+  .responsible-helpline a { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; color: var(--gold); text-decoration: none; }
+  .responsible-helpline a:hover { opacity: 0.8; }
+  .responsible-link { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); text-decoration: none; letter-spacing: 0.5px; display: block; margin-top: 6px; }
+  .responsible-link:hover { opacity: 0.8; }
 
   /* ── LEADERBOARD STYLES ─────────────────────────────────────────────── */
   .lb-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
@@ -716,15 +622,15 @@
   .disclaimer-helpline a:hover { opacity: 0.8; }
   .disclaimer-enter-btn {
     width: 100%; padding: 16px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    background: var(--accent);
     border: none; border-radius: 14px;
     font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px;
     color: var(--bg); cursor: pointer; transition: all 0.2s;
   }
   .disclaimer-enter-btn:hover { opacity: 0.9; transform: translateY(-1px); }
   .disclaimer-age {
-    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
-    color: var(--muted); margin-top: 14px;
+    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    color: var(--gold); margin-top: 14px; font-weight: 600;
   }
 </style>
 <script>
@@ -746,17 +652,17 @@
     <div class="disclaimer-subtitle">ANALYTICS PLATFORM</div>
     <div class="disclaimer-divider"></div>
     <p class="disclaimer-text">
-      Edge Seeker provides statistical analysis and probability models for informational purposes only.
-      This platform does not provide betting advice or guarantee outcomes.
+      This platform provides analytics only — not betting advice.
+      Edge Seeker uses statistical models and probability analysis for informational purposes only.
+      Analytics do not guarantee outcomes. Never risk more than you can afford to lose.
       You are solely responsible for your own decisions.
-      Must be 18+ to use this platform.
     </p>
     <div class="disclaimer-helpline">
       <div class="disclaimer-helpline-label">NATIONAL PROBLEM GAMBLING HELPLINE</div>
       <a href="tel:18005224700">1-800-522-4700</a>
     </div>
     <button class="disclaimer-enter-btn" onclick="acceptDisclaimer()">I UNDERSTAND — ENTER</button>
-    <div class="disclaimer-age">18+ ONLY · GAMBLE RESPONSIBLY</div>
+    <div class="disclaimer-age">⚠️ YOU MUST BE 18+ TO USE THIS PLATFORM</div>
   </div>
 </div>
 
@@ -792,45 +698,10 @@
   </div>
 </div>
 
-<!-- LOG BET MODAL -->
-<div class="modal-overlay" id="betModal" onclick="closeBetModal(event)">
-  <div class="bet-modal">
-    <div class="modal-handle"></div>
-    <h2>Log a Pick</h2>
-    <p>Track this pick against your bankroll</p>
-
-    <div class="form-group">
-      <label class="form-label">Pick / Team</label>
-      <input class="form-input" id="betPick" placeholder="e.g. NYY ML" />
-    </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Bet Amount ($)</label>
-        <input class="form-input" id="betAmount" type="number" placeholder="50" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Odds</label>
-        <input class="form-input" id="betOdds" placeholder="-118" />
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Sportsbook</label>
-      <input class="form-input" id="betBook" placeholder="e.g. DraftKings" />
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Result</label>
-      <div class="result-btns">
-        <div class="result-btn win" onclick="selectResult('win', this)">✓ WIN</div>
-        <div class="result-btn loss" onclick="selectResult('loss', this)">✗ LOSS</div>
-        <div class="result-btn push" onclick="selectResult('push', this)">~ PUSH</div>
-      </div>
-    </div>
-
-    <button class="submit-bet-btn" onclick="submitBet()">+ LOG BET</button>
-  </div>
+<!-- hidden stubs kept for any remaining JS references -->
+<div style="display:none">
+  <div id="betModal"></div><div id="betPick"></div><div id="betOdds"></div>
+  <div id="betAmount"></div><div id="betBook"></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -915,7 +786,7 @@
 </main>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- PAGE: BANKROLL -->
+<!-- PAGE: TRENDS -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <main id="page-trends" class="page">
   <div class="coming-soon-overlay">
@@ -931,91 +802,6 @@
   <div class="bottom-spacer"></div>
 </main>
 
-<main id="page-bankroll" class="page">
-
-  <!-- SETUP (shown when no bankroll set) -->
-  <div id="bankrollSetup">
-    <div class="setup-card">
-      <div class="setup-title">SET YOUR BANKROLL</div>
-      <div class="setup-desc">Enter your starting bankroll to begin tracking your bets, ROI, and performance over the season.</div>
-      <div class="setup-input-row">
-        <input class="form-input" id="setupAmount" type="number" placeholder="e.g. 1000" />
-        <button class="setup-confirm-btn" onclick="setBankroll()">SET</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TRACKER (shown when bankroll is set) -->
-  <div id="bankrollTracker" style="display:none">
-
-    <!-- BALANCE HERO -->
-    <div class="balance-hero">
-      <div class="balance-label">Current Balance</div>
-      <div class="balance-amount" id="currentBalance">$0</div>
-      <div class="balance-change" id="balanceChange">+$0.00 (0.0%)</div>
-      <div class="balance-meta">
-        <div class="balance-meta-item">
-          <div class="balance-meta-label">Starting</div>
-          <div class="balance-meta-value" id="startingBalance">$0</div>
-        </div>
-        <div class="balance-meta-item">
-          <div class="balance-meta-label">ROI</div>
-          <div class="balance-meta-value" id="roiValue">0%</div>
-        </div>
-        <div class="balance-meta-item">
-          <div class="balance-meta-label">Record</div>
-          <div class="balance-meta-value" id="recordValue">0-0</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STATS ROW -->
-    <div class="stats-row" style="margin-bottom:20px">
-      <div class="stat-card green">
-        <div class="stat-label">Total Won</div>
-        <div class="stat-value green" id="totalWon">$0</div>
-        <div class="stat-sub">From winning bets</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-label">Total Lost</div>
-        <div class="stat-value red" id="totalLost">$0</div>
-        <div class="stat-sub">From losing bets</div>
-      </div>
-      <div class="stat-card gold">
-        <div class="stat-label">Avg Bet</div>
-        <div class="stat-value gold" id="avgBet">$0</div>
-        <div class="stat-sub">Per wager</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Win Rate</div>
-        <div class="stat-value cyan" id="winRate">0%</div>
-        <div class="stat-sub">Resolved bets</div>
-      </div>
-    </div>
-
-    <!-- LOG BET BUTTON -->
-    <button class="log-bet-btn" onclick="openBetModal()">
-      + LOG A PICK
-    </button>
-
-    <!-- BET HISTORY -->
-    <div class="section-header">
-      <div class="section-title">BET HISTORY</div>
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer" onclick="resetBankroll()">RESET ↺</div>
-    </div>
-
-    <div id="betHistory">
-      <div class="empty-state visible">
-        <div class="empty-icon">📋</div>
-        <div class="empty-title">NO BETS LOGGED</div>
-        <div class="empty-msg">Tap the button above to log your first bet and start tracking your performance.</div>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="bottom-spacer"></div>
-</main>
 
 
 
@@ -1237,29 +1023,63 @@
     </div>
   </div>
 
-  <!-- BANKROLL PLACEHOLDER -->
-  <div class="bankroll-placeholder">
-    <div class="bankroll-ph-icon">💰</div>
-    <div class="bankroll-ph-title">BANKROLL TRACKER</div>
-    <div class="bankroll-ph-desc">Full bankroll management — set your starting balance, track every bet, monitor ROI and Kelly sizing — launching soon.</div>
-    <div class="coming-soon-badge">COMING SOON</div>
-  </div>
-
+  <!-- CARD 1: MY ACCESS -->
   <div class="profile-card">
     <div class="profile-card-header">
-      <div class="profile-card-title">ABOUT</div>
+      <div class="profile-card-title">MY ACCESS</div>
+      <div class="profile-card-sub" id="walletStatusBadge">NOT CONNECTED</div>
+    </div>
+    <div id="accessLevelFree">
+      <div class="access-badge free">⚡ FREE TIER</div>
+      <div class="access-desc">FREE TIER — Game edges only. Connect your wallet and upgrade to unlock Claude Opus premium AI analysis.</div>
+      <button class="access-upgrade-btn" onclick="showPage('trends', document.querySelectorAll('.nav-item')[1])">UPGRADE ACCESS</button>
+    </div>
+    <div id="accessLevelPremium" style="display:none">
+      <div class="access-badge premium">⭐ PREMIUM ACCESS</div>
+      <div class="access-desc">PREMIUM ACCESS — Claude Opus enabled. Full AI game analysis and premium pick generation active.</div>
+    </div>
+  </div>
+
+  <!-- CARD 2: RESPONSIBLE ANALYTICS -->
+  <div class="responsible-card">
+    <div class="profile-card-header">
+      <div class="profile-card-title">♥ RESPONSIBLE ANALYTICS</div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);line-height:1.75;margin-bottom:12px">
+      Edge Seeker provides statistical analysis for informational purposes only.
+      Analytics do not guarantee outcomes. Never risk more than you can afford to lose.
+    </p>
+    <div class="responsible-helpline">
+      <div class="responsible-helpline-label">NATIONAL PROBLEM GAMBLING HELPLINE</div>
+      <a href="tel:18005224700">1-800-522-4700</a>
+    </div>
+    <a href="https://www.ncpgambling.org" target="_blank" rel="noopener" class="responsible-link">ncpgambling.org →</a>
+  </div>
+
+  <!-- CARD 3: APP INFO -->
+  <div class="profile-card">
+    <div class="profile-card-header">
+      <div class="profile-card-title">ABOUT EDGE SEEKER</div>
     </div>
     <div class="wallet-detail-row">
-      <div class="wallet-detail-label">APP VERSION</div>
-      <div class="wallet-detail-value">1.0.0</div>
+      <div class="wallet-detail-label">VERSION</div>
+      <div class="wallet-detail-value">v1.0.0 — 2026 Season</div>
     </div>
     <div class="wallet-detail-row">
       <div class="wallet-detail-label">CHAIN</div>
-      <div class="wallet-detail-value" style="color:var(--sol)">Solana</div>
+      <div class="wallet-detail-value" style="color:var(--sol)">Built on Solana</div>
+    </div>
+    <div class="wallet-detail-row">
+      <div class="wallet-detail-label">DOMAIN</div>
+      <div class="wallet-detail-value" style="color:var(--accent)">edgeseeker.sol</div>
+    </div>
+    <div class="wallet-detail-row">
+      <div class="wallet-detail-label">PURPOSE</div>
+      <div class="wallet-detail-value">Statistical analytics platform. Not betting advice.</div>
     </div>
     <div class="wallet-detail-row" style="border-bottom:none">
-      <div class="wallet-detail-label">SEASON</div>
-      <div class="wallet-detail-value">MLB 2026</div>
+      <div class="wallet-detail-label">AGE REQUIREMENT</div>
+      <div class="wallet-detail-value" style="color:var(--gold)">Must be 18+ to use this platform</div>
     </div>
   </div>
 
@@ -1586,183 +1406,7 @@
     renderPicks(allPicks);
   }
 
-  // ── BANKROLL ──────────────────────────────────────────────────────────────
-  function getBankrollData() {
-    const raw = localStorage.getItem('edgeseeker_bankroll');
-    return raw ? JSON.parse(raw) : null;
-  }
-
-  function saveBankrollData(data) {
-    localStorage.setItem('edgeseeker_bankroll', JSON.stringify(data));
-  }
-
-  function setBankroll() {
-    const amount = parseFloat(document.getElementById('setupAmount').value);
-    if (!amount || amount <= 0) { showToast('Enter a valid amount'); return; }
-    const data = { starting: amount, bets: [] };
-    saveBankrollData(data);
-    renderBankroll();
-  }
-
-  function resetBankroll() {
-    if (!confirm('Reset your bankroll and clear all bet history?')) return;
-    localStorage.removeItem('edgeseeker_bankroll');
-    renderBankroll();
-  }
-
-  function renderBankroll() {
-    const data = getBankrollData();
-    if (!data) {
-      document.getElementById('bankrollSetup').style.display = 'block';
-      document.getElementById('bankrollTracker').style.display = 'none';
-      return;
-    }
-
-    document.getElementById('bankrollSetup').style.display = 'none';
-    document.getElementById('bankrollTracker').style.display = 'block';
-
-    const bets = data.bets || [];
-    const starting = data.starting;
-
-    // Calculate stats
-    let won = 0, lost = 0, pushed = 0, totalWon = 0, totalLost = 0, totalBet = 0;
-    bets.forEach(b => {
-      if (b.result === 'win') {
-        won++;
-        totalWon += calcPayout(b.amount, b.odds);
-      } else if (b.result === 'loss') {
-        lost++;
-        totalLost += b.amount;
-      } else if (b.result === 'push') {
-        pushed++;
-      }
-      if (b.result !== 'pending') totalBet += b.amount;
-    });
-
-    const netProfit = totalWon - totalLost;
-    const current = starting + netProfit;
-    const roi = totalBet > 0 ? (netProfit / totalBet * 100) : 0;
-    const resolved = won + lost;
-    const winRate = resolved > 0 ? Math.round(won / resolved * 100) : 0;
-
-    // Update hero
-    const balEl = document.getElementById('currentBalance');
-    balEl.textContent = `$${current.toFixed(2)}`;
-    balEl.className = `balance-amount ${netProfit >= 0 ? 'up' : 'down'}`;
-
-    const changeEl = document.getElementById('balanceChange');
-    const changeSign = netProfit >= 0 ? '+' : '';
-    changeEl.textContent = `${changeSign}$${netProfit.toFixed(2)} (${changeSign}${roi.toFixed(1)}%)`;
-    changeEl.className = `balance-change ${netProfit >= 0 ? 'up' : 'down'}`;
-
-    document.getElementById('startingBalance').textContent = `$${starting.toFixed(0)}`;
-    document.getElementById('roiValue').textContent = `${roi >= 0 ? '+' : ''}${roi.toFixed(1)}%`;
-    document.getElementById('recordValue').textContent = `${won}-${lost}`;
-
-    // Stats cards
-    document.getElementById('totalWon').textContent  = `$${totalWon.toFixed(0)}`;
-    document.getElementById('totalLost').textContent = `$${totalLost.toFixed(0)}`;
-    document.getElementById('avgBet').textContent    = bets.length > 0 ? `$${(bets.reduce((s,b)=>s+b.amount,0)/bets.length).toFixed(0)}` : '$0';
-    document.getElementById('winRate').textContent   = `${winRate}%`;
-
-    // Bet history
-    const histEl = document.getElementById('betHistory');
-    if (bets.length === 0) {
-      histEl.innerHTML = `<div class="empty-state visible"><div class="empty-icon">📋</div><div class="empty-title">NO BETS LOGGED</div><div class="empty-msg">Tap the button above to log your first bet.</div></div>`;
-      return;
-    }
-
-    histEl.innerHTML = '';
-    // Show newest first
-    [...bets].reverse().forEach((bet, i) => {
-      const realIdx = bets.length - 1 - i;
-      const payout = bet.result === 'win' ? `+$${calcPayout(bet.amount, bet.odds).toFixed(2)}` :
-                     bet.result === 'loss' ? `-$${bet.amount.toFixed(2)}` :
-                     bet.result === 'push' ? `$${bet.amount.toFixed(2)}` : `$${bet.amount.toFixed(2)}`;
-      const item = document.createElement('div');
-      item.className = 'history-item';
-      item.innerHTML = `
-        <div class="history-left">
-          <div class="history-result ${bet.result}">${bet.result === 'pending' ? '⏳' : bet.result === 'win' ? 'W' : bet.result === 'push' ? 'P' : 'L'}</div>
-          <div>
-            <div class="history-pick">${bet.pick}</div>
-            <div class="history-meta">${bet.book || 'Sportsbook'} · ${fmtDate(bet.date)}</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center">
-          <div class="history-right">
-            <div class="history-amount ${bet.result}">${payout}</div>
-            <div class="history-odds">${bet.odds} · $${bet.amount} wagered</div>
-          </div>
-          <button class="delete-btn" onclick="deleteBet(${realIdx})">✕</button>
-        </div>
-      `;
-      histEl.appendChild(item);
-    });
-  }
-
-  function calcPayout(amount, oddsStr) {
-    const odds = parseInt(oddsStr);
-    if (isNaN(odds)) return 0;
-    if (odds > 0) return amount * (odds / 100);
-    else return amount * (100 / Math.abs(odds));
-  }
-
-  function deleteBet(index) {
-    const data = getBankrollData();
-    if (!data) return;
-    data.bets.splice(index, 1);
-    saveBankrollData(data);
-    renderBankroll();
-    showToast('Bet removed');
-  }
-
-  // ── BET MODAL ─────────────────────────────────────────────────────────────
-  function openBetModal() {
-    selectedResult = 'pending';
-    document.querySelectorAll('.result-btn').forEach(b => b.classList.remove('selected'));
-    document.getElementById('betModal').classList.add('active');
-  }
-
-  function closeBetModal(e) {
-    if (e.target === document.getElementById('betModal'))
-      document.getElementById('betModal').classList.remove('active');
-  }
-
-  function selectResult(result, el) {
-    selectedResult = result;
-    document.querySelectorAll('.result-btn').forEach(b => b.classList.remove('selected'));
-    el.classList.add('selected');
-  }
-
-  function submitBet() {
-    const pick   = document.getElementById('betPick').value.trim();
-    const amount = parseFloat(document.getElementById('betAmount').value);
-    const odds   = document.getElementById('betOdds').value.trim();
-    const book   = document.getElementById('betBook').value.trim();
-
-    if (!pick)         { showToast('Enter a pick'); return; }
-    if (!amount || amount <= 0) { showToast('Enter a valid amount'); return; }
-    if (!odds)         { showToast('Enter the odds'); return; }
-
-    const data = getBankrollData();
-    if (!data) { showToast('Set your bankroll first'); return; }
-
-    data.bets.push({ pick, amount, odds, book, result: selectedResult, date: new Date().toISOString() });
-    saveBankrollData(data);
-
-    // Clear form
-    document.getElementById('betPick').value = '';
-    document.getElementById('betAmount').value = '';
-    document.getElementById('betOdds').value = '';
-    document.getElementById('betBook').value = '';
-    selectedResult = 'pending';
-    document.querySelectorAll('.result-btn').forEach(b => b.classList.remove('selected'));
-
-    document.getElementById('betModal').classList.remove('active');
-    showToast('✅ Bet logged!');
-    renderBankroll();
-  }
+  // (bankroll tracker removed)
 
   // ── HELPERS ───────────────────────────────────────────────────────────────
   function fmtTime(iso) {
@@ -2004,29 +1648,13 @@
       document.getElementById('profileSolBadge').style.display = 'none';
     }
 
-    // Sync analytics stats from bankroll
-    const bankData = getBankrollData();
-    if (bankData && bankData.bets.length > 0) {
-      const bets = bankData.bets.filter(b => b.result !== 'pending');
-      const wins = bets.filter(b => b.result === 'win').length;
-      const losses = bets.filter(b => b.result === 'loss').length;
-      const winRate = bets.length > 0 ? Math.round(wins / bets.length * 100) : 0;
-      const totalBet = bets.reduce((s, b) => s + b.amount, 0);
-      let profit = 0;
-      bankData.bets.forEach(b => {
-        if (b.result === 'win') profit += calcPayout(b.amount, b.odds);
-        else if (b.result === 'loss') profit -= b.amount;
-      });
-      const roi = totalBet > 0 ? (profit / totalBet * 100) : 0;
-
-      document.getElementById('pRecordW').textContent = wins;
-      document.getElementById('pRecordL').textContent = losses;
-      document.getElementById('pWinRate').textContent = winRate + '%';
-      document.getElementById('pWinRateBar').textContent = winRate + '%';
-      document.getElementById('pROI').textContent = (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
-      document.getElementById('pROI').className = 'profile-stat-value ' + (roi >= 0 ? 'gold' : 'red');
-      setTimeout(() => { document.getElementById('pWinRateFill').style.width = winRate + '%'; }, 100);
-    }
+    // Update access card based on wallet connection
+    const isConnected = document.getElementById('walletBar').classList.contains('visible');
+    document.getElementById('walletStatusBadge').textContent = isConnected ? 'CONNECTED' : 'NOT CONNECTED';
+    // Premium check: set by payment verification (stored in sessionStorage by premium flow)
+    const hasPremium = sessionStorage.getItem('es_premium_active') === '1';
+    document.getElementById('accessLevelFree').style.display = hasPremium ? 'none' : 'block';
+    document.getElementById('accessLevelPremium').style.display = hasPremium ? 'block' : 'none';
 
     // Load favorite teams
     renderFavoriteTeams();
@@ -2490,28 +2118,9 @@
   }
 
   function logAllSlipBets() {
-    const stake = parseFloat(document.getElementById('slipStake').value) || 0;
-    if (stake <= 0) { showToast('Enter a stake amount'); return; }
-
-    const bankData = getBankrollData();
-    if (!bankData) { showToast('Set your bankroll first'); return; }
-
-    let logged = 0;
-    betSlipItems.forEach(item => {
-      bankData.bets.push({
-        pick: item.pick,
-        amount: stake,
-        odds: 'N/A',
-        book: item.betType,
-        result: 'pending',
-        source: 'manual',
-        date: new Date().toISOString(),
-      });
-      logged++;
-    });
-
-    saveBankrollData(bankData);
-    showToast(`✅ ${logged} bet${logged > 1 ? 's' : ''} logged to tracker!`);
+    const count = betSlipItems.length;
+    if (count === 0) return;
+    showToast(`✅ ${count} pick${count > 1 ? 's' : ''} noted — track outcomes manually`);
     clearSlip();
     closeBetSlip();
   }
@@ -2792,7 +2401,7 @@
           </div>
           <div class="analysis-row">
             <span class="analysis-label">Kelly Sizing</span>
-            <span class="analysis-value gold">${bestPick.kellyPct}% of bankroll</span>
+            <span class="analysis-value gold">${bestPick.kellyPct}% Kelly size</span>
           </div>
           <div class="analysis-row">
             <span class="analysis-label">Confidence</span>
