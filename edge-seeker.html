@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Edge Seeker</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23080B10' stroke='%2300E5FF' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%2300E5FF' stroke-width='1'/%3E%3Cpath d='M10 13 Q16 10 22 13' fill='none' stroke='%2300E5FF' stroke-width='1'/%3E%3Cpath d='M10 19 Q16 22 22 19' fill='none' stroke='%2300E5FF' stroke-width='1'/%3E%3Cpath d='M13 10 Q10 16 13 22' fill='none' stroke='%2300E5FF' stroke-width='1'/%3E%3Cpath d='M19 10 Q22 16 19 22' fill='none' stroke='%2300E5FF' stroke-width='1'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1338,10 +1339,10 @@
 
   function renderPicks(picks) {
     hideAll();
+    const list = document.getElementById('picksList');
+    list.innerHTML = ''; // always clear before empty check so old content never lingers
     const filtered = filterPicks(picks);
     if (!filtered || filtered.length === 0) { document.getElementById('emptyState').classList.add('visible'); return; }
-    const list = document.getElementById('picksList');
-    list.innerHTML = '';
     filtered.forEach((pick, i) => list.appendChild(buildCard(pick, i)));
     setTimeout(() => { document.querySelectorAll('.edge-fill').forEach(el => { el.style.width = el.dataset.width + '%'; }); }, 100);
   }
@@ -1894,9 +1895,19 @@
 
   // ── CATEGORY SWITCHER ────────────────────────────────────────────────────
   let currentCategory = 'games';
+  let categoryVersion = 0; // incremented on every switch; async renders check this before writing
+
+  function clearPicksContainer(className) {
+    const list = document.getElementById('picksList');
+    list.innerHTML = '';
+    list.className = className || '';
+    hideAll();
+  }
 
   function setCategory(cat, el) {
     currentCategory = cat;
+    categoryVersion++; // invalidate any in-flight renders from the previous category
+
     document.querySelectorAll('.cat-tab').forEach(t => {
       t.classList.remove('active', 'so', 'hr', 'hit');
     });
@@ -1913,11 +1924,8 @@
     };
     document.getElementById('picksPageTitle').textContent = titles[cat] || "TODAY'S PICKS";
 
-    // Always fully reset the picks container first
-    const list = document.getElementById('picksList');
-    list.innerHTML = '';
-    list.className = cat === 'games' ? 'games-grid' : '';
-    hideAll();
+    // Single source of truth: fully reset state BEFORE handing off to any loader
+    clearPicksContainer(cat === 'games' ? 'games-grid' : '');
 
     if (cat === 'games') {
       renderAllGames();
@@ -1947,10 +1955,8 @@
   let strikeoutData = null;
 
   async function loadStrikeoutProps() {
+    const version = categoryVersion; // capture at call time; check before any DOM write after await
     document.getElementById('loadingState').style.display = 'block';
-    const list = document.getElementById('picksList');
-    list.className = '';
-    list.innerHTML = '';
 
     try {
       if (!strikeoutData) {
@@ -1959,8 +1965,12 @@
         strikeoutData = await res.json();
       }
 
+      if (categoryVersion !== version) return; // user switched away while fetching
+
+      const list = document.getElementById('picksList');
       hideAll();
       list.innerHTML = '';
+      list.className = '';
 
       // Daily summary
       if (strikeoutData.dailySummary) {
@@ -1979,11 +1989,11 @@
       }
 
       props.forEach((prop, i) => {
-        const card = buildStrikeoutCard(prop, i);
-        list.innerHTML += card;
+        list.innerHTML += buildStrikeoutCard(prop, i);
       });
 
     } catch (err) {
+      if (categoryVersion !== version) return; // user switched away; don't show stale error
       document.getElementById('loadingState').style.display = 'none';
       document.getElementById('errorMsg').innerHTML = `Strikeout agent error: ${err.message}`;
       document.getElementById('errorState').classList.add('visible');
@@ -2134,6 +2144,7 @@
 
   // Updated loadPicks to fetch ALL games not just edges
   async function loadAllGames() {
+    const version = categoryVersion;
     showLoading();
     try {
       // Fetch picks (edges)
@@ -2156,9 +2167,11 @@
       const rawData = await rawRes.json();
       allGamesData = rawData.data || [];
 
+      if (categoryVersion !== version) return; // user switched away while fetching
       renderAllGames();
     } catch (err) {
       console.error(err);
+      if (categoryVersion !== version) return;
       showError(err.message);
     }
   }
