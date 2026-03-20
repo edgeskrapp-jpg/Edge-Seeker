@@ -663,6 +663,69 @@
   /* TOAST */
   .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--surface2); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 20px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: 0.5px; z-index: 2000; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── DISCLAIMER SPLASH ───────────────────────────────────────────────────── */
+  #disclaimerSplash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 32px 24px;
+    transition: opacity 0.5s ease;
+  }
+  #disclaimerSplash.hidden { opacity: 0; pointer-events: none; }
+  #disclaimerSplash::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none;
+  }
+  .disclaimer-inner {
+    position: relative; z-index: 1;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 24px;
+    padding: 36px 28px; max-width: 420px; width: 100%; text-align: center;
+    box-shadow: 0 0 60px rgba(0,229,255,0.06);
+  }
+  .disclaimer-logo {
+    font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 3px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 4px;
+  }
+  .disclaimer-subtitle {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 4px;
+    color: var(--muted); margin-bottom: 28px;
+  }
+  .disclaimer-divider {
+    width: 40px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin: 0 auto 24px;
+  }
+  .disclaimer-text {
+    font-size: 13px; color: var(--muted); line-height: 1.75; margin-bottom: 24px;
+  }
+  .disclaimer-helpline {
+    background: rgba(0,229,255,0.05); border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 12px; padding: 12px 16px; margin-bottom: 28px;
+  }
+  .disclaimer-helpline-label {
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .disclaimer-helpline a {
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px;
+    color: var(--accent); text-decoration: none;
+  }
+  .disclaimer-helpline a:hover { opacity: 0.8; }
+  .disclaimer-enter-btn {
+    width: 100%; padding: 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 14px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px;
+    color: var(--bg); cursor: pointer; transition: all 0.2s;
+  }
+  .disclaimer-enter-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .disclaimer-age {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
+    color: var(--muted); margin-top: 14px;
+  }
 </style>
 <script>
   // Load Solana Web3.js for transaction building
@@ -675,6 +738,27 @@
 </script>
 </head>
 <body>
+
+<!-- DISCLAIMER SPLASH -->
+<div id="disclaimerSplash">
+  <div class="disclaimer-inner">
+    <div class="disclaimer-logo">Edge Seeker</div>
+    <div class="disclaimer-subtitle">ANALYTICS PLATFORM</div>
+    <div class="disclaimer-divider"></div>
+    <p class="disclaimer-text">
+      Edge Seeker provides statistical analysis and probability models for informational purposes only.
+      This platform does not provide betting advice or guarantee outcomes.
+      You are solely responsible for your own decisions.
+      Must be 18+ to use this platform.
+    </p>
+    <div class="disclaimer-helpline">
+      <div class="disclaimer-helpline-label">NATIONAL PROBLEM GAMBLING HELPLINE</div>
+      <a href="tel:18005224700">1-800-522-4700</a>
+    </div>
+    <button class="disclaimer-enter-btn" onclick="acceptDisclaimer()">I UNDERSTAND — ENTER</button>
+    <div class="disclaimer-age">18+ ONLY · GAMBLE RESPONSIBLY</div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -1361,6 +1445,20 @@
 </div>
 
 <script>
+  // ── DISCLAIMER SPLASH ─────────────────────────────────────────────────────
+  (function () {
+    if (localStorage.getItem('es_disclaimer_accepted') === '1') {
+      document.getElementById('disclaimerSplash').style.display = 'none';
+    }
+  })();
+
+  function acceptDisclaimer() {
+    localStorage.setItem('es_disclaimer_accepted', '1');
+    const splash = document.getElementById('disclaimerSplash');
+    splash.classList.add('hidden');
+    setTimeout(() => { splash.style.display = 'none'; }, 500);
+  }
+
   // ── CONFIG ────────────────────────────────────────────────────────────────
   const API_BASE = 'https://edge-seeker.vercel.app';
 
