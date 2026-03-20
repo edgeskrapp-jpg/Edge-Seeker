@@ -1273,6 +1273,31 @@ app.get("/admin", async (req, res) => {
   const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
   const uptime = Math.floor(process.uptime() / 60);
 
+  // Season / Opening Day calculations
+  const openingDay = new Date('2026-03-25T16:05:00-04:00');
+  const nowDate = new Date();
+  const msUntilOpening = openingDay - nowDate;
+  const daysUntilOpening = Math.ceil(msUntilOpening / (1000 * 60 * 60 * 24));
+  const seasonStarted = nowDate >= openingDay;
+  const dataSource = seasonStarted ? 'Live (Supabase)' : 'Projections (pre-season)';
+
+  // Next 6AM ET cron run
+  const nextCron = new Date();
+  nextCron.setTime(nextCron.getTime()); // mutable copy
+  const etOffset = -4; // EDT
+  const etHour = (nextCron.getUTCHours() + etOffset + 24) % 24;
+  if (etHour >= 6) nextCron.setUTCDate(nextCron.getUTCDate() + 1);
+  nextCron.setUTCHours(10, 0, 0, 0); // 6AM ET = 10AM UTC (EDT)
+  const nextCronStr = nextCron.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  // Overall system health
+  const quotaOk = isNaN(parseInt(oddsQuota.remaining)) || parseInt(oddsQuota.remaining) > 150;
+  const quotaLow = !isNaN(parseInt(oddsQuota.remaining)) && parseInt(oddsQuota.remaining) < 150;
+  const allHealthy = quotaOk;
+  const activeSplitPcts = PRIZE_POOL_ENABLED
+    ? { ops: 70, pool: 20, treas: 10 }
+    : { ops: Math.round(SPLIT_CONFIG.operations * 100), pool: Math.round(SPLIT_CONFIG.prizePool * 100), treas: Math.round(SPLIT_CONFIG.treasury * 100) };
+
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1280,129 +1305,421 @@ app.get("/admin", async (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EdgeSKR Admin</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: 'Courier New', monospace; background: #080B10; color: #E8EDF5; padding: 20px; min-height: 100vh; }
-  .header { border-bottom: 2px solid #00E5FF; padding-bottom: 20px; margin-bottom: 30px; }
-  .logo { font-size: 28px; letter-spacing: 4px; color: #00E5FF; font-weight: bold; }
-  .subtitle { font-size: 11px; color: #5A6A85; letter-spacing: 3px; margin-top: 4px; }
-  .time { font-size: 12px; color: #5A6A85; margin-top: 8px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .card { background: #0E1420; border: 1px solid #1E2A40; border-radius: 12px; padding: 20px; }
-  .card-title { font-size: 10px; letter-spacing: 2px; color: #5A6A85; text-transform: uppercase; margin-bottom: 12px; }
-  .card.green { border-top: 2px solid #00FF88; }
-  .card.cyan  { border-top: 2px solid #00E5FF; }
-  .card.gold  { border-top: 2px solid #FFD060; }
-  .card.red   { border-top: 2px solid #FF3A5C; }
-  .card.sol   { border-top: 2px solid #9945FF; }
-  .stat { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #141C2E; font-size: 13px; }
-  .stat:last-child { border-bottom: none; }
-  .stat-label { color: #5A6A85; }
-  .stat-value { font-weight: bold; }
-  .green  { color: #00FF88; }
-  .cyan   { color: #00E5FF; }
-  .gold   { color: #FFD060; }
-  .red    { color: #FF3A5C; }
-  .sol    { color: #9945FF; }
-  .white  { color: #E8EDF5; }
-  .btn { display: inline-block; background: #141C2E; border: 1px solid #1E2A40; border-radius: 8px; color: #E8EDF5; font-family: monospace; font-size: 11px; letter-spacing: 1px; padding: 8px 16px; cursor: pointer; text-decoration: none; margin-right: 8px; margin-top: 8px; transition: all 0.2s; }
-  .btn:hover { border-color: #00E5FF; color: #00E5FF; }
-  .btn.danger:hover { border-color: #FF3A5C; color: #FF3A5C; }
-  .section-title { font-size: 12px; letter-spacing: 3px; color: #5A6A85; text-transform: uppercase; margin: 24px 0 12px; }
-  .checklist { background: #0E1420; border: 1px solid #1E2A40; border-radius: 12px; padding: 20px; }
-  .check-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #141C2E; font-size: 13px; }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Courier New', monospace;
+    background: #080B10;
+    color: #E8EDF5;
+    padding: 28px 32px;
+    min-height: 100vh;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid #1E2A40;
+    padding-bottom: 24px;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .header-left { display: flex; flex-direction: column; gap: 6px; }
+  .logo { font-size: 30px; letter-spacing: 5px; color: #00E5FF; font-weight: bold; }
+  .subtitle { font-size: 11px; color: #5A6A85; letter-spacing: 3px; }
+  .time { font-size: 13px; color: #8A9AB5; margin-top: 2px; }
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #0E1420;
+    border: 1px solid #1E2A40;
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  .status-dot.ok  { background: #00FF88; box-shadow: 0 0 8px #00FF88; }
+  .status-dot.warn { background: #FF3A5C; box-shadow: 0 0 8px #FF3A5C; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+  /* ── ALERT BANNER ── */
+  .alert-banner {
+    background: rgba(255,58,92,0.12);
+    border: 1px solid #FF3A5C;
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 28px;
+    font-size: 14px;
+    color: #FF3A5C;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .alert-banner a { color: #FF7A95; text-decoration: underline; }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #5A6A85;
+    text-transform: uppercase;
+    margin: 36px 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #1E2A40;
+  }
+
+  /* ── GRID ── */
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ── CARD ── */
+  .card {
+    background: #0E1420;
+    border: 1px solid #1E2A40;
+    border-radius: 14px;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    color: #5A6A85;
+    text-transform: uppercase;
+  }
+  .card-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+  }
+  .badge-green { background: rgba(0,255,136,0.15); color: #00FF88; }
+  .badge-red   { background: rgba(255,58,92,0.15);  color: #FF3A5C; }
+  .badge-gold  { background: rgba(255,208,96,0.15); color: #FFD060; }
+  .badge-sol   { background: rgba(153,69,255,0.15); color: #9945FF; }
+  .badge-cyan  { background: rgba(0,229,255,0.15);  color: #00E5FF; }
+
+  .card.t-cyan  { border-top: 2px solid #00E5FF; }
+  .card.t-green { border-top: 2px solid #00FF88; }
+  .card.t-gold  { border-top: 2px solid #FFD060; }
+  .card.t-sol   { border-top: 2px solid #9945FF; }
+  .card.t-red   { border-top: 2px solid #FF3A5C; }
+  .card.t-blue  { border-top: 2px solid #4A90E2; }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid #0D1525;
+    font-size: 13.5px;
+    gap: 8px;
+  }
+  .row:last-child { border-bottom: none; padding-bottom: 0; }
+  .row-label { color: #6A7A95; flex-shrink: 0; }
+  .row-value { font-weight: bold; text-align: right; }
+
+  /* ── COLORS ── */
+  .c-green { color: #00FF88; }
+  .c-cyan  { color: #00E5FF; }
+  .c-gold  { color: #FFD060; }
+  .c-red   { color: #FF3A5C; }
+  .c-sol   { color: #9945FF; }
+  .c-white { color: #E8EDF5; }
+  .c-muted { color: #8A9AB5; }
+  .c-blue  { color: #4A90E2; }
+
+  /* ── ACTIONS ── */
+  .actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    background: #0E1420;
+    border: 1px solid #1E2A40;
+    border-radius: 10px;
+    color: #C8D4E8;
+    font-family: monospace;
+    font-size: 12.5px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    padding: 11px 16px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+  .btn:hover       { border-color: #00E5FF; color: #00E5FF; background: rgba(0,229,255,0.06); }
+  .btn.danger:hover{ border-color: #FF3A5C; color: #FF3A5C; background: rgba(255,58,92,0.06); }
+  .btn.primary     { border-color: #00E5FF; color: #00E5FF; }
+
+  /* ── PICK RESULT FORM ── */
+  .result-panel {
+    background: #0E1420;
+    border: 1px solid #1E2A40;
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .result-panel label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: #5A6A85;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .result-panel input,
+  .result-panel select {
+    background: #141C2E;
+    border: 1px solid #1E2A40;
+    border-radius: 8px;
+    color: #E8EDF5;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .result-panel input:focus,
+  .result-panel select:focus { border-color: #00E5FF; }
+  .result-fields {
+    display: grid;
+    grid-template-columns: 1fr 160px auto;
+    gap: 12px;
+    align-items: end;
+  }
+  @media (max-width: 600px) { .result-fields { grid-template-columns: 1fr; } }
+  .result-panel .field { display: flex; flex-direction: column; gap: 6px; }
+  .submit-btn {
+    background: linear-gradient(135deg, #00E5FF, #7B61FF);
+    border: none;
+    border-radius: 8px;
+    color: #080B10;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .submit-btn:hover { opacity: 0.85; }
+  #updateMsg {
+    margin-top: 12px;
+    font-size: 13px;
+    display: none;
+  }
+
+  /* ── CHECKLIST ── */
+  .checklist {
+    background: #0E1420;
+    border: 1px solid #1E2A40;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 24px;
+    border-bottom: 1px solid #0D1525;
+    font-size: 13.5px;
+  }
   .check-item:last-child { border-bottom: none; }
-  .check-icon { font-size: 16px; }
-  .check-text { color: #8A9AB5; }
-  .check-action { margin-left: auto; font-size: 10px; color: #5A6A85; }
-  code { background: #141C2E; padding: 2px 6px; border-radius: 4px; color: #00E5FF; font-size: 11px; }
+  .check-icon { font-size: 17px; flex-shrink: 0; }
+  .check-text { color: #8A9AB5; flex: 1; }
+  .check-link { font-size: 11px; color: #00E5FF; text-decoration: none; flex-shrink: 0; }
+  .check-link:hover { text-decoration: underline; }
+
+  code {
+    background: #141C2E;
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: #00E5FF;
+    font-size: 11px;
+  }
 </style>
 </head>
 <body>
 
+<!-- ═══════════════ HEADER ═══════════════ -->
 <div class="header">
-  <div class="logo">EDGESKR ADMIN</div>
-  <div class="subtitle">BACKEND DASHBOARD · RESTRICTED ACCESS</div>
-  <div class="time">🕐 ${now} ET · Server uptime: ${uptime} min</div>
+  <div class="header-left">
+    <div class="logo">EDGESKR ADMIN</div>
+    <div class="subtitle">BACKEND DASHBOARD · RESTRICTED ACCESS</div>
+    <div class="time">🕐 ${now} ET &nbsp;·&nbsp; Uptime: ${uptime} min</div>
+  </div>
+  <div class="status-pill">
+    <div class="status-dot ${allHealthy ? 'ok' : 'warn'}"></div>
+    <span class="${allHealthy ? 'c-green' : 'c-red'}">${allHealthy ? 'ALL SYSTEMS OK' : 'NEEDS ATTENTION'}</span>
+  </div>
 </div>
 
-<!-- STATS GRID -->
-<div class="grid">
+${quotaLow ? `<!-- QUOTA ALERT -->
+<div class="alert-banner">
+  ⚠️ &nbsp;<strong>ODDS API QUOTA LOW</strong> — ${oddsQuota.remaining} requests remaining this month.
+  &nbsp;<a href="https://the-odds-api.com" target="_blank">Upgrade at the-odds-api.com →</a>
+</div>` : ''}
 
-  <div class="card cyan">
-    <div class="card-title">Odds API</div>
-    <div class="stat"><span class="stat-label">Remaining</span><span class="stat-value cyan">${oddsQuota.remaining}</span></div>
-    <div class="stat"><span class="stat-label">Used</span><span class="stat-value white">${oddsQuota.used}</span></div>
-    <div class="stat"><span class="stat-label">Monthly limit</span><span class="stat-value white">500 (free)</span></div>
-    <div class="stat"><span class="stat-label">Status</span><span class="stat-value ${parseInt(oddsQuota.remaining) > 100 ? 'green' : 'red'}">${parseInt(oddsQuota.remaining) > 100 ? '✅ HEALTHY' : '⚠️ LOW'}</span></div>
-  </div>
+<!-- ═══════════════ ROW 1: ODDS · DB · AI ═══════════════ -->
+<div class="section-label">System Status</div>
+<div class="grid-3">
 
-  <div class="card green">
-    <div class="card-title">Database (Supabase)</div>
-    <div class="stat"><span class="stat-label">Total users</span><span class="stat-value green">${dbStats.users}</span></div>
-    <div class="stat"><span class="stat-label">Total bets logged</span><span class="stat-value white">${dbStats.bets}</span></div>
-    <div class="stat"><span class="stat-label">Status</span><span class="stat-value green">✅ CONNECTED</span></div>
-  </div>
-
-  <div class="card gold">
-    <div class="card-title">AI Agent</div>
-    <div class="stat"><span class="stat-label">Free tier model</span><span class="stat-value white">claude-sonnet</span></div>
-    <div class="stat"><span class="stat-label">Premium tier model</span><span class="stat-value white">claude-opus</span></div>
-    <div class="stat"><span class="stat-label">Cost per free pick</span><span class="stat-value gold">~$0.003</span></div>
-    <div class="stat"><span class="stat-label">Cost per premium</span><span class="stat-value gold">~$0.015</span></div>
-    <div class="stat"><span class="stat-label">Cache</span><span class="stat-value green">Daily (1 call/day)</span></div>
-  </div>
-
-  <div class="card sol">
-    <div class="card-title">Server</div>
-    <div class="stat"><span class="stat-label">Environment</span><span class="stat-value white">Vercel (Production)</span></div>
-    <div class="stat"><span class="stat-label">Uptime</span><span class="stat-value green">${uptime} min</span></div>
-    <div class="stat"><span class="stat-label">Node version</span><span class="stat-value white">${process.version}</span></div>
-    <div class="stat"><span class="stat-label">Memory</span><span class="stat-value white">${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB</span></div>
-  </div>
-
-  <div class="card" style="border-top:2px solid #9945FF">
-    <div class="card-title">Wallet Split Config</div>
-    <div class="stat"><span class="stat-label">Prize Pool</span><span class="stat-value ${PRIZE_POOL_ENABLED ? 'green' : 'red'}">${PRIZE_POOL_ENABLED ? '✅ ENABLED' : '⛔ DISABLED'}</span></div>
-    <div class="stat"><span class="stat-label">Operations</span><span class="stat-value sol">${PRIZE_POOL_ENABLED ? '70' : Math.round(SPLIT_CONFIG.operations * 100)}%</span></div>
-    <div class="stat"><span class="stat-label">Prize Pool</span><span class="stat-value sol">${PRIZE_POOL_ENABLED ? '20' : Math.round(SPLIT_CONFIG.prizePool * 100)}%</span></div>
-    <div class="stat"><span class="stat-label">Treasury</span><span class="stat-value sol">${PRIZE_POOL_ENABLED ? '10' : Math.round(SPLIT_CONFIG.treasury * 100)}%</span></div>
-    <div class="stat" style="flex-direction:column;align-items:flex-start;gap:4px">
-      <span class="stat-label" style="font-size:10px">To enable prize pool: set <code>PRIZE_POOL_ENABLED=true</code> in server.js and redeploy</span>
+  <div class="card t-cyan">
+    <div class="card-header">
+      <span class="card-title">Odds API</span>
+      <span class="card-badge ${parseInt(oddsQuota.remaining) > 150 ? 'badge-green' : 'badge-red'}">${parseInt(oddsQuota.remaining) > 150 ? 'HEALTHY' : 'LOW'}</span>
     </div>
+    <div class="row"><span class="row-label">Remaining</span><span class="row-value c-cyan">${oddsQuota.remaining}</span></div>
+    <div class="row"><span class="row-label">Used this month</span><span class="row-value c-white">${oddsQuota.used}</span></div>
+    <div class="row"><span class="row-label">Monthly limit</span><span class="row-value c-muted">500 (free tier)</span></div>
+    <div class="row"><span class="row-label">Resets</span><span class="row-value c-muted">1st of month</span></div>
+  </div>
+
+  <div class="card t-green">
+    <div class="card-header">
+      <span class="card-title">Database</span>
+      <span class="card-badge badge-green">CONNECTED</span>
+    </div>
+    <div class="row"><span class="row-label">Total users</span><span class="row-value c-green">${dbStats.users}</span></div>
+    <div class="row"><span class="row-label">Total picks logged</span><span class="row-value c-white">${dbStats.bets}</span></div>
+    <div class="row"><span class="row-label">Provider</span><span class="row-value c-muted">Supabase</span></div>
+    <div class="row"><span class="row-label">Free tier limit</span><span class="row-value c-muted">500 MB</span></div>
+  </div>
+
+  <div class="card t-gold">
+    <div class="card-header">
+      <span class="card-title">AI Agent</span>
+      <span class="card-badge badge-gold">CACHED</span>
+    </div>
+    <div class="row"><span class="row-label">Free model</span><span class="row-value c-white">claude-sonnet</span></div>
+    <div class="row"><span class="row-label">Premium model</span><span class="row-value c-white">claude-opus</span></div>
+    <div class="row"><span class="row-label">Free pick cost</span><span class="row-value c-gold">~$0.003</span></div>
+    <div class="row"><span class="row-label">Premium pick cost</span><span class="row-value c-gold">~$0.015</span></div>
+    <div class="row"><span class="row-label">Cache strategy</span><span class="row-value c-green">Daily (1×/day)</span></div>
   </div>
 
 </div>
 
-<!-- ACTIONS -->
-<div class="section-title">Quick Actions</div>
-<div>
-  <a class="btn" href="/api/health" target="_blank">🔍 Health Check</a>
+<!-- ═══════════════ ROW 2: SERVER · SPLIT · SEASON ═══════════════ -->
+<div class="grid-3">
+
+  <div class="card t-sol">
+    <div class="card-header">
+      <span class="card-title">Server</span>
+      <span class="card-badge badge-sol">LIVE</span>
+    </div>
+    <div class="row"><span class="row-label">Environment</span><span class="row-value c-white">Vercel Production</span></div>
+    <div class="row"><span class="row-label">Uptime</span><span class="row-value c-green">${uptime} min</span></div>
+    <div class="row"><span class="row-label">Node version</span><span class="row-value c-white">${process.version}</span></div>
+    <div class="row"><span class="row-label">Heap used</span><span class="row-value c-white">${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB</span></div>
+    <div class="row"><span class="row-label">Platform</span><span class="row-value c-muted">linux/x64</span></div>
+  </div>
+
+  <div class="card t-sol">
+    <div class="card-header">
+      <span class="card-title">Wallet Split</span>
+      <span class="card-badge ${PRIZE_POOL_ENABLED ? 'badge-green' : 'badge-red'}">${PRIZE_POOL_ENABLED ? 'POOL ON' : 'POOL OFF'}</span>
+    </div>
+    <div class="row"><span class="row-label">Prize Pool</span><span class="row-value ${PRIZE_POOL_ENABLED ? 'c-green' : 'c-red'}">${PRIZE_POOL_ENABLED ? '✅ ENABLED' : '⛔ DISABLED'}</span></div>
+    <div class="row"><span class="row-label">Operations</span><span class="row-value c-sol">${activeSplitPcts.ops}%</span></div>
+    <div class="row"><span class="row-label">Prize Pool</span><span class="row-value c-sol">${activeSplitPcts.pool}%</span></div>
+    <div class="row"><span class="row-label">Treasury</span><span class="row-value c-sol">${activeSplitPcts.treas}%</span></div>
+    <div class="row"><span class="row-label" style="font-size:11px;color:#3A4A65">Set <code>PRIZE_POOL_ENABLED=true</code> + redeploy to enable</span><span></span></div>
+  </div>
+
+  <div class="card t-blue">
+    <div class="card-header">
+      <span class="card-title">Season Status</span>
+      <span class="card-badge ${seasonStarted ? 'badge-green' : 'badge-gold'}">${seasonStarted ? 'IN SEASON' : 'PRE-SEASON'}</span>
+    </div>
+    <div class="row"><span class="row-label">Season</span><span class="row-value c-white">2026 MLB</span></div>
+    <div class="row"><span class="row-label">Opening Day</span><span class="row-value c-cyan">March 25, 2026</span></div>
+    <div class="row"><span class="row-label">${seasonStarted ? 'Season started' : 'Days until opening'}</span><span class="row-value ${seasonStarted ? 'c-green' : 'c-gold'}">${seasonStarted ? '✅ Active' : daysUntilOpening + ' days'}</span></div>
+    <div class="row"><span class="row-label">Data source</span><span class="row-value ${seasonStarted ? 'c-green' : 'c-gold'}">${dataSource}</span></div>
+    <div class="row"><span class="row-label">Next cron run</span><span class="row-value c-muted">${nextCronStr} ET</span></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ QUICK ACTIONS ═══════════════ -->
+<div class="section-label">Quick Actions</div>
+<div class="actions-grid">
+  <a class="btn primary" href="/api/health" target="_blank">🔍 Health Check</a>
   <a class="btn" href="/api/picks" target="_blank">⚡ View Picks</a>
   <a class="btn" href="/api/agent/premium?wallet=8YPA4TV2rKkFdeJwvhQZPm6CNMNAm9sjP98p3DZSEgcL" target="_blank">🤖 Test Premium Agent</a>
   <a class="btn" href="/api/quota" target="_blank">📊 API Quota</a>
   <a class="btn" href="/api/accuracy" target="_blank">🎯 Accuracy Stats</a>
   <a class="btn" href="/api/leaderboard" target="_blank">🏆 Leaderboard</a>
+  <a class="btn" href="/api/elo" target="_blank">📈 Elo Ratings</a>
+  <a class="btn" href="/api/admin/split-config?secret=${secret}" target="_blank">💸 Split Config</a>
+  <a class="btn" href="https://edge-seeker.vercel.app" target="_blank">🌐 View Live App</a>
   <a class="btn" href="/api/cron/update-stats?secret=${secret}" target="_blank">⚾ Run Stats Update</a>
   <a class="btn danger" href="/admin/refresh-agent?secret=${secret}" target="_blank">🔄 Refresh Agent Cache</a>
 </div>
 
-<!-- ACCURACY TRACKER ADMIN -->
-<div class="section-title">Update Pick Results</div>
-<div class="checklist" style="margin-bottom:24px">
-  <div class="check-item" style="flex-direction:column;align-items:flex-start;gap:8px">
-    <div class="check-text" style="color:var(--text)">Mark a pick as Win/Loss/Push after the game</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
-      <input id="pickId" placeholder="Pick ID (from /api/accuracy)" style="background:#141C2E;border:1px solid #1E2A40;border-radius:8px;color:#E8EDF5;font-family:monospace;font-size:12px;padding:8px 12px;flex:1;min-width:200px" />
-      <select id="pickResult" style="background:#141C2E;border:1px solid #1E2A40;border-radius:8px;color:#E8EDF5;font-family:monospace;font-size:12px;padding:8px 12px">
+<!-- ═══════════════ UPDATE PICK RESULTS ═══════════════ -->
+<div class="section-label">Update Pick Results</div>
+<div class="result-panel">
+  <p style="font-size:13px;color:#6A7A95;margin-bottom:20px">Mark a pick as Win / Loss / Push after the game resolves. Find the pick ID from <a href="/api/accuracy" target="_blank" style="color:#00E5FF">/api/accuracy</a>.</p>
+  <div class="result-fields">
+    <div class="field">
+      <label>Pick ID</label>
+      <input id="pickId" placeholder="e.g. 42" />
+    </div>
+    <div class="field">
+      <label>Result</label>
+      <select id="pickResult">
         <option value="win">WIN ✓</option>
         <option value="loss">LOSS ✗</option>
         <option value="push">PUSH ~</option>
         <option value="void">VOID</option>
       </select>
-      <button onclick="updateResult()" style="background:linear-gradient(135deg,#00E5FF,#7B61FF);border:none;border-radius:8px;color:#080B10;font-family:monospace;font-size:12px;font-weight:bold;padding:8px 16px;cursor:pointer">UPDATE</button>
     </div>
-    <div id="updateMsg" style="font-family:monospace;font-size:11px;color:#00FF88;display:none">✅ Updated!</div>
+    <div class="field">
+      <label>&nbsp;</label>
+      <button class="submit-btn" onclick="updateResult()">UPDATE</button>
+    </div>
   </div>
+  <div id="updateMsg"></div>
 </div>
 
 <script>
@@ -1412,56 +1729,53 @@ async function updateResult() {
   if (!id) { alert('Enter a pick ID'); return; }
   const res = await fetch('/api/accuracy/result/' + id, {
     method: 'PATCH',
-    headers: {'Content-Type':'application/json'},
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ secret: '${secret}', result })
   });
   const data = await res.json();
   const msg = document.getElementById('updateMsg');
   msg.style.display = 'block';
-  msg.textContent = res.ok ? '✅ Updated to ' + result.toUpperCase() : '❌ Error: ' + data.error;
-  setTimeout(() => msg.style.display = 'none', 3000);
+  msg.style.color = res.ok ? '#00FF88' : '#FF3A5C';
+  msg.textContent = res.ok ? '✅ Pick #' + id + ' updated to ' + result.toUpperCase() : '❌ Error: ' + data.error;
+  setTimeout(() => { msg.style.display = 'none'; }, 4000);
 }
 </script>
 
-<!-- MAINTENANCE CHECKLIST -->
-<div class="section-title">Monthly Maintenance Checklist</div>
+<!-- ═══════════════ MAINTENANCE CHECKLIST ═══════════════ -->
+<div class="section-label">Monthly Maintenance</div>
 <div class="checklist">
   <div class="check-item">
     <div class="check-icon">📊</div>
     <div class="check-text">Check Odds API quota — upgrade if below 100 remaining</div>
-    <div class="check-action"><a href="https://the-odds-api.com" target="_blank" style="color:#00E5FF">the-odds-api.com</a></div>
+    <a class="check-link" href="https://the-odds-api.com" target="_blank">the-odds-api.com →</a>
   </div>
   <div class="check-item">
     <div class="check-icon">🤖</div>
     <div class="check-text">Check Anthropic credit balance</div>
-    <div class="check-action"><a href="https://console.anthropic.com/settings/billing" target="_blank" style="color:#00E5FF">console.anthropic.com</a></div>
+    <a class="check-link" href="https://console.anthropic.com/settings/billing" target="_blank">console.anthropic.com →</a>
   </div>
   <div class="check-item">
     <div class="check-icon">⚾</div>
-    <div class="check-text">Update mlbStats.js with real team run averages</div>
-    <div class="check-action"><a href="https://baseball-reference.com/leagues/majors/2026.shtml" target="_blank" style="color:#00E5FF">baseball-reference.com</a></div>
+    <div class="check-text">Update mlbStats.js with real team run averages once season starts</div>
+    <a class="check-link" href="https://baseball-reference.com/leagues/majors/2026.shtml" target="_blank">baseball-reference.com →</a>
   </div>
   <div class="check-item">
     <div class="check-icon">🗄️</div>
-    <div class="check-text">Check Supabase database size (free tier = 500MB)</div>
-    <div class="check-action"><a href="https://supabase.com/dashboard" target="_blank" style="color:#00E5FF">supabase.com</a></div>
+    <div class="check-text">Check Supabase database size — free tier limit is 500 MB</div>
+    <a class="check-link" href="https://supabase.com/dashboard" target="_blank">supabase.com →</a>
   </div>
   <div class="check-item">
     <div class="check-icon">🚀</div>
-    <div class="check-text">Check Vercel deployment health</div>
-    <div class="check-action"><a href="https://vercel.com/dashboard" target="_blank" style="color:#00E5FF">vercel.com</a></div>
+    <div class="check-text">Review Vercel deployment logs and function usage</div>
+    <a class="check-link" href="https://vercel.com/dashboard" target="_blank">vercel.com →</a>
   </div>
-</div>
-
-<!-- HOW TO ACCESS -->
-<div class="section-title">Admin Access</div>
-<div class="checklist">
   <div class="check-item">
     <div class="check-icon">🔐</div>
-    <div class="check-text">This dashboard is protected by your <code>ADMIN_SECRET</code> environment variable. Never share the URL with the secret included. To access: <code>/admin?secret=YOUR_SECRET</code></div>
+    <div class="check-text">Dashboard protected by <code>ADMIN_SECRET</code> env var. Access: <code>/admin?secret=YOUR_SECRET</code></div>
   </div>
 </div>
 
+<div style="height:48px"></div>
 </body>
 </html>`);
 });
