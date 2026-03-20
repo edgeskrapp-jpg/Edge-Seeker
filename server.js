@@ -15,7 +15,8 @@ const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
 const path = require("path");
-const { analyzePicks } = require("./edgeAnalyzer");
+const { analyzePicks, applyInjuryPenalty } = require("./edgeAnalyzer");
+const { getEnrichedCache } = require("./mlbDataEnricher");
 const { calculateBetPoints, getAccuracyBonus } = require("./pointsConfig");
 const { getFreePick, getPremiumPick, invalidateCache } = require("./agentRouter");
 const { getStrikeoutProps } = require("./strikeoutAgent");
@@ -51,6 +52,17 @@ app.use(
 // Caches odds for 10 minutes so we don't burn through API quota
 // (Free tier = 500 requests/month)
 
+// ─── AGENT AUTO-RUN CONFIG ────────────────────────────────────────────────────
+const AGENT_AUTO_RUN_TIME = 11; // 11 AM ET daily — agent fires automatically
+
+// Tracks agent auto-run state across requests (module-level, lives for server uptime)
+const agentAutoRun = {
+  lastRun: null,      // YYYY-MM-DD of last successful run
+  lastRunTime: null,  // Human-readable time string
+  status: 'ready',   // 'ready' | 'running' | 'failed'
+};
+
+// ─── SIMPLE IN-MEMORY CACHE ──────────────────────────────────────────────────
 const cache = {
   picks: { data: null, fetchedAt: null },
   raw: { data: null, fetchedAt: null },
@@ -201,7 +213,13 @@ app.get("/api/picks", async (req, res) => {
       });
     }
 
-    const picks = applyPickFilters(analyzePicks(games));
+    let picks = applyPickFilters(analyzePicks(games));
+
+    // Apply injury confidence penalties if enriched data is cached (from prior agent run)
+    const cachedEnriched = getEnrichedCache();
+    if (cachedEnriched) {
+      picks = applyInjuryPenalty(picks, cachedEnriched);
+    }
 
     const responseData = {
       picks,
@@ -1233,6 +1251,99 @@ app.get("/api/admin/split-config", (req, res) => {
   });
 });
 
+// ─── AGENT AUTO-RUN SYSTEM ───────────────────────────────────────────────────
+
+/**
+ * Check current ET hour and auto-run the premium agent once per day
+ * after AGENT_AUTO_RUN_TIME. Called every 30 minutes via setInterval.
+ */
+async function checkAndAutoRunAgent() {
+  try {
+    const etHourStr = new Date().toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      hour12: false,
+    });
+    const etHour = parseInt(etHourStr, 10);
+
+    if (etHour < AGENT_AUTO_RUN_TIME) return; // Too early
+
+    const today = new Date().toISOString().split('T')[0];
+    if (agentAutoRun.lastRun === today) return; // Already ran today
+
+    console.log(`🤖 Auto-running premium agent at ${etHour}:xx ET...`);
+    agentAutoRun.status = 'running';
+
+    const { games } = await fetchMLBOdds();
+    if (!games || games.length === 0) {
+      agentAutoRun.status = 'ready';
+      console.log('⏸️  No games today — skipping agent auto-run');
+      return;
+    }
+
+    const picks = applyPickFilters(analyzePicks(games));
+    await getPremiumPick(picks);
+
+    agentAutoRun.lastRun = today;
+    agentAutoRun.lastRunTime = new Date().toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      minute: '2-digit',
+    }) + ' ET';
+    agentAutoRun.status = 'ready';
+    console.log(`✅ Agent auto-run complete — picks cached for today`);
+  } catch (err) {
+    console.error('❌ Agent auto-run failed:', err.message);
+    agentAutoRun.status = 'failed';
+  }
+}
+
+/**
+ * GET /api/cron/auto-run-agent
+ * Vercel Cron endpoint — fires at 15:00 UTC (11:00 AM ET) daily.
+ * Also callable manually from the admin dashboard.
+ */
+app.get("/api/cron/auto-run-agent", async (req, res) => {
+  const cronSecret = req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`;
+  const adminSecret = req.query.secret === process.env.ADMIN_SECRET;
+  if (!cronSecret && !adminSecret) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    agentAutoRun.status = 'running';
+
+    const { games } = await fetchMLBOdds();
+    if (!games || games.length === 0) {
+      agentAutoRun.status = 'ready';
+      return res.json({ success: true, message: 'No games today — agent skipped', picks: 0 });
+    }
+
+    const picks = applyPickFilters(analyzePicks(games));
+    const result = await getPremiumPick(picks);
+
+    const today = new Date().toISOString().split('T')[0];
+    agentAutoRun.lastRun = today;
+    agentAutoRun.lastRunTime = new Date().toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      minute: '2-digit',
+    }) + ' ET';
+    agentAutoRun.status = 'ready';
+
+    console.log('✅ Cron: Agent auto-run complete');
+    return res.json({
+      success: true,
+      message: 'Premium agent ran successfully',
+      picks: result.picks?.length || 0,
+      cached: result.cached || false,
+      ranAt: agentAutoRun.lastRunTime,
+    });
+  } catch (err) {
+    agentAutoRun.status = 'failed';
+    console.error('❌ Cron agent auto-run failed:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
 
 /**
@@ -1628,12 +1739,13 @@ ${quotaLow ? `<!-- QUOTA ALERT -->
   <div class="card t-gold">
     <div class="card-header">
       <span class="card-title">AI Agent</span>
-      <span class="card-badge badge-gold">CACHED</span>
+      <span class="card-badge ${agentAutoRun.status === 'running' ? 'badge-gold' : agentAutoRun.status === 'failed' ? 'badge-red' : 'badge-green'}">${agentAutoRun.status.toUpperCase()}</span>
     </div>
     <div class="row"><span class="row-label">Free model</span><span class="row-value c-white">claude-sonnet</span></div>
     <div class="row"><span class="row-label">Premium model</span><span class="row-value c-white">claude-opus</span></div>
-    <div class="row"><span class="row-label">Free pick cost</span><span class="row-value c-gold">~$0.003</span></div>
-    <div class="row"><span class="row-label">Premium pick cost</span><span class="row-value c-gold">~$0.015</span></div>
+    <div class="row"><span class="row-label">Auto-run time</span><span class="row-value c-gold">${AGENT_AUTO_RUN_TIME}:00 AM ET daily</span></div>
+    <div class="row"><span class="row-label">Agent Last Run</span><span class="row-value ${agentAutoRun.lastRunTime ? 'c-green' : 'c-muted'}">${agentAutoRun.lastRunTime || 'Not yet today'}</span></div>
+    <div class="row"><span class="row-label">Agent Status</span><span class="row-value ${agentAutoRun.status === 'ready' ? 'c-green' : agentAutoRun.status === 'running' ? 'c-gold' : 'c-red'}">${agentAutoRun.status === 'ready' ? '✅ Ready' : agentAutoRun.status === 'running' ? '⏳ Running...' : '❌ Failed'}</span></div>
     <div class="row"><span class="row-label">Cache strategy</span><span class="row-value c-green">Daily (1×/day)</span></div>
   </div>
 
@@ -1693,6 +1805,7 @@ ${quotaLow ? `<!-- QUOTA ALERT -->
   <a class="btn" href="/api/admin/split-config?secret=${secret}" target="_blank">💸 Split Config</a>
   <a class="btn" href="https://edge-seeker.vercel.app" target="_blank">🌐 View Live App</a>
   <a class="btn" href="/api/cron/update-stats?secret=${secret}" target="_blank">⚾ Run Stats Update</a>
+  <a class="btn primary" href="/api/cron/auto-run-agent?secret=${secret}" target="_blank">🤖 Run Agent Now</a>
   <a class="btn danger" href="/admin/refresh-agent?secret=${secret}" target="_blank">🔄 Refresh Agent Cache</a>
 </div>
 
@@ -1826,7 +1939,13 @@ app.listen(PORT, () => {
   console.log(`   GET http://localhost:${PORT}/api/odds/raw`);
   console.log(`   GET http://localhost:${PORT}/api/quota`);
   console.log(`\n⚡ Odds cache TTL: 10 minutes (saves API quota)`);
+  console.log(`\n🤖 Agent auto-run: ${AGENT_AUTO_RUN_TIME}:00 AM ET daily (checks every 30 min)`);
   console.log(`\n⚾ Ready to find edges!\n`);
+
+  // Auto-run agent check: every 30 minutes, fires once per day after AGENT_AUTO_RUN_TIME
+  setInterval(checkAndAutoRunAgent, 30 * 60 * 1000);
+  // Also check immediately on startup (in case server restarted after 11 AM)
+  checkAndAutoRunAgent();
 });
 
 module.exports = app;

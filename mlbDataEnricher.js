@@ -9,6 +9,7 @@
  */
 
 const fetch = require("node-fetch");
+const { MLB_TEAM_IDS } = require("./cron");
 
 // ─── MLB STADIUM COORDINATES ──────────────────────────────────────────────────
 // Used for weather lookups
@@ -308,6 +309,63 @@ async function fetchPlatoonSplits(pitcherName, season) {
   }
 }
 
+// ─── ROSTER & INJURY TRACKER ──────────────────────────────────────────────────
+
+/**
+ * Fetch IL players, active roster, and recent transactions for a team.
+ * teamId: numeric MLB API team ID (from MLB_TEAM_IDS or schedule API)
+ * teamAbbr: e.g. "NYY"
+ */
+async function fetchRosterAndInjuries(teamId, teamAbbr) {
+  if (!teamId) return { injuries: [], rosterMoves: [], keyInjury: null, ilCount: 0 };
+
+  const season = new Date().getFullYear();
+  const today = new Date().toISOString().split('T')[0];
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  try {
+    const [ilRes, transRes] = await Promise.all([
+      fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?rosterType=injured&season=${season}`),
+      fetch(`https://statsapi.mlb.com/api/v1/transactions?teamId=${teamId}&startDate=${threeDaysAgo}&endDate=${today}`),
+    ]);
+
+    const [ilData, transData] = await Promise.all([ilRes.json(), transRes.json()]);
+
+    // Parse IL players
+    const ilPlayers = (ilData.roster || []).map(p => ({
+      name: p.person?.fullName || 'Unknown',
+      status: p.status?.description || 'IL',
+      position: p.position?.type || 'Unknown',
+      posAbbr: p.position?.abbreviation || '',
+    }));
+
+    const injuryList = ilPlayers.map(p => `${p.name} (${p.status})`);
+
+    // Flag key injuries: pitchers on IL, or 3+ IL players (depth concern)
+    const pitchersOnIL = ilPlayers.filter(p =>
+      p.position === 'Pitcher' || p.posAbbr === 'SP' || p.posAbbr === 'P'
+    );
+    let keyInjury = null;
+    if (pitchersOnIL.length > 0) {
+      keyInjury = `${teamAbbr} pitcher(s) on IL: ${pitchersOnIL.map(p => p.name).join(', ')}`;
+    } else if (ilPlayers.length >= 3) {
+      keyInjury = `${teamAbbr}: ${ilPlayers.length} players on IL — verify lineup depth`;
+    }
+
+    // Parse recent transactions (last 3 days)
+    const rosterMoves = (transData.transactions || [])
+      .filter(t => t.typeDesc)
+      .slice(0, 5)
+      .map(t => `${t.player?.fullName || 'Player'}: ${t.typeDesc}`);
+
+    return { injuries: injuryList, rosterMoves, keyInjury, ilCount: ilPlayers.length };
+
+  } catch (err) {
+    console.error(`Injury fetch error for ${teamAbbr}:`, err.message);
+    return { injuries: [], rosterMoves: [], keyInjury: null, ilCount: 0 };
+  }
+}
+
 // ─── MAIN ENRICHER ────────────────────────────────────────────────────────────
 
 /**
@@ -347,7 +405,11 @@ async function enrichPicks(picks) {
 
       const season = new Date().getFullYear();
 
-      // Fetch all data in parallel including Baseball Savant
+      // Team IDs from the schedule API (same values as MLB_TEAM_IDS in cron.js)
+      const homeTeamId = game.teams?.home?.team?.id || MLB_TEAM_IDS[homeAbbr];
+      const awayTeamId = game.teams?.away?.team?.id || MLB_TEAM_IDS[awayAbbr];
+
+      // Fetch all data in parallel including Baseball Savant and injuries
       const [
         homePitcherStats, awayPitcherStats,
         homeLog, awayLog,
@@ -355,6 +417,7 @@ async function enrichPicks(picks) {
         homeSavant, awaySavant,
         homeBatting, awayBatting,
         homePlatoon, awayPlatoon,
+        homeInjuryData, awayInjuryData,
       ] = await Promise.all([
         fetchPitcherStats(homePitcherId),
         fetchPitcherStats(awayPitcherId),
@@ -367,7 +430,12 @@ async function enrichPicks(picks) {
         fetchTeamBattingStatcast(awayAbbr, season),
         fetchPlatoonSplits(homePitcherName, season),
         fetchPlatoonSplits(awayPitcherName, season),
+        fetchRosterAndInjuries(homeTeamId, homeAbbr),
+        fetchRosterAndInjuries(awayTeamId, awayAbbr),
       ]);
+
+      const combinedKeyInjuries = [homeInjuryData.keyInjury, awayInjuryData.keyInjury]
+        .filter(Boolean).join(' | ') || null;
 
       enriched[gameKey] = {
         homePitcher: {
@@ -389,6 +457,11 @@ async function enrichPicks(picks) {
         weather,
         homeTeam,
         awayTeam,
+        homeInjuries: homeInjuryData.injuries,
+        awayInjuries: awayInjuryData.injuries,
+        homeRosterMoves: homeInjuryData.rosterMoves,
+        awayRosterMoves: awayInjuryData.rosterMoves,
+        keyInjuries: combinedKeyInjuries,
       };
 
       console.log(`✅ Enriched: ${awayAbbr} @ ${homeAbbr}`);
@@ -406,4 +479,12 @@ async function enrichPicks(picks) {
   }
 }
 
-module.exports = { enrichPicks, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, STADIUM_COORDS };
+/**
+ * Return the current enriched cache without re-fetching.
+ * Returns null if cache is cold or expired.
+ */
+function getEnrichedCache() {
+  return isCacheValid() ? enrichCache.data : null;
+}
+
+module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, STADIUM_COORDS };

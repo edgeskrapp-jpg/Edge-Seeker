@@ -280,4 +280,46 @@ function analyzePicks(games) {
   return allPicks;
 }
 
-module.exports = { analyzePicks, setLiveStats };
+/**
+ * Apply injury confidence penalties to picks.
+ * If the team we have an edge on has a key player on IL,
+ * reduce confidence by 15 and add a warning.
+ * Called after analyzePicks() when enriched data is available.
+ */
+function applyInjuryPenalty(picks, enrichedData) {
+  if (!enrichedData || Object.keys(enrichedData).length === 0) return picks;
+
+  return picks.map(pick => {
+    // Try both key orderings (away_home is the gameKey format used in enrichPicks)
+    const gameKey = `${pick.opponentAbbr}_${pick.teamAbbr}`; // away_home when pick is home team
+    const reverseKey = `${pick.teamAbbr}_${pick.opponentAbbr}`;
+    const gameData = enrichedData[gameKey] || enrichedData[reverseKey];
+
+    if (!gameData) return pick;
+
+    // Get injuries for the team we're picking
+    const isHome = pick.side === 'home';
+    const teamInjuries = isHome ? (gameData.homeInjuries || []) : (gameData.awayInjuries || []);
+    const keyInjuries = gameData.keyInjuries || '';
+    const teamAbbr = pick.teamAbbr;
+
+    // Penalize if this team has a key injury flagged, or has 2+ players on IL
+    const hasKeyInjury = keyInjuries.includes(teamAbbr);
+    const hasMultipleInjuries = teamInjuries.length >= 2;
+
+    if (hasKeyInjury || hasMultipleInjuries) {
+      const injuryWarning = 'Key injury — verify lineup before tracking';
+      return {
+        ...pick,
+        confidence: Math.max(0, pick.confidence - 15),
+        warning: pick.warning
+          ? `${pick.warning} | ${injuryWarning}`
+          : injuryWarning,
+      };
+    }
+
+    return pick;
+  });
+}
+
+module.exports = { analyzePicks, setLiveStats, applyInjuryPenalty };

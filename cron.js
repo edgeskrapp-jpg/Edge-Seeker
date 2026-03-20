@@ -165,4 +165,4 @@ async function updateMLBStats() {
   };
 }
 
-module.exports = { updateMLBStats };
+module.exports = { updateMLBStats, MLB_TEAM_IDS };

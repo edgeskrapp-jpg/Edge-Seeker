@@ -156,6 +156,9 @@ function buildPremiumPrompt(picks, enrichedData = {}) {
     const apPlatoon = ap.platoon || {};
     const hBat = g.homeBatting || {};
     const aBat = g.awayBatting || {};
+    const homeInj = g.homeInjuries || [];
+    const awayInj = g.awayInjuries || [];
+    const keyInj = g.keyInjuries;
 
     return `GAME: ${p.homeTeam} vs ${p.awayTeam}
 Moneyline: ${p.pick} | Odds: ${p.bookOddsAmerican} | Edge: ${p.edgePct}% | Kelly: ${p.kellyPct}% | Confidence: ${p.confidence}/100
@@ -176,7 +179,10 @@ ${hBat.hotBatter ? `Hot Batter: ${hBat.hotBatter.name} | AVG ${hBat.hotBatter.av
 AWAY TEAM BATTING: HardHit%=${aBat.teamHardHitPct || 'N/A'} | Barrel%=${aBat.teamBarrelRate || 'N/A'} | Chase%=${aBat.teamChasePct || 'N/A'}
 ${aBat.hotBatter ? `Hot Batter: ${aBat.hotBatter.name} | AVG ${aBat.hotBatter.avg} | OPS ${aBat.hotBatter.ops} | HardHit% ${aBat.hotBatter.hardHitPct}` : ''}
 
-${g.weather ? `Weather: ${g.weather.temp}F | Wind: ${g.weather.windSpeed}mph ${g.weather.windDir} | ${g.weather.impact}` : ''}`;
+${g.weather ? `Weather: ${g.weather.temp}F | Wind: ${g.weather.windSpeed}mph ${g.weather.windDir} | ${g.weather.impact}` : ''}
+INJURIES: ${homeInj.length > 0 ? `HOME INJURIES: ${homeInj.join(', ')}` : 'HOME: Full roster available'}
+${awayInj.length > 0 ? `AWAY INJURIES: ${awayInj.join(', ')}` : 'AWAY: Full roster available'}
+${keyInj ? `⚠️ KEY INJURY ALERT: ${keyInj}` : ''}`.trim();
   }).join('\n═══\n');
 
   return `Today\'s full MLB slate analysis with Baseball Savant statcast data. Scan ALL games and find the TOP 2 BEST BETS of the day. Bets can be moneyline, over/under, or player props (strikeouts, hits, home runs, RBIs).
