@@ -322,4 +322,124 @@ function applyInjuryPenalty(picks, enrichedData) {
   });
 }
 
-module.exports = { analyzePicks, setLiveStats, applyInjuryPenalty };
+/**
+ * applyEloAdjustment(picks, eloRatings)
+ * Adjusts confidence scores based on Elo rating differences between picked team
+ * and their opponent. Also applies momentum adjustments from W-L record.
+ * Early season (avg < 14 games played): adjustments halved since seeds are preseason estimates.
+ * All adjustments are capped at ±15 confidence points.
+ */
+function applyEloAdjustment(picks, eloRatings) {
+  if (!eloRatings || eloRatings.length === 0) return picks;
+
+  // Build lookup: team_abbr → elo row
+  const eloMap = {};
+  for (const team of eloRatings) {
+    if (team.team_abbr) eloMap[team.team_abbr] = team;
+  }
+
+  // Determine if we're in early season (avg games played < 14)
+  const totalGames = eloRatings.reduce((s, t) => s + (t.wins || 0) + (t.losses || 0), 0);
+  const avgGames = totalGames / (eloRatings.length || 1);
+  const isEarlySeason = avgGames < 14;
+
+  return picks.map(pick => {
+    const pickedTeam = eloMap[pick.teamAbbr];
+    const oppTeam    = eloMap[pick.opponentAbbr];
+
+    // Derive home/away abbr from which side the pick is on
+    const homeAbbr = pick.side === 'home' ? pick.teamAbbr   : pick.opponentAbbr;
+    const awayAbbr = pick.side === 'away' ? pick.teamAbbr   : pick.opponentAbbr;
+    const homeEloRow = eloMap[homeAbbr];
+    const awayEloRow = eloMap[awayAbbr];
+
+    if (!pickedTeam || !oppTeam) {
+      return {
+        ...pick,
+        homeElo: homeEloRow?.elo || null,
+        awayElo: awayEloRow?.elo || null,
+        homeTierColor: homeEloRow?.tier_color || null,
+        awayTierColor: awayEloRow?.tier_color || null,
+        homeTier: homeEloRow?.tier || null,
+        awayTier: awayEloRow?.tier || null,
+        eloDiff: null,
+        eloAdjustment: 0,
+        eloNote: null,
+        isEarlySeason,
+      };
+    }
+
+    const pickedElo = pickedTeam.elo;
+    const oppElo    = oppTeam.elo;
+    const eloDiff   = pickedElo - oppElo;      // positive = picked team is rated higher
+    const absDiff   = Math.abs(eloDiff);
+    const favor     = eloDiff >= 0;            // true = advantage for picked team
+
+    // ── Elo confidence adjustment ──────────────────────────────────────────
+    let eloAdj  = 0;
+    let eloNote = null;
+
+    if (absDiff >= 150) {
+      eloAdj  = favor ?  8 : -15;
+      eloNote = favor ? 'Strong Elo advantage' : 'Major Elo disadvantage — verify pick';
+    } else if (absDiff >= 100) {
+      eloAdj  = favor ?  5 : -10;
+      eloNote = favor ? null : 'Significant Elo disadvantage';
+    } else if (absDiff >= 50) {
+      eloAdj  = favor ?  3 :  -5;
+      eloNote = favor ? null : 'Elo disadvantage';
+    } else {
+      eloAdj  = 0;   // evenly matched (0–49 either direction)
+    }
+
+    // ── Momentum adjustment (W-L record) ──────────────────────────────────
+    const w = pickedTeam.wins   || 0;
+    const l = pickedTeam.losses || 0;
+    let momAdj  = 0;
+    let momNote = null;
+
+    if (w - l >= 5) {
+      momAdj  =  3;
+      momNote = 'Positive momentum';
+    } else if (l - w >= 5) {
+      momAdj  = -3;
+      momNote = 'Negative momentum';
+    }
+
+    // ── Early season dampening ─────────────────────────────────────────────
+    let totalAdj = eloAdj + momAdj;
+    if (isEarlySeason) totalAdj = Math.round(totalAdj * 0.5);
+
+    // ── Cap ±15 ────────────────────────────────────────────────────────────
+    const eloAdjustment = Math.max(-15, Math.min(15, totalAdj));
+
+    // ── Combine notes ──────────────────────────────────────────────────────
+    const combinedNote = [eloNote, momNote].filter(Boolean).join(' | ') || null;
+
+    // Append warning only when adjustment is materially negative
+    let warning = pick.warning || null;
+    if (eloAdjustment <= -5 && combinedNote) {
+      warning = warning ? `${warning} | ${combinedNote}` : combinedNote;
+    }
+
+    const newConfidence = Math.max(0, Math.min(100, pick.confidence + eloAdjustment));
+
+    return {
+      ...pick,
+      confidence: newConfidence,
+      warning,
+      homeElo:       homeEloRow?.elo        || null,
+      awayElo:       awayEloRow?.elo        || null,
+      homeTier:      homeEloRow?.tier       || null,
+      awayTier:      awayEloRow?.tier       || null,
+      homeTierColor: homeEloRow?.tier_color || null,
+      awayTierColor: awayEloRow?.tier_color || null,
+      eloDiff,
+      eloAdjustment,
+      eloNote: combinedNote,
+      isEarlySeason,
+    };
+  });
+}
+
+module.exports = { analyzePicks, setLiveStats, applyInjuryPenalty, applyEloAdjustment };

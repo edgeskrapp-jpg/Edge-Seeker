@@ -15,7 +15,7 @@ const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
 const path = require("path");
-const { analyzePicks, applyInjuryPenalty } = require("./edgeAnalyzer");
+const { analyzePicks, applyInjuryPenalty, applyEloAdjustment } = require("./edgeAnalyzer");
 const { getEnrichedCache } = require("./mlbDataEnricher");
 const { calculateBetPoints, getAccuracyBonus } = require("./pointsConfig");
 const { getFreePick, getPremiumPick, invalidateCache } = require("./agentRouter");
@@ -268,6 +268,29 @@ app.get("/api/picks", async (req, res) => {
     const cachedEnriched = getEnrichedCache();
     if (cachedEnriched) {
       picks = applyInjuryPenalty(picks, cachedEnriched);
+    }
+
+    // Apply Elo-based confidence adjustments
+    try {
+      const { supabaseQuery } = require("./supabase");
+      let eloRatings = [];
+      try {
+        eloRatings = await supabaseQuery("elo_ratings", "GET", null, "?order=elo.desc");
+      } catch (_) {
+        // Fallback to opening day seeds
+        const { OPENING_DAY_ELO } = require("./eloSystem");
+        eloRatings = Object.entries(OPENING_DAY_ELO).map(([abbr, data]) => ({
+          team_abbr: abbr,
+          elo: data.elo,
+          wins: data.wins || 0,
+          losses: data.losses || 0,
+        }));
+      }
+      if (eloRatings && eloRatings.length > 0) {
+        picks = applyEloAdjustment(picks, eloRatings);
+      }
+    } catch (eloErr) {
+      console.warn("⚠️ Elo adjustment skipped:", eloErr.message);
     }
 
     // Track opening odds and add movement field

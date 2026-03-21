@@ -611,6 +611,71 @@
     vertical-align: middle;
   }
 
+  /* ── ELO RATING DISPLAY ─────────────────────────────────────────────────── */
+  .elo-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 5px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+  }
+  .elo-badge.up   { color: #00FF88; background: rgba(0,255,136,0.12); }
+  .elo-badge.down { color: #FF3A5C; background: rgba(255,58,92,0.12); }
+
+  .elo-section { margin-top: 8px; }
+  .elo-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 12px;
+  }
+  .elo-row:last-child { border-bottom: none; }
+  .elo-team-name { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; }
+  .elo-rating    { font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 1px; }
+  .elo-tier-pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 1px;
+  }
+  .elo-diff-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+  .elo-note {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    padding: 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+  .elo-disclaimer {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 6px;
+    opacity: 0.6;
+    letter-spacing: 0.5px;
+  }
+
   /* ── PROFILE PICK HISTORY ───────────────────────────────────────────────── */
   .pick-hist-row {
     display: flex;
@@ -2629,6 +2694,16 @@
     else if (bestPick?.movement === 'moved_against') movementBadge = '<span class="movement-badge" title="Line moved against our pick — warning signal" style="color:#FF3A5C">📉</span>';
     else if (bestPick?.movement === 'stable' && hasEdge) movementBadge = '<span class="movement-badge" title="Line stable" style="color:#5A6A85">➡️</span>';
 
+    // Elo badge: show ELO ↑ or ELO ↓ when diff >= 100 in either direction
+    let eloBadge = '';
+    if (bestPick?.eloDiff !== undefined && Math.abs(bestPick.eloDiff) >= 100) {
+      if (bestPick.eloDiff >= 100) {
+        eloBadge = `<span class="elo-badge up" title="Elo advantage: +${bestPick.eloDiff}">ELO ↑</span>`;
+      } else {
+        eloBadge = `<span class="elo-badge down" title="Elo disadvantage: ${bestPick.eloDiff}">ELO ↓</span>`;
+      }
+    }
+
     const card = document.createElement('div');
     card.className = `game-card${hasEdge ? ' has-edge' : ''}`;
     card.style.animationDelay = `${index * 0.06}s`;
@@ -2649,7 +2724,7 @@
       ${hasEdge
         ? `<div class="game-card-edge">
             <span class="game-card-edge-label">EDGE · ${bestPick.pick}</span>
-            <span class="game-card-edge-val">+${bestPick.edgePct}% ${movementBadge}</span>
+            <span class="game-card-edge-val">+${bestPick.edgePct}% ${movementBadge}${eloBadge}</span>
            </div>`
         : `<div class="game-card-no-edge">TAP FOR ANALYSIS</div>`
       }
@@ -2804,6 +2879,13 @@
             <span class="analysis-label">Confidence</span>
             <span class="analysis-value" style="color:${gradeColor}">${bestPick.confidence}/100</span>
           </div>
+          ${bestPick.eloAdjustment !== undefined ? `
+          <div class="analysis-row">
+            <span class="analysis-label">Elo Adjustment</span>
+            <span class="analysis-value" style="color:${bestPick.eloAdjustment > 0 ? 'var(--green)' : bestPick.eloAdjustment < 0 ? '#FF3A5C' : 'var(--muted)'}">
+              ${bestPick.eloAdjustment > 0 ? '+' : ''}${bestPick.eloAdjustment}
+            </span>
+          </div>` : ''}
         ` : `
           <div style="text-align:center;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px">
             NO EDGE DETECTED FOR THIS GAME<br>
@@ -2811,6 +2893,43 @@
           </div>
         `}
       </div>
+
+      <!-- ELO RATINGS -->
+      ${(bestPick?.homeElo || bestPick?.awayElo) ? `
+      <div class="analysis-card">
+        <div class="analysis-card-title">
+          ELO RATINGS
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">POWER INDEX</div>
+        </div>
+        <div class="elo-section">
+          <div class="elo-row">
+            <div>
+              <div class="elo-team-name">${awayAbbr} (AWAY)</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="elo-tier-pill" style="color:${bestPick.awayTierColor||'var(--muted)'};background:${(bestPick.awayTierColor||'#888')+'22'}">${bestPick.awayTier||'—'}</span>
+              <span class="elo-rating" style="color:${bestPick.awayTierColor||'var(--text)'}">${bestPick.awayElo||'—'}</span>
+            </div>
+          </div>
+          <div class="elo-row">
+            <div>
+              <div class="elo-team-name">${homeAbbr} (HOME)</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="elo-tier-pill" style="color:${bestPick.homeTierColor||'var(--muted)'};background:${(bestPick.homeTierColor||'#888')+'22'}">${bestPick.homeTier||'—'}</span>
+              <span class="elo-rating" style="color:${bestPick.homeTierColor||'var(--text)'}">${bestPick.homeElo||'—'}</span>
+            </div>
+          </div>
+          <div class="elo-diff-row">
+            <span>DIFF (PICK − OPP)</span>
+            <span style="color:${(bestPick.eloDiff||0)>0?'var(--green)':(bestPick.eloDiff||0)<0?'#FF3A5C':'var(--muted)'}">
+              ${(bestPick.eloDiff||0)>0?'+':''}${bestPick.eloDiff||0}
+            </span>
+          </div>
+          ${bestPick.eloNote ? `<div class="elo-note">${bestPick.eloNote}</div>` : ''}
+          ${bestPick.isEarlySeason ? `<div class="elo-disclaimer">⚠ Preseason seeds — accuracy improves after Week 2</div>` : ''}
+        </div>
+      </div>` : ''}
 
       <!-- PREMIUM ANALYSIS -->
       <div class="premium-game-card" id="premiumGameAnalysis">
