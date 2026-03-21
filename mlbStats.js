@@ -35,7 +35,7 @@ const MLB_TEAM_STATS = {
   // ── AMERICAN LEAGUE CENTRAL ───────────────────────────────────────────────
   CLE: { runsPerGame: 4.3, runsAllowedPerGame: 3.8, homeBonus: 0.10 },
   MIN: { runsPerGame: 4.2, runsAllowedPerGame: 4.3, homeBonus: 0.10 },
-  CWS: { runsPerGame: 3.7, runsAllowedPerGame: 5.1, homeBonus: 0.08 },
+  CWS: { runsPerGame: 3.4, runsAllowedPerGame: 5.3, homeBonus: 0.08 },
   KC:  { runsPerGame: 4.4, runsAllowedPerGame: 4.3, homeBonus: 0.10 },
   DET: { runsPerGame: 4.3, runsAllowedPerGame: 3.9, homeBonus: 0.12 },
 
@@ -43,15 +43,15 @@ const MLB_TEAM_STATS = {
   HOU: { runsPerGame: 4.7, runsAllowedPerGame: 3.8, homeBonus: 0.15 },
   TEX: { runsPerGame: 4.3, runsAllowedPerGame: 4.4, homeBonus: 0.12 },
   SEA: { runsPerGame: 4.1, runsAllowedPerGame: 3.7, homeBonus: 0.12 },
-  OAK: { runsPerGame: 4.0, runsAllowedPerGame: 4.5, homeBonus: 0.08 },
+  OAK: { runsPerGame: 3.6, runsAllowedPerGame: 4.9, homeBonus: 0.08 },
   LAA: { runsPerGame: 4.2, runsAllowedPerGame: 4.6, homeBonus: 0.10 },
 
   // ── NATIONAL LEAGUE EAST ──────────────────────────────────────────────────
   ATL: { runsPerGame: 5.0, runsAllowedPerGame: 3.9, homeBonus: 0.15 },
   NYM: { runsPerGame: 4.8, runsAllowedPerGame: 4.0, homeBonus: 0.12 },
   PHI: { runsPerGame: 4.7, runsAllowedPerGame: 3.8, homeBonus: 0.15 },
-  MIA: { runsPerGame: 3.7, runsAllowedPerGame: 4.6, homeBonus: 0.08 },
-  WSH: { runsPerGame: 4.0, runsAllowedPerGame: 4.8, homeBonus: 0.08 },
+  MIA: { runsPerGame: 3.5, runsAllowedPerGame: 4.8, homeBonus: 0.08 },
+  WSH: { runsPerGame: 3.8, runsAllowedPerGame: 4.9, homeBonus: 0.08 },
 
   // ── NATIONAL LEAGUE CENTRAL ───────────────────────────────────────────────
   CHC: { runsPerGame: 4.6, runsAllowedPerGame: 4.1, homeBonus: 0.14 },
@@ -65,7 +65,7 @@ const MLB_TEAM_STATS = {
   SF:  { runsPerGame: 4.1, runsAllowedPerGame: 4.3, homeBonus: 0.12 },
   SD:  { runsPerGame: 4.4, runsAllowedPerGame: 4.0, homeBonus: 0.12 },
   ARI: { runsPerGame: 4.5, runsAllowedPerGame: 4.2, homeBonus: 0.12 },
-  COL: { runsPerGame: 5.0, runsAllowedPerGame: 6.2, homeBonus: 0.25 },
+  COL: { runsPerGame: 4.6, runsAllowedPerGame: 6.4, homeBonus: 0.25 },
 };
 
 /**
