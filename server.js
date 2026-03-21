@@ -122,8 +122,8 @@ async function fetchQuota() {
  * applyPickFilters(picks)
  * Post-processes raw analyzePicks output with quality adjustments:
  *  1. Coors Field adjustment  — reduce confidence 20pts for COL home games
- *  2. Model anomaly flag      — warn when edgePct > 15%
- *  3. Minimum confidence gate — drop picks below 40
+ *  2. Model anomaly flag      — warn when edgePct > 20%
+ *  3. Minimum confidence gate — drop picks below 35
  */
 function applyPickFilters(picks) {
   return picks
@@ -137,14 +137,14 @@ function applyPickFilters(picks) {
       }
 
       // 2. Model anomaly flag for suspiciously high edge
-      if (adjusted.edgePct > 15) {
+      if (adjusted.edgePct > 20) {
         adjusted.warning = "MODEL ANOMALY - verify before tracking";
       }
 
       return adjusted;
     })
     // 3. Minimum confidence threshold
-    .filter(pick => pick.confidence >= 40);
+    .filter(pick => pick.confidence >= 35);
 }
 
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
