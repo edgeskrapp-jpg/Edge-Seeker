@@ -309,6 +309,49 @@ async function fetchPlatoonSplits(pitcherName, season) {
   }
 }
 
+// ─── FANGRAPHS INTEGRATION ────────────────────────────────────────────────────
+// Exclusive to EDGESEEKER premium agent — NOT called from enrichPicks()
+
+const FANGRAPHS_TEAM_IDS = {
+  LAA: 1, HOU: 21, OAK: 10, TOR: 14, ATL: 16,
+  MIL: 23, STL: 28, CHC: 17, ARI: 15, LAD: 22,
+  SF: 30, CLE: 5, SEA: 11, MIA: 20, NYM: 25,
+  WSH: 24, BAL: 2, SD: 29, PHI: 26, PIT: 27,
+  TEX: 13, TB: 12, BOS: 3, CIN: 18, COL: 19,
+  KC: 7, DET: 6, MIN: 8, CWS: 4, NYY: 9,
+};
+
+/**
+ * Fetch FanGraphs FIP and bullpen data for a team.
+ * Used ONLY by the premium EDGESEEKER agent — not the free tier or general picks model.
+ */
+async function fetchFanGraphsPitching(teamAbbr) {
+  try {
+    const teamId = FANGRAPHS_TEAM_IDS[teamAbbr];
+    if (!teamId) return null;
+    const url = `https://www.fangraphs.com/api/leaders/major-league/data?pos=all&stats=pit&lg=all&qual=0&season=2026&season1=2026&team=${teamId}&pageitems=30&type=1`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'EdgeSKR/1.0' } });
+    const data = await res.json();
+    const starters = data?.data?.filter(p => p.GS > 0) || [];
+    const relievers = data?.data?.filter(p => p.GS === 0) || [];
+    const avg = (arr, key) => {
+      const vals = arr.map(p => parseFloat(p[key] || 0)).filter(v => v > 0);
+      return vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : 'N/A';
+    };
+    return {
+      starterFIP: avg(starters, 'FIP'),
+      starterXFIP: avg(starters, 'xFIP'),
+      bullpenERA: avg(relievers, 'ERA'),
+      bullpenFIP: avg(relievers, 'FIP'),
+      k9: avg(starters, 'K/9'),
+      bb9: avg(starters, 'BB/9'),
+    };
+  } catch (err) {
+    console.error(`FanGraphs fetch error for ${teamAbbr}:`, err.message);
+    return null;
+  }
+}
+
 // ─── ROSTER & INJURY TRACKER ──────────────────────────────────────────────────
 
 /**
@@ -487,4 +530,4 @@ function getEnrichedCache() {
   return isCacheValid() ? enrichCache.data : null;
 }
 
-module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, STADIUM_COORDS };
+module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, STADIUM_COORDS };

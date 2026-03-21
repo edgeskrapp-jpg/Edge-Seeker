@@ -13,7 +13,7 @@ const {
   buildFreePrompt,
   buildPremiumPrompt,
 } = require("./agentPrompt");
-const { enrichPicks } = require("./mlbDataEnricher");
+const { enrichPicks, fetchFanGraphsPitching } = require("./mlbDataEnricher");
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
@@ -129,8 +129,16 @@ async function getPremiumPick(picks) {
   console.log('🤖 Fetching enriched data for premium pick...');
   const enrichedData = await enrichPicks(picks);
 
+  // Fetch FanGraphs FIP + bullpen data for all unique teams — premium only
+  const uniqueTeams = [...new Set(picks.flatMap(p => [p.teamAbbr, p.opponentAbbr]).filter(Boolean))];
+  console.log(`📊 Fetching FanGraphs data for ${uniqueTeams.length} teams...`);
+  const fanGraphsResults = await Promise.all(
+    uniqueTeams.map(abbr => fetchFanGraphsPitching(abbr).then(data => ({ abbr, data })))
+  );
+  const fanGraphsData = Object.fromEntries(fanGraphsResults.map(({ abbr, data }) => [abbr, data]));
+
   console.log('🤖 Calling Claude Opus for premium pick...');
-  const userMessage = buildPremiumPrompt(picks, enrichedData);
+  const userMessage = buildPremiumPrompt(picks, enrichedData, fanGraphsData);
   const result = await callClaude(PREMIUM_SYSTEM_PROMPT, userMessage, 'claude-opus-4-5');
 
   // Handle both old single pick format and new 2-pick format

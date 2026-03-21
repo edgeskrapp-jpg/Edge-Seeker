@@ -142,7 +142,7 @@ function buildFreePrompt(picks) {
   return `Today's MLB edge analysis from our Poisson model. Pick the single best bet:\n\n${picksText}\n\nRespond with JSON only.`;
 }
 
-function buildPremiumPrompt(picks, enrichedData = {}) {
+function buildPremiumPrompt(picks, enrichedData = {}, fanGraphsData = {}) {
   const topPicks = picks.slice(0, 15); // All games
 
   const picksText = topPicks.map(p => {
@@ -159,6 +159,8 @@ function buildPremiumPrompt(picks, enrichedData = {}) {
     const homeInj = g.homeInjuries || [];
     const awayInj = g.awayInjuries || [];
     const keyInj = g.keyInjuries;
+    const homeFG = fanGraphsData[p.homeTeam ? p.teamAbbr : p.opponentAbbr] || null;
+    const awayFG = fanGraphsData[p.homeTeam ? p.opponentAbbr : p.teamAbbr] || null;
 
     return `GAME: ${p.homeTeam} vs ${p.awayTeam}
 Moneyline: ${p.pick} | Odds: ${p.bookOddsAmerican} | Edge: ${p.edgePct}% | Kelly: ${p.kellyPct}% | Confidence: ${p.confidence}/100
@@ -182,7 +184,19 @@ ${aBat.hotBatter ? `Hot Batter: ${aBat.hotBatter.name} | AVG ${aBat.hotBatter.av
 ${g.weather ? `Weather: ${g.weather.temp}F | Wind: ${g.weather.windSpeed}mph ${g.weather.windDir} | ${g.weather.impact}` : ''}
 INJURIES: ${homeInj.length > 0 ? `HOME INJURIES: ${homeInj.join(', ')}` : 'HOME: Full roster available'}
 ${awayInj.length > 0 ? `AWAY INJURIES: ${awayInj.join(', ')}` : 'AWAY: Full roster available'}
-${keyInj ? `⚠️ KEY INJURY ALERT: ${keyInj}` : ''}`.trim();
+${keyInj ? `⚠️ KEY INJURY ALERT: ${keyInj}` : ''}
+
+*** PREMIUM EDGESEEKER DATA — FanGraphs (not available to free tier) ***
+HOME ADVANCED PITCHING (FanGraphs):
+  Starter FIP: ${homeFG?.starterFIP || 'N/A'} | xFIP: ${homeFG?.starterXFIP || 'N/A'}
+  Bullpen ERA: ${homeFG?.bullpenERA || 'N/A'} | Bullpen FIP: ${homeFG?.bullpenFIP || 'N/A'}
+  K/9: ${homeFG?.k9 || 'N/A'} | BB/9: ${homeFG?.bb9 || 'N/A'}
+
+AWAY ADVANCED PITCHING (FanGraphs):
+  Starter FIP: ${awayFG?.starterFIP || 'N/A'} | xFIP: ${awayFG?.starterXFIP || 'N/A'}
+  Bullpen ERA: ${awayFG?.bullpenERA || 'N/A'} | Bullpen FIP: ${awayFG?.bullpenFIP || 'N/A'}
+  K/9: ${awayFG?.k9 || 'N/A'} | BB/9: ${awayFG?.bb9 || 'N/A'}
+*** END PREMIUM DATA ***`.trim();
   }).join('\n═══\n');
 
   return `Today\'s full MLB slate analysis with Baseball Savant statcast data. Scan ALL games and find the TOP 2 BEST BETS of the day. Bets can be moneyline, over/under, or player props (strikeouts, hits, home runs, RBIs).
