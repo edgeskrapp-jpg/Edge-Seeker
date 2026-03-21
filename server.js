@@ -70,6 +70,53 @@ const cache = {
 };
 const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours — conserve Odds API quota
 
+// ─── OPENING ODDS TRACKER (Feature 4 — Odds Movement) ────────────────────────
+// Tracks first-seen odds per pick per day to detect line movement
+const openingOddsMap = {}; // key: `${teamAbbr}_${date}` → American odds string
+
+function computeMovement(currentOdds, openingOdds) {
+  const cur = parseInt(currentOdds);
+  const open = parseInt(openingOdds);
+  if (isNaN(cur) || isNaN(open)) return 'stable';
+  if (Math.abs(cur - open) < 5) return 'stable';
+  if (cur < 0 && open < 0) return Math.abs(cur) > Math.abs(open) ? 'moved_toward' : 'moved_against';
+  if (cur > 0 && open > 0) return cur < open ? 'moved_toward' : 'moved_against';
+  return 'stable';
+}
+
+function addOddsMovement(picks) {
+  const today = new Date().toISOString().split('T')[0];
+  return picks.map(pick => {
+    const key = `${pick.teamAbbr}_${today}`;
+    const opening = openingOddsMap[key];
+    if (!opening) {
+      openingOddsMap[key] = pick.bookOddsAmerican;
+      return { ...pick, movement: 'stable' };
+    }
+    const movement = computeMovement(pick.bookOddsAmerican, opening);
+    const out = { ...pick, movement };
+    if (movement === 'moved_against') out.confidence = Math.max(0, (out.confidence || 0) - 10);
+    return out;
+  });
+}
+
+// ─── TEAM ABBREVIATION HELPER (server-side) ──────────────────────────────────
+function getTeamAbbrServer(fullName) {
+  const map = {
+    "New York Yankees":"NYY","Boston Red Sox":"BOS","Toronto Blue Jays":"TOR",
+    "Tampa Bay Rays":"TB","Baltimore Orioles":"BAL","Cleveland Guardians":"CLE",
+    "Minnesota Twins":"MIN","Chicago White Sox":"CWS","Kansas City Royals":"KC",
+    "Detroit Tigers":"DET","Houston Astros":"HOU","Texas Rangers":"TEX",
+    "Seattle Mariners":"SEA","Oakland Athletics":"OAK","Los Angeles Angels":"LAA",
+    "Atlanta Braves":"ATL","New York Mets":"NYM","Philadelphia Phillies":"PHI",
+    "Miami Marlins":"MIA","Washington Nationals":"WSH","Chicago Cubs":"CHC",
+    "Milwaukee Brewers":"MIL","St. Louis Cardinals":"STL","Cincinnati Reds":"CIN",
+    "Pittsburgh Pirates":"PIT","Los Angeles Dodgers":"LAD","San Francisco Giants":"SF",
+    "San Diego Padres":"SD","Arizona Diamondbacks":"ARI","Colorado Rockies":"COL",
+  };
+  return map[fullName] || (fullName || '').split(' ').pop().slice(0, 3).toUpperCase();
+}
+
 function isCacheValid(entry) {
   return entry.data && Date.now() - entry.fetchedAt < CACHE_TTL_MS;
 }
@@ -195,9 +242,11 @@ app.get("/api/health", (req, res) => {
  */
 app.get("/api/picks", async (req, res) => {
   try {
-    // Return cache if valid
+    // Return cache if valid — add movement data on every call
     if (isCacheValid(cache.picks)) {
-      return res.json({ ...cache.picks.data, cached: true });
+      const cached = cache.picks.data;
+      const picksWithMovement = addOddsMovement(cached.picks || []);
+      return res.json({ ...cached, picks: picksWithMovement, cached: true });
     }
 
     const { games, remaining, used } = await fetchMLBOdds();
@@ -220,6 +269,9 @@ app.get("/api/picks", async (req, res) => {
     if (cachedEnriched) {
       picks = applyInjuryPenalty(picks, cachedEnriched);
     }
+
+    // Track opening odds and add movement field
+    picks = addOddsMovement(picks);
 
     const responseData = {
       picks,
@@ -1077,6 +1129,182 @@ app.get("/api/cron/update-elo", async (req, res) => {
   }
 });
 
+// ─── AUTO RESULT LOGGER ──────────────────────────────────────────────────────
+
+/**
+ * autoLogPickResults()
+ * Fetches yesterday's final MLB scores, finds pending picks, and auto-resolves them.
+ * Run nightly at 11PM ET via Vercel Cron (4AM UTC).
+ */
+async function autoLogPickResults() {
+  try {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    // Fetch yesterday's scores from MLB Stats API
+    const mlbUrl = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${yesterdayStr}&hydrate=linescore`;
+    const mlbRes = await fetch(mlbUrl);
+    const mlbData = await mlbRes.json();
+    const games = mlbData.dates?.[0]?.games || [];
+
+    // Build a map of finished games: homeAbbr+awayAbbr -> scores
+    const scoreMap = {};
+    for (const game of games) {
+      if (game.status?.detailedState !== 'Final') continue;
+      const home = game.teams?.home;
+      const away = game.teams?.away;
+      if (!home || !away) continue;
+      const homeAbbr = getTeamAbbrServer(home.team.name);
+      const awayAbbr = getTeamAbbrServer(away.team.name);
+      scoreMap[`${homeAbbr}_${awayAbbr}`] = {
+        homeScore: home.score || 0,
+        awayScore: away.score || 0,
+        homeAbbr, awayAbbr,
+      };
+    }
+
+    console.log(`📊 Auto-log: ${Object.keys(scoreMap).length} finished games on ${yesterdayStr}`);
+
+    // Query pending picks from yesterday
+    const { supabaseQuery } = require('./supabase');
+    const pendingPicks = await supabaseQuery(
+      'pick_results', 'GET', null,
+      `?pick_date=eq.${yesterdayStr}&result=eq.pending`
+    );
+
+    if (!pendingPicks || pendingPicks.length === 0) {
+      console.log(`📊 Auto-log: No pending picks for ${yesterdayStr}`);
+      return { logged: 0, date: yesterdayStr };
+    }
+
+    let wins = 0, losses = 0, skipped = 0;
+
+    for (const pick of pendingPicks) {
+      // pick.pick looks like "NYY ML" or "BOS -1.5"
+      const pickTeam = pick.pick.split(' ')[0];
+      let matched = false;
+
+      for (const [, score] of Object.entries(scoreMap)) {
+        if (pickTeam !== score.homeAbbr && pickTeam !== score.awayAbbr) continue;
+        const pickedHome = pickTeam === score.homeAbbr;
+        const homeWon = score.homeScore > score.awayScore;
+        const result = (pickedHome && homeWon) || (!pickedHome && !homeWon) ? 'win' : 'loss';
+
+        await supabaseQuery(
+          'pick_results', 'PATCH',
+          { result, resolved_at: new Date().toISOString() },
+          `?id=eq.${pick.id}`
+        );
+
+        console.log(`✅ Auto-log: ${pick.pick} → ${result.toUpperCase()} (${score.awayScore}@${score.homeScore})`);
+        result === 'win' ? wins++ : losses++;
+        matched = true;
+        break;
+      }
+
+      if (!matched) {
+        console.log(`⏸️  Auto-log: No score match for pick "${pick.pick}"`);
+        skipped++;
+      }
+    }
+
+    console.log(`📊 Auto-log complete: ${wins}W ${losses}L ${skipped} unmatched`);
+    return { wins, losses, skipped, date: yesterdayStr };
+
+  } catch (err) {
+    console.error('❌ autoLogPickResults error:', err.message);
+    throw err;
+  }
+}
+
+// ─── DAILY DIGEST WEBHOOK ────────────────────────────────────────────────────
+
+/**
+ * buildDailyDigest()
+ * Builds a text summary of today's picks and season record, sends to Discord webhook.
+ * Called after the 11AM ET agent auto-run.
+ */
+async function buildDailyDigest() {
+  try {
+    if (!process.env.DISCORD_WEBHOOK_URL) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const dateStr = new Date().toLocaleDateString('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short', month: 'short', day: 'numeric',
+    });
+
+    // Get today's logged picks from Supabase
+    const { supabaseQuery } = require('./supabase');
+    const todayPickRows = await supabaseQuery('pick_results', 'GET', null, `?pick_date=eq.${today}`);
+    const allResolved = await supabaseQuery('pick_results', 'GET', null, '?result=neq.pending&order=pick_date.desc');
+
+    const resolved = (allResolved || []).filter(p => p.result !== 'void');
+    const wins = resolved.filter(p => p.result === 'win').length;
+    const losses = resolved.filter(p => p.result === 'loss').length;
+    const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '0.0';
+
+    // Compute streak
+    let streak = 0, streakType = '';
+    for (const p of resolved) {
+      if (streak === 0) streakType = p.result;
+      if (p.result === streakType) streak++;
+      else break;
+    }
+    const streakStr = streak > 0 ? `${streak} ${streakType === 'win' ? 'W' : 'L'} streak` : 'None';
+
+    // Build picks section
+    const rows = todayPickRows || [];
+    let picksSection = '';
+    if (rows.length > 0) {
+      picksSection = rows.map((p, i) => `Pick ${i + 1}: ${p.pick} | ${p.edge} edge | Grade ${p.grade}`).join('\n');
+    } else {
+      const cachedPicks = isCacheValid(cache.picks) ? (cache.picks.data?.picks || []) : [];
+      if (cachedPicks.length > 0) {
+        picksSection = cachedPicks.slice(0, 2).map((p, i) =>
+          `Pick ${i + 1}: ${p.pick} | +${p.edgePct}% edge`
+        ).join('\n');
+      } else {
+        picksSection = 'No picks available — check back after 11AM ET';
+      }
+    }
+
+    const gameCount = isCacheValid(cache.picks) ? (cache.picks.data?.gamesAnalyzed || 0) : 0;
+    const cachedPicks = isCacheValid(cache.picks) ? (cache.picks.data?.picks || []) : [];
+    const agentMsg = cachedPicks.length > 0
+      ? `Top edge: ${cachedPicks[0]?.pick} +${cachedPicks[0]?.edgePct}%`
+      : 'Analysis running — check the app for today\'s picks';
+
+    const digest = `⚾ EDGESEEKER DAILY DIGEST — ${dateStr}
+
+🎯 TODAY'S PICKS:
+${picksSection}
+
+📊 SEASON RECORD: ${wins}-${losses} (${winRate}%)
+🔥 Current streak: ${streakStr}
+
+⚾ ${gameCount} games analyzed today
+💡 ${agentMsg}
+
+edge-seeker.vercel.app`;
+
+    const webhookRes = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: digest }),
+    });
+
+    if (!webhookRes.ok) throw new Error(`Discord webhook ${webhookRes.status}`);
+    console.log('📨 Daily digest sent to Discord');
+    return { sent: true, date: today };
+
+  } catch (err) {
+    console.error('❌ buildDailyDigest error:', err.message);
+    throw err;
+  }
+}
+
 // ─── ACCURACY TRACKER ────────────────────────────────────────────────────────
 
 /**
@@ -1223,6 +1451,52 @@ app.patch("/api/accuracy/result/:id", async (req, res) => {
   }
 });
 
+// ─── AUTO RESULT LOGGER ENDPOINT ─────────────────────────────────────────────
+
+/**
+ * GET /api/cron/auto-log-results
+ * Runs nightly at 4AM UTC (11PM ET) via Vercel Cron.
+ * Also callable manually from admin dashboard.
+ * SQL: ALTER TABLE pick_results ADD COLUMN IF NOT EXISTS opening_odds TEXT;
+ */
+app.get("/api/cron/auto-log-results", async (req, res) => {
+  const cronSecret = req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`;
+  const adminSecret = req.query.secret === process.env.ADMIN_SECRET;
+  if (!cronSecret && !adminSecret) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    console.log("📊 Auto-log results triggered...");
+    const result = await autoLogPickResults();
+    res.json({ success: true, ...result, triggeredAt: new Date().toISOString() });
+  } catch (err) {
+    console.error("❌ Auto-log cron error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DAILY DIGEST ENDPOINT ───────────────────────────────────────────────────
+
+/**
+ * GET /api/digest/send
+ * Manually trigger the daily digest webhook.
+ * Protected by admin secret.
+ */
+app.get("/api/digest/send", async (req, res) => {
+  const adminSecret = req.query.secret === process.env.ADMIN_SECRET;
+  const cronSecret = req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`;
+  if (!adminSecret && !cronSecret) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    if (!process.env.DISCORD_WEBHOOK_URL) {
+      return res.json({ skipped: true, reason: "DISCORD_WEBHOOK_URL not set" });
+    }
+    const result = await buildDailyDigest();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── SPLIT CONFIG ENDPOINT ───────────────────────────────────────────────────
 
 /**
@@ -1342,6 +1616,10 @@ app.get("/api/cron/auto-run-agent", async (req, res) => {
     agentAutoRun.status = 'ready';
 
     console.log('✅ Cron: Agent auto-run complete');
+
+    // Fire daily digest after agent runs (best-effort, non-blocking)
+    buildDailyDigest().catch(err => console.error('Digest error (non-blocking):', err.message));
+
     return res.json({
       success: true,
       message: 'Premium agent ran successfully',
@@ -1819,6 +2097,8 @@ ${quotaLow ? `<!-- QUOTA ALERT -->
   <a class="btn" href="/api/cron/update-stats?secret=${secret}" target="_blank">⚾ Run Stats Update</a>
   <a class="btn primary" href="/api/cron/auto-run-agent?secret=${secret}" target="_blank">🤖 Run Agent Now</a>
   <a class="btn danger" href="/admin/refresh-agent?secret=${secret}" target="_blank">🔄 Refresh Agent Cache</a>
+  <a class="btn" href="/api/cron/auto-log-results?secret=${secret}" target="_blank">📊 Auto-Log Results</a>
+  <a class="btn" href="/api/digest/send?secret=${secret}" target="_blank">📨 Send Digest</a>
 </div>
 
 <!-- ═══════════════ UPDATE PICK RESULTS ═══════════════ -->

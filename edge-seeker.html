@@ -576,6 +576,158 @@
   .es-signoff { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: center; letter-spacing: 1px; line-height: 1.9; padding: 20px 0; border-top: 1px solid var(--border); margin-top: 8px; }
   .es-signoff strong { color: var(--accent); }
 
+  /* ── OPENING DAY COUNTDOWN BANNER ──────────────────────────────────────── */
+  .opening-day-banner {
+    background: linear-gradient(135deg, rgba(0,229,255,0.12), rgba(123,97,255,0.10));
+    border: 1px solid rgba(0,229,255,0.35);
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    line-height: 1.5;
+    animation: bannerPulse 3s ease-in-out infinite;
+  }
+  @keyframes bannerPulse { 0%,100%{border-color:rgba(0,229,255,0.35)} 50%{border-color:rgba(0,229,255,0.7)} }
+  .opening-day-banner .od-days {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--gold);
+    letter-spacing: 1px;
+    min-width: 40px;
+    text-align: center;
+    line-height: 1;
+  }
+
+  /* ── ODDS MOVEMENT INDICATOR ────────────────────────────────────────────── */
+  .movement-badge {
+    font-size: 13px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  /* ── PROFILE PICK HISTORY ───────────────────────────────────────────────── */
+  .pick-hist-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .pick-hist-row:last-child { border-bottom: none; }
+  .pick-hist-result {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px;
+    font-weight: bold; flex-shrink: 0;
+  }
+  .pick-hist-result.pending { background: rgba(90,106,133,0.2); color: var(--muted); }
+  .pick-hist-result.win     { background: rgba(0,255,136,0.15); color: var(--green); }
+  .pick-hist-result.loss    { background: rgba(255,58,92,0.15);  color: var(--red); }
+  .pick-hist-info { flex: 1; min-width: 0; }
+  .pick-hist-pick { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pick-hist-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .pick-hist-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .pick-hist-btn {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.5px;
+    padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--muted); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pick-hist-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .pick-hist-btn.w { border-color: rgba(0,255,136,0.4); color: var(--green); }
+  .pick-hist-btn.l { border-color: rgba(255,58,92,0.4); color: var(--red); }
+  .pick-hist-summary {
+    display: flex; gap: 8px; margin-bottom: 14px;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+  }
+  .pick-hist-sum-chip {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; text-align: center; flex: 1;
+  }
+  .pick-hist-sum-val { font-family: 'Bebas Neue', sans-serif; font-size: 20px; }
+
+  /* ── LOG TO PROFILE BUTTON ──────────────────────────────────────────────── */
+  .log-to-profile-row {
+    display: flex; gap: 8px; margin-top: 6px;
+  }
+  .log-profile-btn {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.5px;
+    padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(153,69,255,0.35);
+    background: rgba(153,69,255,0.06); color: var(--sol); cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .log-profile-btn:hover { border-color: var(--sol); background: rgba(153,69,255,0.12); }
+  .log-profile-btn.logged { border-color: rgba(0,255,136,0.4); color: var(--green); background: rgba(0,255,136,0.06); }
+
+  /* ── SCREENSHOT LOG ─────────────────────────────────────────────────────── */
+  .screenshot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .screenshot-tile { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; cursor: pointer; position: relative; }
+  .screenshot-tile img { width: 100%; height: 100px; object-fit: cover; display: block; }
+  .screenshot-tile-meta { padding: 6px 8px; font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.5px; }
+  .screenshot-tile-note { font-size: 11px; color: var(--text); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .screenshot-del-btn {
+    position: absolute; top: 4px; right: 4px;
+    width: 20px; height: 20px; border-radius: 50%; border: none;
+    background: rgba(255,58,92,0.7); color: #fff; font-size: 11px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .owner-badge {
+    background: rgba(255,208,96,0.12); border: 1px solid rgba(255,208,96,0.3);
+    border-radius: 8px; padding: 4px 10px;
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px;
+    color: var(--gold);
+  }
+
+  /* ── TODAY'S PROJECTION CARD (EdgeSeeker tab) ───────────────────────────── */
+  .today-projection-card {
+    background: linear-gradient(135deg, rgba(153,69,255,0.08), rgba(0,229,255,0.05));
+    border: 1px solid rgba(153,69,255,0.3);
+    border-radius: 18px; padding: 16px; margin-bottom: 20px;
+    position: relative; overflow: hidden;
+  }
+  .today-projection-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--sol), var(--accent));
+  }
+  .today-proj-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  }
+  .today-proj-title {
+    font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px;
+    color: var(--sol);
+  }
+  .today-proj-badge {
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px;
+    padding: 3px 8px; border-radius: 20px;
+    background: rgba(0,229,255,0.1); color: var(--accent);
+    border: 1px solid rgba(0,229,255,0.2);
+  }
+  .today-proj-pick {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .today-proj-pick-name { font-weight: 600; font-size: 14px; }
+  .today-proj-pick-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .proj-result-badge {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
+    padding: 4px 10px; border-radius: 20px;
+  }
+  .proj-result-badge.pending { background: rgba(90,106,133,0.15); color: var(--muted); border: 1px solid var(--border); }
+  .proj-result-badge.win { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+  .proj-result-badge.loss { background: rgba(255,58,92,0.15); color: var(--red); border: 1px solid rgba(255,58,92,0.3); }
+  .proj-grade-badge {
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px;
+    margin-left: 8px;
+  }
+
   /* BOTTOM NAV */
   .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(8,11,16,0.95); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 10px 0 24px; z-index: 100; }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 0; transition: all 0.2s; }
@@ -741,6 +893,9 @@
       <div class="sol-usd" id="solBalanceUsd"></div>
     </div>
   </div>
+
+  <!-- OPENING DAY COUNTDOWN BANNER (Feature 9) -->
+  <div id="openingDayBanner" style="display:none"></div>
 
   <div class="stats-row">
     <div class="stat-card green">
@@ -1059,6 +1214,37 @@
     </div>
   </div>
 
+  <!-- MY PICK HISTORY (Feature 5 — all users) -->
+  <div class="profile-card" id="myPickHistoryCard">
+    <div class="profile-card-header">
+      <div class="profile-card-title">MY PICK HISTORY</div>
+      <div class="profile-card-sub" id="pickHistorySub">—</div>
+    </div>
+    <div id="pickHistorySummary" class="pick-hist-summary" style="display:none"></div>
+    <div id="pickHistoryList">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px 0">
+        Tap "+ ADD TO SLIP" on any pick card to log it here
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREENSHOT LOG (Feature 6 — owner only) -->
+  <div class="profile-card" id="screenshotLogCard" style="display:none">
+    <div class="profile-card-header">
+      <div class="profile-card-title">📸 NOTES & SCREENSHOTS</div>
+      <div class="owner-badge">PRIVATE — OWNER ONLY</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <label style="flex:1;cursor:pointer">
+        <input type="file" id="screenshotInput" accept="image/*" capture="camera" style="display:none" onchange="handleScreenshotUpload(event)" />
+        <div style="background:var(--bg);border:1px dashed var(--border);border-radius:10px;padding:12px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px">
+          📷 ADD PHOTO
+        </div>
+      </label>
+    </div>
+    <div id="screenshotGrid" class="screenshot-grid"></div>
+  </div>
+
   <!-- CARD 2: RESPONSIBLE ANALYTICS -->
   <div class="responsible-card">
     <div class="profile-card-header">
@@ -1281,6 +1467,15 @@
 <!-- PAGE: EDGESEEKER MASCOT -->
 <main id="page-edgeseeker" class="page">
 
+  <!-- TODAY'S PROJECTION CARD (Feature 3) -->
+  <div class="today-projection-card" id="todayProjectionCard" style="display:none">
+    <div class="today-proj-header">
+      <div class="today-proj-title">TODAY'S PROJECTION</div>
+      <div class="today-proj-badge" id="todayProjDate">—</div>
+    </div>
+    <div id="todayProjectionPicks"></div>
+  </div>
+
   <!-- DAILY BRIEFING CARD -->
   <div class="es-briefing-card">
     <div class="es-briefing-header">
@@ -1386,6 +1581,51 @@
 
   // ── CONFIG ────────────────────────────────────────────────────────────────
   const API_BASE = 'https://edge-seeker.vercel.app';
+
+  // ── TEAM COLORS (Feature 8) ───────────────────────────────────────────────
+  const TEAM_COLORS = {
+    NYY: "#003087", BOS: "#BD3039", TOR: "#134A8E", TB: "#092C5C", BAL: "#DF4601",
+    CLE: "#00385D", MIN: "#002B5C", CWS: "#27251F", KC: "#004687", DET: "#0C2340",
+    HOU: "#002D62", TEX: "#003278", SEA: "#0C2C56", OAK: "#003831", LAA: "#BA0021",
+    ATL: "#CE1141", NYM: "#002D72", PHI: "#E81828", MIA: "#00A3E0", WSH: "#AB0003",
+    CHC: "#0E3386", MIL: "#FFC52F", STL: "#C41E3A", CIN: "#C6011F", PIT: "#FDB827",
+    LAD: "#005A9C", SF: "#FD5A1E", SD: "#2F241D", ARI: "#A71930", COL: "#333366",
+  };
+
+  // ── OPENING DAY COUNTDOWN (Feature 9) ────────────────────────────────────
+  (function renderOpeningDayBanner() {
+    const banner = document.getElementById('openingDayBanner');
+    if (!banner) return;
+    const today = new Date();
+    const openingNight = new Date('2026-03-25T00:00:00-04:00');
+    const dayAfter = new Date('2026-03-26T00:00:00-04:00');
+    const todayET = new Date(today.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+
+    if (today >= dayAfter) return; // Hide after March 26
+
+    const msLeft = openingNight - today;
+    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+    const isToday = todayET.getMonth() === 2 && todayET.getDate() === 25; // March 25
+
+    banner.style.display = 'flex';
+    if (isToday) {
+      banner.innerHTML = `<div class="opening-day-banner" style="width:100%">
+        <div style="font-size:20px">⚾</div>
+        <div>
+          <div style="font-weight:bold;font-size:13px">IT'S OPENING NIGHT! NYY @ SF</div>
+          <div style="font-size:11px;margin-top:2px">First pitch 8:05 PM ET · Let's go!</div>
+        </div>
+      </div>`;
+    } else {
+      banner.innerHTML = `<div class="opening-day-banner" style="width:100%">
+        <div class="od-days">${daysLeft}</div>
+        <div>
+          <div style="font-weight:bold">⚾ Opening Night: NYY @ SF · March 25th 8:05 PM ET</div>
+          <div style="font-size:11px;margin-top:2px;color:var(--muted)">${daysLeft} day${daysLeft !== 1 ? 's' : ''} away — get ready</div>
+        </div>
+      </div>`;
+    }
+  })();
 
   // ── STATE ─────────────────────────────────────────────────────────────────
   let allPicks = [];
@@ -1517,7 +1757,7 @@
   // ── HELPERS ───────────────────────────────────────────────────────────────
   function fmtTime(iso) {
     if (!iso) return 'TBD';
-    try { return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }); }
+    try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }); }
     catch { return 'TBD'; }
   }
 
@@ -1764,6 +2004,12 @@
 
     // Load favorite teams
     renderFavoriteTeams();
+
+    // Feature 5: Pick history
+    renderPickHistory();
+
+    // Feature 6: Owner-only sections
+    checkOwnerSections();
   }
 
   function toggleWalletVisibility() {
@@ -2147,7 +2393,7 @@
         <div class="prop-reasoning">${prop.reasoning}</div>
         ${prop.premium_insight ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--sol);margin-bottom:10px;padding:8px;background:rgba(153,69,255,0.06);border-radius:8px">💡 ${prop.premium_insight}</div>` : ''}
         ${prop.warning ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);margin-bottom:10px">⚠️ ${prop.warning}</div>` : ''}
-        <div class="add-to-slip-btn" id="slip-${slipKey}" onclick="addToSlip('${slipKey}', '${pickStr.replace(/'/g,"\'")}', '${prop.edge}', 'STRIKEOUT PROP')">
+        <div class="add-to-slip-btn" id="slip-${slipKey}" onclick="addToSlip('${slipKey}', '${pickStr.replace(/'/g,"\'")}', '${prop.edge}', 'STRIKEOUT PROP', '', '${(prop.game||'').replace(/'/g,"\'")}')">
           + ADD TO SLIP
         </div>
       </div>`;
@@ -2166,8 +2412,8 @@
     document.getElementById('betSlipOverlay').classList.remove('active');
   }
 
-  function addToSlip(key, pick, edge, betType) {
-    // Check if already added
+  function addToSlip(key, pick, edge, betType, odds, game) {
+    // Check if already added — toggle off
     if (betSlipItems.find(i => i.key === key)) {
       removeFromSlip(key);
       return;
@@ -2180,6 +2426,28 @@
     if (btn) {
       btn.classList.add('added');
       btn.textContent = '✓ ADDED';
+    }
+
+    // Show LOG TO PROFILE option after adding (Feature 5)
+    const logBtnId = `logp-${key}`;
+    const existingLogBtn = document.getElementById(logBtnId);
+    if (!existingLogBtn && btn) {
+      const logRow = document.createElement('div');
+      logRow.className = 'log-to-profile-row';
+      logRow.id = `logrow-${key}`;
+      const logBtn = document.createElement('button');
+      logBtn.className = 'log-profile-btn';
+      logBtn.id = logBtnId;
+      logBtn.textContent = '📌 LOG TO PROFILE';
+      logBtn.onclick = (e) => {
+        e.stopPropagation();
+        logPickToProfile({ pick, odds: odds || edge, edge, game: game || betType, betType });
+        logBtn.classList.add('logged');
+        logBtn.textContent = '✅ LOGGED';
+        setTimeout(() => { logBtn.textContent = '📌 LOG TO PROFILE'; logBtn.classList.remove('logged'); }, 2000);
+      };
+      logRow.appendChild(logBtn);
+      btn.parentNode.insertBefore(logRow, btn.nextSibling);
     }
 
     showToast(`Added to slip · ${betSlipItems.length} pick${betSlipItems.length > 1 ? 's' : ''}`);
@@ -2351,25 +2619,36 @@
       }
     }
 
+    // Feature 8: Team colors
+    const homeColor = TEAM_COLORS[homeAbbr] || '#1E2A40';
+    const awayColor = TEAM_COLORS[awayAbbr] || '#1E2A40';
+
+    // Feature 4: Movement indicator
+    let movementBadge = '';
+    if (bestPick?.movement === 'moved_toward') movementBadge = '<span class="movement-badge" title="Line moved toward our pick — sharp money confirming" style="color:#00FF88">📈</span>';
+    else if (bestPick?.movement === 'moved_against') movementBadge = '<span class="movement-badge" title="Line moved against our pick — warning signal" style="color:#FF3A5C">📉</span>';
+    else if (bestPick?.movement === 'stable' && hasEdge) movementBadge = '<span class="movement-badge" title="Line stable" style="color:#5A6A85">➡️</span>';
+
     const card = document.createElement('div');
     card.className = `game-card${hasEdge ? ' has-edge' : ''}`;
     card.style.animationDelay = `${index * 0.06}s`;
+    card.style.borderLeft = `2px solid ${homeColor}4D`; // 30% opacity
     card.innerHTML = `
       <div class="game-card-time">⚾ ${gameTime}</div>
       <div class="game-card-teams">
         <div class="game-card-team">
-          <div class="game-card-abbr">${awayAbbr}</div>
+          <div class="game-card-abbr"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${awayColor};margin-right:4px;vertical-align:middle"></span>${awayAbbr}</div>
           <div class="game-card-odds">${awayOdds}</div>
         </div>
         <div class="game-card-vs">@</div>
         <div class="game-card-team">
-          <div class="game-card-abbr">${homeAbbr}</div>
+          <div class="game-card-abbr"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${homeColor};margin-right:4px;vertical-align:middle"></span>${homeAbbr}</div>
           <div class="game-card-odds">${homeOdds}</div>
         </div>
       </div>
       ${hasEdge
         ? `<div class="game-card-edge">
-            <span class="game-card-edge-label">EDGE · ${bestPick.pick}</span>
+            <span class="game-card-edge-label">EDGE · ${bestPick.pick} ${movementBadge}</span>
             <span class="game-card-edge-val">+${bestPick.edgePct}%</span>
            </div>`
         : `<div class="game-card-no-edge">TAP FOR ANALYSIS</div>`
@@ -2385,7 +2664,7 @@
       slipBtn.innerHTML = '+ ADD TO SLIP';
       slipBtn.onclick = (e) => {
         e.stopPropagation();
-        addToSlip(slipKey, pickStr, `+${bestPick.edgePct}%`, 'GAME EDGE');
+        addToSlip(slipKey, pickStr, `+${bestPick.edgePct}%`, 'GAME EDGE', bestPick.bookOddsAmerican, `${awayAbbr} @ ${homeAbbr}`);
       };
       card.appendChild(slipBtn);
     }
@@ -2477,14 +2756,14 @@
       <div class="matchup-hero">
         <div class="matchup-teams">
           <div class="matchup-team">
-            <div class="matchup-abbr">${awayAbbr}</div>
-            <div class="matchup-full">${game.away_team}</div>
+            <div class="matchup-abbr" style="color:${TEAM_COLORS[awayAbbr]||'var(--text)'}">${awayAbbr}</div>
+            <div class="matchup-full" style="color:${TEAM_COLORS[awayAbbr]||'var(--muted)'}">${game.away_team}</div>
             <div class="matchup-odds" style="color:${bestPick?.side==='away'?'var(--green)':'var(--text)'}">${awayOdds}</div>
           </div>
           <div class="matchup-vs">@</div>
           <div class="matchup-team">
-            <div class="matchup-abbr">${homeAbbr}</div>
-            <div class="matchup-full">${game.home_team}</div>
+            <div class="matchup-abbr" style="color:${TEAM_COLORS[homeAbbr]||'var(--text)'}">${homeAbbr}</div>
+            <div class="matchup-full" style="color:${TEAM_COLORS[homeAbbr]||'var(--muted)'}">${game.home_team}</div>
             <div class="matchup-odds" style="color:${bestPick?.side==='home'?'var(--green)':'var(--text)'}">${homeOdds}</div>
           </div>
         </div>
@@ -3476,6 +3755,9 @@
 
   // ── EDGESEEKER MASCOT PAGE ────────────────────────────────────────────────
   async function loadEdgeseekerPage() {
+    // Feature 3: Load today's projection card
+    loadTodayProjection();
+
     // Set today's date
     const today = new Date();
     document.getElementById('esBriefingDate').textContent =
@@ -3612,6 +3894,226 @@
           ${takeHtml}
         </div>`;
     }).join('');
+  }
+
+  // ── PICK HISTORY (Feature 5) ──────────────────────────────────────────────
+  function getConnectedWallet() {
+    const provider = window.phantom?.solana || window.solana;
+    return provider?.publicKey?.toString() || null;
+  }
+
+  function getProfilePicksKey() {
+    const wallet = getConnectedWallet();
+    return wallet ? `es_pick_history_${wallet}` : 'es_pick_history_guest';
+  }
+
+  function getProfilePicks() {
+    try { return JSON.parse(localStorage.getItem(getProfilePicksKey()) || '[]'); }
+    catch { return []; }
+  }
+
+  function saveProfilePicks(picks) {
+    localStorage.setItem(getProfilePicksKey(), JSON.stringify(picks));
+  }
+
+  function logPickToProfile({ pick, odds, edge, game, betType }) {
+    const picks = getProfilePicks();
+    // Avoid duplicates logged same second
+    const existing = picks.find(p => p.pick === pick && p.loggedAt > Date.now() - 5000);
+    if (existing) { showToast('Already logged!'); return; }
+    picks.unshift({
+      id: Date.now(),
+      pick,
+      odds: odds || '—',
+      edge: edge || '—',
+      game: game || betType || '—',
+      loggedAt: Date.now(),
+      result: 'pending',
+    });
+    saveProfilePicks(picks);
+    showToast('📌 Pick logged to profile!');
+    if (document.getElementById('page-profile').classList.contains('active')) renderPickHistory();
+  }
+
+  function updatePickResult(id, result) {
+    const picks = getProfilePicks();
+    const pick = picks.find(p => p.id === id);
+    if (!pick) return;
+    pick.result = pick.result === result ? 'pending' : result; // toggle
+    saveProfilePicks(picks);
+    renderPickHistory();
+  }
+
+  function renderPickHistory() {
+    const container = document.getElementById('pickHistoryList');
+    const subEl = document.getElementById('pickHistorySub');
+    const sumEl = document.getElementById('pickHistorySummary');
+    if (!container) return;
+
+    const picks = getProfilePicks();
+    if (picks.length === 0) {
+      container.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px 0">Tap "+ ADD TO SLIP" on any pick card to log it here</div>';
+      if (subEl) subEl.textContent = '—';
+      if (sumEl) sumEl.style.display = 'none';
+      return;
+    }
+
+    const resolved = picks.filter(p => p.result !== 'pending');
+    const wins = resolved.filter(p => p.result === 'win').length;
+    const losses = resolved.filter(p => p.result === 'loss').length;
+    const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
+    let roi = 0;
+    resolved.forEach(p => {
+      const o = parseInt(p.odds);
+      if (!isNaN(o)) roi += p.result === 'win' ? (o > 0 ? o / 100 : 100 / Math.abs(o)) : -1;
+    });
+
+    if (subEl) subEl.textContent = `${wins}W-${losses}L`;
+    if (sumEl) {
+      sumEl.style.display = 'flex';
+      sumEl.innerHTML = `
+        <div class="pick-hist-sum-chip"><div class="pick-hist-sum-val green">${wins}</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px">WINS</div></div>
+        <div class="pick-hist-sum-chip"><div class="pick-hist-sum-val red">${losses}</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px">LOSSES</div></div>
+        <div class="pick-hist-sum-chip"><div class="pick-hist-sum-val cyan">${winRate}%</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px">WIN RATE</div></div>
+        <div class="pick-hist-sum-chip"><div class="pick-hist-sum-val gold">${roi >= 0 ? '+' : ''}${roi.toFixed(1)}u</div><div style="font-size:9px;color:var(--muted);letter-spacing:1px">ROI</div></div>
+      `;
+    }
+
+    container.innerHTML = picks.slice(0, 30).map(pick => {
+      const resultIcon = pick.result === 'win' ? 'W' : pick.result === 'loss' ? 'L' : '⏳';
+      const date = new Date(pick.loggedAt).toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return `
+        <div class="pick-hist-row">
+          <div class="pick-hist-result ${pick.result}">${resultIcon}</div>
+          <div class="pick-hist-info">
+            <div class="pick-hist-pick">${pick.pick}</div>
+            <div class="pick-hist-meta">${pick.game} · ${pick.odds} · ${pick.edge} · ${date}</div>
+          </div>
+          <div class="pick-hist-actions">
+            <button class="pick-hist-btn w" onclick="updatePickResult(${pick.id},'win')">W</button>
+            <button class="pick-hist-btn l" onclick="updatePickResult(${pick.id},'loss')">L</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── SCREENSHOT LOG (Feature 6 — owner only) ───────────────────────────────
+  const OWNER_WALLET = '8YPA4TV2rKkFdeJwvhQZPm6CNMNAm9sjP98p3DZSEgcL';
+  const MAX_SCREENSHOTS = 20;
+
+  function getScreenshots() {
+    try { return JSON.parse(localStorage.getItem('es_screenshots') || '[]'); }
+    catch { return []; }
+  }
+
+  function saveScreenshots(shots) {
+    localStorage.setItem('es_screenshots', JSON.stringify(shots));
+  }
+
+  function handleScreenshotUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const shots = getScreenshots();
+      if (shots.length >= MAX_SCREENSHOTS) {
+        shots.pop(); // Remove oldest
+        showToast('Oldest screenshot removed (max 20)');
+      }
+      shots.unshift({
+        id: Date.now(),
+        data: e.target.result,
+        note: '',
+        timestamp: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      });
+      saveScreenshots(shots);
+      renderScreenshots();
+      showToast('📸 Screenshot saved!');
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  }
+
+  function deleteScreenshot(id) {
+    const shots = getScreenshots().filter(s => s.id !== id);
+    saveScreenshots(shots);
+    renderScreenshots();
+  }
+
+  function renderScreenshots() {
+    const grid = document.getElementById('screenshotGrid');
+    if (!grid) return;
+    const shots = getScreenshots();
+    if (shots.length === 0) {
+      grid.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px;grid-column:span 2">No screenshots yet — tap ADD PHOTO</div>';
+      return;
+    }
+    grid.innerHTML = shots.map(s => `
+      <div class="screenshot-tile">
+        <img src="${s.data}" alt="Screenshot" />
+        <button class="screenshot-del-btn" onclick="deleteScreenshot(${s.id})">✕</button>
+        <div class="screenshot-tile-meta">${s.timestamp}</div>
+        ${s.note ? `<div class="screenshot-tile-note" style="padding:0 8px 8px">${s.note}</div>` : ''}
+      </div>`).join('');
+  }
+
+  // Show/hide owner-only sections
+  function checkOwnerSections() {
+    const wallet = getConnectedWallet();
+    const isOwner = wallet === OWNER_WALLET;
+    const screenshotCard = document.getElementById('screenshotLogCard');
+    if (screenshotCard) {
+      screenshotCard.style.display = isOwner ? 'block' : 'none';
+      if (isOwner) renderScreenshots();
+    }
+  }
+
+  // ── TODAY'S PROJECTION (Feature 3) ───────────────────────────────────────
+  async function loadTodayProjection() {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await fetch(`${API_BASE}/api/accuracy`);
+      const data = await res.json();
+
+      // Find today's picks
+      const allPicks = [...(data.recent || [])];
+      const todayPicks = allPicks.filter(p => p.pick_date === today);
+
+      const card = document.getElementById('todayProjectionCard');
+      const picksEl = document.getElementById('todayProjectionPicks');
+      const dateEl = document.getElementById('todayProjDate');
+      if (!card || !picksEl) return;
+
+      if (todayPicks.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+
+      card.style.display = 'block';
+      const d = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (dateEl) dateEl.textContent = d;
+
+      const gradeColor = (grade) => grade?.startsWith('A') ? 'var(--green)' : grade?.startsWith('B') ? 'var(--gold)' : 'var(--muted)';
+
+      picksEl.innerHTML = todayPicks.map(pick => {
+        const resultClass = pick.result === 'win' ? 'win' : pick.result === 'loss' ? 'loss' : 'pending';
+        const resultText = pick.result === 'win' ? 'WIN ✓' : pick.result === 'loss' ? 'LOSS ✗' : 'PENDING';
+        return `
+          <div class="today-proj-pick">
+            <div>
+              <div class="today-proj-pick-name">${pick.pick}</div>
+              <div class="today-proj-pick-meta">${pick.game || ''} · ${pick.odds || ''} · ${pick.edge || ''}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="proj-grade-badge" style="color:${gradeColor(pick.grade)}">${pick.grade || 'B'}</div>
+              <div class="proj-result-badge ${resultClass}">${resultText}</div>
+            </div>
+          </div>`;
+      }).join('');
+
+    } catch (err) {
+      console.error('Today projection error:', err);
+    }
   }
 
   // ── AUTO-REFRESH ──────────────────────────────────────────────────────────
