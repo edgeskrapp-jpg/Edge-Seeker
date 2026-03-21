@@ -2632,7 +2632,7 @@
     const card = document.createElement('div');
     card.className = `game-card${hasEdge ? ' has-edge' : ''}`;
     card.style.animationDelay = `${index * 0.06}s`;
-    card.style.borderLeft = `2px solid ${homeColor}4D`; // 30% opacity
+    card.style.borderLeft = `2px solid ${homeColor}66`; // 40% opacity
     card.innerHTML = `
       <div class="game-card-time">⚾ ${gameTime}</div>
       <div class="game-card-teams">
@@ -2648,8 +2648,8 @@
       </div>
       ${hasEdge
         ? `<div class="game-card-edge">
-            <span class="game-card-edge-label">EDGE · ${bestPick.pick} ${movementBadge}</span>
-            <span class="game-card-edge-val">+${bestPick.edgePct}%</span>
+            <span class="game-card-edge-label">EDGE · ${bestPick.pick}</span>
+            <span class="game-card-edge-val">+${bestPick.edgePct}% ${movementBadge}</span>
            </div>`
         : `<div class="game-card-no-edge">TAP FOR ANALYSIS</div>`
       }
