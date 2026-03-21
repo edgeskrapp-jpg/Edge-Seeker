@@ -123,6 +123,8 @@ const TEAM_NAME_MAP = {
   "Texas Rangers": "TEX",
   "Seattle Mariners": "SEA",
   "Oakland Athletics": "OAK",
+  "Athletics": "OAK",
+  "Sacramento Athletics": "OAK",
   "Los Angeles Angels": "LAA",
   "Atlanta Braves": "ATL",
   "New York Mets": "NYM",

@@ -186,7 +186,7 @@ const MLB_API_TEAM_MAP = {
   "Tampa Bay Rays": "TB", "Baltimore Orioles": "BAL", "Cleveland Guardians": "CLE",
   "Minnesota Twins": "MIN", "Chicago White Sox": "CWS", "Kansas City Royals": "KC",
   "Detroit Tigers": "DET", "Houston Astros": "HOU", "Texas Rangers": "TEX",
-  "Seattle Mariners": "SEA", "Oakland Athletics": "OAK", "Los Angeles Angels": "LAA",
+  "Seattle Mariners": "SEA", "Oakland Athletics": "OAK", "Athletics": "OAK", "Sacramento Athletics": "OAK", "Los Angeles Angels": "LAA",
   "Atlanta Braves": "ATL", "New York Mets": "NYM", "Philadelphia Phillies": "PHI",
   "Miami Marlins": "MIA", "Washington Nationals": "WSH", "Chicago Cubs": "CHC",
   "Milwaukee Brewers": "MIL", "St. Louis Cardinals": "STL", "Cincinnati Reds": "CIN",
