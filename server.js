@@ -68,7 +68,7 @@ const cache = {
   raw: { data: null, fetchedAt: null },
   strikeouts: { data: null, date: null },
 };
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours — conserve Odds API quota
 
 function isCacheValid(entry) {
   return entry.data && Date.now() - entry.fetchedAt < CACHE_TTL_MS;
@@ -1271,6 +1271,12 @@ async function checkAndAutoRunAgent() {
     const today = new Date().toISOString().split('T')[0];
     if (agentAutoRun.lastRun === today) return; // Already ran today
 
+    // Skip odds API call if picks cache is still fresh (under 4 hours)
+    if (isCacheValid(cache.picks)) {
+      console.log('⏸️  Auto-run skipped — picks cache still fresh (under 4 hours)');
+      return;
+    }
+
     console.log(`🤖 Auto-running premium agent at ${etHour}:xx ET...`);
     agentAutoRun.status = 'running';
 
@@ -1309,6 +1315,12 @@ app.get("/api/cron/auto-run-agent", async (req, res) => {
   if (!cronSecret && !adminSecret) return res.status(401).json({ error: "Unauthorized" });
 
   try {
+    // Skip odds API call if picks cache is still fresh (under 4 hours)
+    if (isCacheValid(cache.picks)) {
+      console.log('⏸️  Cron auto-run skipped — picks cache still fresh (under 4 hours)');
+      return res.json({ success: true, message: 'Skipped — picks cache still fresh (under 4 hours)', cached: true });
+    }
+
     agentAutoRun.status = 'running';
 
     const { games } = await fetchMLBOdds();
@@ -1938,7 +1950,7 @@ app.listen(PORT, () => {
   console.log(`   GET http://localhost:${PORT}/api/picks`);
   console.log(`   GET http://localhost:${PORT}/api/odds/raw`);
   console.log(`   GET http://localhost:${PORT}/api/quota`);
-  console.log(`\n⚡ Odds cache TTL: 10 minutes (saves API quota)`);
+  console.log(`\n⚡ Odds cache TTL: 4 hours (conserving API quota)`);
   console.log(`\n🤖 Agent auto-run: ${AGENT_AUTO_RUN_TIME}:00 AM ET daily (checks every 30 min)`);
   console.log(`\n⚾ Ready to find edges!\n`);
 
