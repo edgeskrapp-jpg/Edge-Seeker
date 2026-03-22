@@ -68,7 +68,40 @@ const cache = {
   raw: { data: null, fetchedAt: null },
   strikeouts: { data: null, date: null },
 };
-const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours — conserve Odds API quota
+// ─── SCHEDULE-AWARE CACHE ─────────────────────────────────────────────────────
+// Picks cache refreshes exactly twice daily at 11AM ET and 5PM ET.
+// All other requests serve cached data — zero extra API calls between windows.
+const REFRESH_HOURS_ET = [11, 17]; // 11:00 AM ET and 5:00 PM ET
+
+function getETOffset() {
+  // MLB season March–November → EDT (UTC-4); otherwise EST (UTC-5)
+  const month = new Date().getUTCMonth() + 1;
+  return (month >= 3 && month <= 11) ? -4 : -5;
+}
+
+/**
+ * Returns the most recent and the next scheduled refresh time as UTC Date objects.
+ */
+function getScheduledTimes() {
+  const now = new Date();
+  const etOff = getETOffset() * 60 * 60 * 1000;
+  // Find midnight ET in UTC terms for "today" in ET
+  const nowET = new Date(now.getTime() + etOff);
+  const etMidnightUTC = Date.UTC(nowET.getUTCFullYear(), nowET.getUTCMonth(), nowET.getUTCDate()) - etOff;
+
+  // Build refresh timestamps for yesterday, today, and tomorrow
+  const refreshes = [];
+  for (let day = -1; day <= 1; day++) {
+    for (const h of REFRESH_HOURS_ET) {
+      refreshes.push(new Date(etMidnightUTC + day * 86400000 + h * 3600000));
+    }
+  }
+  refreshes.sort((a, b) => a - b);
+
+  const lastRefresh = refreshes.filter(t => t <= now).pop() || null;
+  const nextRefresh = refreshes.find(t => t > now) || null;
+  return { lastRefresh, nextRefresh };
+}
 
 // ─── OPENING ODDS TRACKER (Feature 4 — Odds Movement) ────────────────────────
 // Tracks first-seen odds per pick per day to detect line movement
@@ -117,8 +150,15 @@ function getTeamAbbrServer(fullName) {
   return map[fullName] || (fullName || '').split(' ').pop().slice(0, 3).toUpperCase();
 }
 
+/**
+ * Cache is valid if it was populated after the most recent scheduled refresh window.
+ * Forces fresh data only at 11AM ET and 5PM ET; serves cache at all other times.
+ */
 function isCacheValid(entry) {
-  return entry.data && Date.now() - entry.fetchedAt < CACHE_TTL_MS;
+  if (!entry.data || !entry.fetchedAt) return false;
+  const { lastRefresh } = getScheduledTimes();
+  if (!lastRefresh) return true; // No scheduled window has passed yet today
+  return entry.fetchedAt > lastRefresh.getTime();
 }
 
 // ─── ODDS API HELPERS ────────────────────────────────────────────────────────
@@ -348,6 +388,87 @@ app.get("/api/quota", async (req, res) => {
   }
 });
 
+
+/**
+ * GET /api/cache/status
+ * Shows current cache state and scheduled refresh windows.
+ */
+app.get("/api/cache/status", (req, res) => {
+  const { lastRefresh, nextRefresh } = getScheduledTimes();
+  const fetchedAt = cache.picks.fetchedAt;
+  const cacheAgeMs = fetchedAt ? Date.now() - fetchedAt : null;
+  res.json({
+    cache: {
+      isValid: isCacheValid(cache.picks),
+      hasData: !!cache.picks.data,
+      fetchedAt: fetchedAt ? new Date(fetchedAt).toISOString() : null,
+      ageMinutes: cacheAgeMs !== null ? Math.floor(cacheAgeMs / 60000) : null,
+    },
+    schedule: {
+      lastRefresh: lastRefresh ? lastRefresh.toISOString() : null,
+      nextRefresh: nextRefresh ? nextRefresh.toISOString() : null,
+      refreshTimesET: REFRESH_HOURS_ET.map(h => `${h % 12 || 12}:00 ${h < 12 ? 'AM' : 'PM'} ET`),
+    },
+  });
+});
+
+/**
+ * GET /api/cron/refresh-picks
+ * Scheduled cache pre-warm — runs at 11AM ET and 5PM ET via Vercel cron.
+ * Clears stale cache and fetches fresh odds + picks proactively.
+ */
+app.get("/api/cron/refresh-picks", async (req, res) => {
+  const cronSecret = req.headers["x-vercel-cron-secret"] === process.env.CRON_SECRET;
+  const adminSecret = req.query.secret === process.env.ADMIN_SECRET;
+  if (!cronSecret && !adminSecret) return res.status(401).json({ error: "Unauthorized" });
+
+  // Clear cache so the fetch below stores fresh data
+  cache.picks = { data: null, fetchedAt: null };
+  cache.raw   = { data: null, fetchedAt: null };
+
+  try {
+    const { games, remaining, used } = await fetchMLBOdds();
+    if (!games || games.length === 0) {
+      console.log("⏰ Scheduled refresh: no games found");
+      return res.json({ success: true, message: "No games today", quota: { remaining, used } });
+    }
+
+    let picks = applyPickFilters(analyzePicks(games));
+
+    const cachedEnriched = getEnrichedCache();
+    if (cachedEnriched) picks = applyInjuryPenalty(picks, cachedEnriched);
+
+    try {
+      const { supabaseQuery } = require("./supabase");
+      let eloRatings = [];
+      try {
+        eloRatings = await supabaseQuery("elo_ratings", "GET", null, "?order=elo.desc");
+      } catch (_) {
+        const { OPENING_DAY_ELO } = require("./eloSystem");
+        eloRatings = Object.entries(OPENING_DAY_ELO).map(([abbr, data]) => ({
+          team_abbr: abbr, elo: data.elo, wins: data.wins || 0, losses: data.losses || 0,
+        }));
+      }
+      if (eloRatings && eloRatings.length > 0) picks = applyEloAdjustment(picks, eloRatings);
+    } catch (_) {}
+
+    picks = addOddsMovement(picks);
+
+    const responseData = {
+      picks, total: picks.length, gamesAnalyzed: games.length,
+      cached: false, fetchedAt: new Date().toISOString(),
+      quota: { remaining, used },
+    };
+    cache.picks = { data: responseData, fetchedAt: Date.now() };
+    cache.raw   = { data: games, fetchedAt: Date.now() };
+
+    console.log(`✅ Scheduled picks refresh — ${picks.length} picks cached | Quota: ${remaining} remaining`);
+    return res.json({ success: true, picksCount: picks.length, quota: { remaining, used } });
+  } catch (err) {
+    console.error("❌ /api/cron/refresh-picks error:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 // ─── USER ROUTES ─────────────────────────────────────────────────────────────
 
@@ -1714,6 +1835,20 @@ app.get("/admin", async (req, res) => {
   nextCron.setUTCHours(10, 0, 0, 0); // 6AM ET = 10AM UTC (EDT)
   const nextCronStr = nextCron.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
+  // Cache schedule info
+  const { lastRefresh: lastPicksRefresh, nextRefresh: nextPicksRefresh } = getScheduledTimes();
+  const cacheValid = isCacheValid(cache.picks);
+  const cacheAgeMin = cache.picks.fetchedAt ? Math.floor((Date.now() - cache.picks.fetchedAt) / 60000) : null;
+  const lastRefreshStr = lastPicksRefresh
+    ? lastPicksRefresh.toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })
+    : 'N/A';
+  const nextRefreshStr = nextPicksRefresh
+    ? nextPicksRefresh.toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })
+    : 'N/A';
+  const cacheFetchedStr = cache.picks.fetchedAt
+    ? new Date(cache.picks.fetchedAt).toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })
+    : 'Never';
+
   // Overall system health
   const quotaOk = isNaN(parseInt(oddsQuota.remaining)) || parseInt(oddsQuota.remaining) > 150;
   const quotaLow = !isNaN(parseInt(oddsQuota.remaining)) && parseInt(oddsQuota.remaining) < 150;
@@ -2056,10 +2191,49 @@ ${quotaLow ? `<!-- QUOTA ALERT -->
     </div>
     <div class="row"><span class="row-label">Free model</span><span class="row-value c-white">claude-sonnet</span></div>
     <div class="row"><span class="row-label">Premium model</span><span class="row-value c-white">claude-opus</span></div>
-    <div class="row"><span class="row-label">Auto-run time</span><span class="row-value c-gold">${AGENT_AUTO_RUN_TIME}:00 AM ET daily</span></div>
+    <div class="row"><span class="row-label">Auto-run times</span><span class="row-value c-gold">11:05 AM + 5:05 PM ET</span></div>
     <div class="row"><span class="row-label">Agent Last Run</span><span class="row-value ${agentAutoRun.lastRunTime ? 'c-green' : 'c-muted'}">${agentAutoRun.lastRunTime || 'Not yet today'}</span></div>
     <div class="row"><span class="row-label">Agent Status</span><span class="row-value ${agentAutoRun.status === 'ready' ? 'c-green' : agentAutoRun.status === 'running' ? 'c-gold' : 'c-red'}">${agentAutoRun.status === 'ready' ? '✅ Ready' : agentAutoRun.status === 'running' ? '⏳ Running...' : '❌ Failed'}</span></div>
-    <div class="row"><span class="row-label">Cache strategy</span><span class="row-value c-green">Daily (1×/day)</span></div>
+    <div class="row"><span class="row-label">Runs per day</span><span class="row-value c-green">2× (morning + afternoon)</span></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ ROW 1B: CACHE SCHEDULE ═══════════════ -->
+<div class="section-label">Cache Schedule</div>
+<div class="grid-3">
+
+  <div class="card t-cyan">
+    <div class="card-header">
+      <span class="card-title">Picks Cache</span>
+      <span class="card-badge ${cacheValid ? 'badge-green' : 'badge-red'}">${cacheValid ? 'FRESH' : 'STALE'}</span>
+    </div>
+    <div class="row"><span class="row-label">Status</span><span class="row-value ${cacheValid ? 'c-green' : 'c-red'}">${cacheValid ? '✅ Serving cached' : '⚠️ Will refresh on next call'}</span></div>
+    <div class="row"><span class="row-label">Last fetched</span><span class="row-value c-white">${cacheFetchedStr} ET</span></div>
+    <div class="row"><span class="row-label">Cache age</span><span class="row-value c-muted">${cacheAgeMin !== null ? cacheAgeMin + ' min' : 'Empty'}</span></div>
+    <div class="row"><span class="row-label">Has data</span><span class="row-value ${cache.picks.data ? 'c-green' : 'c-red'}">${cache.picks.data ? `${cache.picks.data.total || 0} picks` : 'Empty'}</span></div>
+  </div>
+
+  <div class="card t-blue">
+    <div class="card-header">
+      <span class="card-title">Refresh Windows</span>
+      <span class="card-badge badge-sol">2× DAILY</span>
+    </div>
+    <div class="row"><span class="row-label">Morning</span><span class="row-value c-cyan">11:00 AM ET</span></div>
+    <div class="row"><span class="row-label">Afternoon</span><span class="row-value c-cyan">5:00 PM ET</span></div>
+    <div class="row"><span class="row-label">Last window</span><span class="row-value c-white">${lastRefreshStr} ET</span></div>
+    <div class="row"><span class="row-label">Next window</span><span class="row-value c-gold">${nextRefreshStr} ET</span></div>
+  </div>
+
+  <div class="card t-sol">
+    <div class="card-header">
+      <span class="card-title">API Budget</span>
+      <span class="card-badge badge-green">2/DAY</span>
+    </div>
+    <div class="row"><span class="row-label">Calls per day</span><span class="row-value c-green">2 (odds refresh)</span></div>
+    <div class="row"><span class="row-label">Calls per month</span><span class="row-value c-white">~62</span></div>
+    <div class="row"><span class="row-label">Monthly quota</span><span class="row-value c-muted">500 (free tier)</span></div>
+    <div class="row"><span class="row-label">Buffer remaining</span><span class="row-value c-green">~438 calls free</span></div>
   </div>
 
 </div>
@@ -2122,6 +2296,8 @@ ${quotaLow ? `<!-- QUOTA ALERT -->
   <a class="btn danger" href="/admin/refresh-agent?secret=${secret}" target="_blank">🔄 Refresh Agent Cache</a>
   <a class="btn" href="/api/cron/auto-log-results?secret=${secret}" target="_blank">📊 Auto-Log Results</a>
   <a class="btn" href="/api/digest/send?secret=${secret}" target="_blank">📨 Send Digest</a>
+  <a class="btn primary" href="/api/cron/refresh-picks?secret=${secret}" target="_blank">🔄 Refresh Picks Now</a>
+  <a class="btn" href="/api/cache/status" target="_blank">📡 Cache Status</a>
 </div>
 
 <!-- ═══════════════ UPDATE PICK RESULTS ═══════════════ -->

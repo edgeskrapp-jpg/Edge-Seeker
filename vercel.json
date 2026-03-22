@@ -22,8 +22,20 @@
       "schedule": "0 5 * * *"
     },
     {
-      "path": "/api/cron/auto-run-agent",
+      "path": "/api/cron/refresh-picks",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-picks",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/auto-run-agent",
+      "schedule": "5 15 * * *"
+    },
+    {
+      "path": "/api/cron/auto-run-agent",
+      "schedule": "5 21 * * *"
     },
     {
       "path": "/api/cron/auto-log-results",
