@@ -398,6 +398,36 @@ async function fetchFanGraphsPitching(teamAbbr) {
   }
 }
 
+/**
+ * Fetch team season hitting stats to derive strikeout rate.
+ * teamId: numeric MLB API team ID
+ * Returns { strikeoutRate (SO/AB as %), strikeoutsPerGame }
+ */
+async function fetchTeamStrikeoutRate(teamId) {
+  if (!teamId) return null;
+  const season = new Date().getFullYear();
+  const url = `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=season&group=hitting&season=${season}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const stats = data.stats?.[0]?.splits?.[0]?.stat;
+    if (!stats) return null;
+
+    const so = parseInt(stats.strikeOuts || 0);
+    const ab = parseInt(stats.atBats || 1);
+    const gamesPlayed = parseInt(stats.gamesPlayed || 1);
+
+    return {
+      strikeoutRate: parseFloat(((so / ab) * 100).toFixed(1)),
+      strikeoutsPerGame: parseFloat((so / gamesPlayed).toFixed(1)),
+    };
+  } catch (err) {
+    console.error(`Team strikeout rate fetch error for teamId ${teamId}:`, err.message);
+    return null;
+  }
+}
+
 // ─── ROSTER & INJURY TRACKER ──────────────────────────────────────────────────
 
 /**
@@ -587,4 +617,4 @@ function getEnrichedCache() {
   return isCacheValid() ? enrichCache.data : null;
 }
 
-module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchPitcherLastStart, STADIUM_COORDS };
+module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchTeamStrikeoutRate, fetchPitcherLastStart, STADIUM_COORDS };

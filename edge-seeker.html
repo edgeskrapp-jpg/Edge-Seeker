@@ -2423,6 +2423,21 @@
     const pickStr = `${prop.pitcher} ${prop.recommendation} ${prop.propLine} K`;
     const slipKey = `so_${i}`;
 
+    // FanGraphs K/9 badge
+    const k9Val = m.fanGraphsK9 ? parseFloat(m.fanGraphsK9) : null;
+    const k9Badge = k9Val != null
+      ? `<span style="font-family:'DM Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:700;background:${k9Val > 10.0 ? 'rgba(0,255,136,0.15);color:#00ff88' : k9Val < 7.0 ? 'rgba(255,80,80,0.15);color:#ff5050' : 'rgba(255,255,255,0.08);color:var(--muted)'}">K/9 ${k9Val.toFixed(1)}</span>`
+      : '';
+
+    // Opposing lineup K rate color coding
+    const oppKRate = m.opposingLineupKRate ? parseFloat(m.opposingLineupKRate) : null;
+    const oppKRateColor = oppKRate != null
+      ? (oppKRate > 25 ? '#00ff88' : oppKRate < 18 ? '#ff5050' : '#f0c040')
+      : 'var(--muted)';
+    const oppKRateLabel = oppKRate != null
+      ? `${oppKRate.toFixed(1)}% K rate`
+      : '—';
+
     return `
       <div class="prop-pick-card ${gradeClass}" style="animation-delay:${i*0.08}s">
         <div class="prop-header">
@@ -2433,7 +2448,7 @@
         </div>
         <div class="prop-pitcher-row">
           <div>
-            <div class="prop-pitcher-name">${prop.pitcher}</div>
+            <div class="prop-pitcher-name">${prop.pitcher}${k9Badge}</div>
             <div class="prop-pitcher-team">${prop.team} vs ${prop.opponent}</div>
           </div>
           <div class="prop-rec">
@@ -2453,6 +2468,10 @@
           <div class="prop-metric">
             <div class="prop-metric-val">${m.oppKPercent || '—'}</div>
             <div class="prop-metric-lbl">OPP K%</div>
+          </div>
+          <div class="prop-metric">
+            <div class="prop-metric-val" style="color:${oppKRateColor}">${oppKRateLabel}</div>
+            <div class="prop-metric-lbl">OPP K RATE</div>
           </div>
         </div>
         <div class="prop-reasoning">${prop.reasoning}</div>
