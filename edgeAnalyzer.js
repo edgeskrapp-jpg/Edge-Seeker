@@ -140,10 +140,12 @@ function calculateExpectedTotal(homeRunRate, awayRunRate, enrichedGame, parkFact
     if (weather.temp > 85) weatherAdj += 0.3;
   }
 
-  // Step 4 — Park factor
+  // Step 4 — Park factor (capped at ±0.8 runs to prevent extreme inflation)
   const parkRunsFactor = parkFactor?.runs || 1.0;
   const preAdjTotal = baseTotal + bullpenAdj + weatherAdj;
-  const expectedTotal = Math.round(preAdjTotal * parkRunsFactor * 10) / 10;
+  const rawParkAdj = preAdjTotal * parkRunsFactor - preAdjTotal;
+  const cappedParkAdj = Math.max(-0.8, Math.min(0.8, rawParkAdj));
+  const expectedTotal = Math.round((preAdjTotal + cappedParkAdj) * 10) / 10;
 
   // Confidence scales with data availability
   let confidence = 45;
@@ -300,8 +302,8 @@ function analyzeGame(game, enrichedData) {
     : null;
   let ouRecommendation = 'NO EDGE';
   if (ouEdge !== null) {
-    if (ouEdge > 0.5)  ouRecommendation = 'OVER';
-    if (ouEdge < -0.5) ouRecommendation = 'UNDER';
+    if (ouEdge >= 1.0)  ouRecommendation = 'OVER';
+    if (ouEdge <= -1.0) ouRecommendation = 'UNDER';
   }
 
   // Build park warning if factor is extreme
