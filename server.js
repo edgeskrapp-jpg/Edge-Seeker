@@ -170,7 +170,7 @@ async function fetchMLBOdds() {
   const url = new URL(`${ODDS_API_BASE}/sports/baseball_mlb/odds`);
   url.searchParams.set("apiKey", API_KEY);
   url.searchParams.set("regions", "us");           // US sportsbooks
-  url.searchParams.set("markets", "h2h");          // moneyline (head-to-head)
+  url.searchParams.set("markets", "h2h,totals");   // moneyline + over/under
   url.searchParams.set("oddsFormat", "decimal");   // we convert to American for display
   url.searchParams.set("dateFormat", "iso");
 
@@ -302,10 +302,11 @@ app.get("/api/picks", async (req, res) => {
       });
     }
 
-    let picks = applyPickFilters(analyzePicks(games));
-
-    // Apply injury confidence penalties if enriched data is cached (from prior agent run)
+    // Pass enriched data (pitcher FIP/fatigue, weather) into the Poisson model
     const cachedEnriched = getEnrichedCache();
+    let picks = applyPickFilters(analyzePicks(games, cachedEnriched));
+
+    // Apply injury confidence penalties
     if (cachedEnriched) {
       picks = applyInjuryPenalty(picks, cachedEnriched);
     }
@@ -433,9 +434,9 @@ app.get("/api/cron/refresh-picks", async (req, res) => {
       return res.json({ success: true, message: "No games today", quota: { remaining, used } });
     }
 
-    let picks = applyPickFilters(analyzePicks(games));
-
     const cachedEnriched = getEnrichedCache();
+    let picks = applyPickFilters(analyzePicks(games, cachedEnriched));
+
     if (cachedEnriched) picks = applyInjuryPenalty(picks, cachedEnriched);
 
     try {

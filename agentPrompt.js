@@ -165,13 +165,24 @@ function buildPremiumPrompt(picks, enrichedData = {}, fanGraphsData = {}) {
     return `GAME: ${p.homeTeam} vs ${p.awayTeam}
 Moneyline: ${p.pick} | Odds: ${p.bookOddsAmerican} | Edge: ${p.edgePct}% | Kelly: ${p.kellyPct}% | Confidence: ${p.confidence}/100
 
+EXPECTED TOTAL: ${p.expectedTotal != null ? p.expectedTotal + ' runs' : 'N/A'}
+BOOK TOTAL: ${p.bookTotal != null ? p.bookTotal : 'N/A'}
+O/U EDGE: ${p.ouEdge != null ? (p.ouEdge > 0 ? '+' : '') + p.ouEdge + ' runs' : 'N/A'}
+O/U RECOMMENDATION: ${p.ouRecommendation || 'N/A'} (model confidence: ${p.ouConfidence || 'N/A'}/100)
+Bullpen adjustment: ${p.bullpenAdjustment != null ? (p.bullpenAdjustment > 0 ? '+' : '') + p.bullpenAdjustment + ' runs' : 'N/A'}
+Weather adjustment: ${p.weatherAdjustment != null ? (p.weatherAdjustment > 0 ? '+' : '') + p.weatherAdjustment + ' runs' : 'N/A'}
+${p.pitcherAdjustment ? `Pitcher FIP adjustment: ${p.pitcherAdjustment}` : ''}
+${p.fatigueNote ? `Fatigue: ${p.fatigueNote}` : ''}
+
 HOME PITCHER: ${hp.name || 'TBD'}
-  ERA: ${hp.era || 'N/A'} | WHIP: ${hp.whip || 'N/A'} | Last 5: ${hp.lastFive || 'N/A'}
+  ERA: ${hp.era || 'N/A'} | FIP: ${hp.fip || 'N/A'} | WHIP: ${hp.whip || 'N/A'} | Last 5: ${hp.lastFive || 'N/A'}
+  Fatigue: ${p.homePitcherFatigue || 'unknown'}${hp.lastStart?.fatigueNote ? ` (${hp.lastStart.fatigueNote})` : ''}
   Statcast: K%=${hpSavant.kPercent || 'N/A'} | Whiff%=${hpSavant.whiffPercent || 'N/A'} | HardHit%=${hpSavant.hardHitPercent || 'N/A'} | Velo=${hpSavant.avgVelocity || 'N/A'}
   Platoon: vsLHB avg=${hpPlatoon.vsLHB_avg || 'N/A'} | vsRHB avg=${hpPlatoon.vsRHB_avg || 'N/A'}
 
 AWAY PITCHER: ${ap.name || 'TBD'}
-  ERA: ${ap.era || 'N/A'} | WHIP: ${ap.whip || 'N/A'} | Last 5: ${ap.lastFive || 'N/A'}
+  ERA: ${ap.era || 'N/A'} | FIP: ${ap.fip || 'N/A'} | WHIP: ${ap.whip || 'N/A'} | Last 5: ${ap.lastFive || 'N/A'}
+  Fatigue: ${p.awayPitcherFatigue || 'unknown'}${ap.lastStart?.fatigueNote ? ` (${ap.lastStart.fatigueNote})` : ''}
   Statcast: K%=${apSavant.kPercent || 'N/A'} | Whiff%=${apSavant.whiffPercent || 'N/A'} | HardHit%=${apSavant.hardHitPercent || 'N/A'} | Velo=${apSavant.avgVelocity || 'N/A'}
   Platoon: vsLHB avg=${apPlatoon.vsLHB_avg || 'N/A'} | vsRHB avg=${apPlatoon.vsRHB_avg || 'N/A'}
 

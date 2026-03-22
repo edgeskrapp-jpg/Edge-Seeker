@@ -19,6 +19,9 @@ const { getTeamStats } = require("./mlbStats");
 // Minimum edge % to include a pick (filter out noise)
 const MIN_EDGE_THRESHOLD = 0.03; // 3%
 
+// League average FIP/ERA baseline for pitcher quality multiplier
+const LEAGUE_AVG_FIP = 4.20;
+
 /**
  * Park factors: how each ballpark affects run scoring, home runs, and strikeouts.
  * Factors > 1.0 boost the stat, < 1.0 suppress it.
@@ -40,6 +43,124 @@ const PARK_FACTORS = {
   MIA: { runs: 0.95, hr: 0.93, k: 1.07, note: "loanDepot Park — dome, suppresses scoring" },
   ARI: { runs: 1.02, hr: 1.04, k: 0.97, note: "Chase Field — retractable roof, warm desert air when open" },
 };
+
+/**
+ * getPitcherQualityMultiplier(pitcherStats, lastStart)
+ *
+ * Returns a multiplier applied to the OPPONENT's expected run rate.
+ *   < 1.0  →  pitcher suppresses scoring (elite FIP)
+ *   = 1.0  →  league average
+ *   > 1.0  →  pitcher allows more scoring (poor FIP / fatigued)
+ *
+ * Uses FIP as primary metric, falls back to ERA. Caps at [0.60, 1.40].
+ * Fatigue adjustment is layered on top of the quality multiplier.
+ */
+function getPitcherQualityMultiplier(pitcherStats, lastStart) {
+  let qualityMult = 1.0;
+
+  if (pitcherStats && pitcherStats.name !== 'TBD') {
+    // Prefer FIP (more predictive than ERA for future performance)
+    const metric = (pitcherStats.fip != null && parseFloat(pitcherStats.fip) > 0)
+      ? parseFloat(pitcherStats.fip)
+      : (pitcherStats.era != null && parseFloat(pitcherStats.era) > 0 ? parseFloat(pitcherStats.era) : null);
+
+    if (metric) {
+      // metric / leagueAvg: <1 for good pitcher, >1 for bad pitcher
+      qualityMult = Math.max(0.60, Math.min(1.40, metric / LEAGUE_AVG_FIP));
+    }
+  }
+
+  // Fatigue adjustment — multiplied into the quality multiplier
+  if (lastStart) {
+    const { daysSinceLastStart, pitchCount, inningsPitched } = lastStart;
+    if (inningsPitched >= 9) {
+      qualityMult *= 1.08; // complete game → more tired regardless of rest
+    } else if (daysSinceLastStart <= 3) {
+      qualityMult *= 1.10; // short rest → meaningfully worse
+    } else if (daysSinceLastStart === 4 && pitchCount >= 100) {
+      qualityMult *= 1.05; // high pitch count on standard rest
+    } else if (daysSinceLastStart >= 5) {
+      qualityMult *= 0.95; // extra rest → slightly sharper
+    }
+    // Re-cap after fatigue adjustment
+    qualityMult = Math.max(0.55, Math.min(1.50, qualityMult));
+  }
+
+  return qualityMult;
+}
+
+/**
+ * Extract the best available Over/Under line from a game's bookmakers.
+ */
+function getBookOverUnder(game) {
+  for (const bk of game.bookmakers || []) {
+    const totalsMarket = bk.markets?.find(m => m.key === 'totals');
+    if (totalsMarket) {
+      const overOutcome = totalsMarket.outcomes?.find(o => o.name === 'Over');
+      if (overOutcome?.point) return overOutcome.point;
+    }
+  }
+  return null;
+}
+
+/**
+ * calculateExpectedTotal(homeRunRate, awayRunRate, enrichedGame, parkFactor)
+ *
+ * Computes our model's projected run total for a game.
+ * Layers: base Poisson total → bullpen adjustment → weather adjustment → park factor.
+ */
+function calculateExpectedTotal(homeRunRate, awayRunRate, enrichedGame, parkFactor) {
+  const baseTotal = homeRunRate + awayRunRate;
+  const LEAGUE_AVG_BULLPEN = 4.20;
+
+  // Step 2 — Bullpen adjustment (FanGraphs data, premium only)
+  let bullpenAdj = 0;
+  if (enrichedGame?.homeFanGraphs?.bullpenERA) {
+    const era = parseFloat(enrichedGame.homeFanGraphs.bullpenERA);
+    if (!isNaN(era)) bullpenAdj += (era - LEAGUE_AVG_BULLPEN) * 0.3;
+  }
+  if (enrichedGame?.awayFanGraphs?.bullpenERA) {
+    const era = parseFloat(enrichedGame.awayFanGraphs.bullpenERA);
+    if (!isNaN(era)) bullpenAdj += (era - LEAGUE_AVG_BULLPEN) * 0.3;
+  }
+
+  // Step 3 — Weather adjustment
+  let weatherAdj = 0;
+  const weather = enrichedGame?.weather;
+  if (weather && weather.windDir !== 'Indoor') {
+    const windSpeed = weather.windSpeed || 0;
+    const dir = weather.windDir || '';
+    const isOut = dir.includes('Out') || dir.startsWith('S ') || dir.startsWith('W ');
+    const isIn  = dir.includes('In')  || dir.startsWith('E ') || dir.startsWith('N ');
+    if (windSpeed > 10) {
+      if (isOut) weatherAdj += (windSpeed - 10) * 0.08;
+      if (isIn)  weatherAdj -= (windSpeed - 10) * 0.06;
+    }
+    if (weather.temp < 50) weatherAdj -= 0.4;
+    if (weather.temp > 85) weatherAdj += 0.3;
+  }
+
+  // Step 4 — Park factor
+  const parkRunsFactor = parkFactor?.runs || 1.0;
+  const preAdjTotal = baseTotal + bullpenAdj + weatherAdj;
+  const expectedTotal = Math.round(preAdjTotal * parkRunsFactor * 10) / 10;
+
+  // Confidence scales with data availability
+  let confidence = 45;
+  if (enrichedGame?.homePitcher?.fip || enrichedGame?.awayPitcher?.fip) confidence += 15;
+  if (enrichedGame?.homeFanGraphs) confidence += 10;
+  if (weather) confidence += 10;
+  if (parkRunsFactor !== 1.0) confidence += 5;
+
+  return {
+    expectedTotal,
+    baseTotal: Math.round(baseTotal * 10) / 10,
+    bullpenAdjustment: Math.round(bullpenAdj * 10) / 10,
+    weatherAdjustment: Math.round(weatherAdj * 10) / 10,
+    parkAdjustment: parkRunsFactor,
+    confidence: Math.min(85, confidence),
+  };
+}
 
 /**
  * Find the best (sharpest) moneyline odds across all bookmakers
@@ -93,7 +214,8 @@ function formatAmerican(odds) {
 }
 
 /**
- * Analyze a single game and return a structured pick object
+ * Analyze a single game and return a structured pick object.
+ * enrichedData: optional map of gameKey → enriched pitcher/weather/FanGraphs data.
  */
 // In-memory cache for live stats (populated by cron)
 let liveTeamStats = null;
@@ -103,7 +225,7 @@ function setLiveStats(stats) {
   console.log(`📊 Poisson model updated with live stats for ${Object.keys(stats).length} teams`);
 }
 
-function analyzeGame(game) {
+function analyzeGame(game, enrichedData) {
   const { homeOdds, awayOdds, bookmaker } = getBestMoneyline(game);
 
   // Need both sides to analyze
@@ -112,18 +234,75 @@ function analyzeGame(game) {
   // Get team stats — use live stats if available, fall back to projections
   const homeStats = getTeamStats(game.home_team, liveTeamStats);
   const awayStats = getTeamStats(game.away_team, liveTeamStats);
+  const homeAbbr = homeStats.abbr;
+  const awayAbbr = awayStats.abbr;
+
+  // Look up enriched data for this matchup (keyed as ${away}_${home})
+  const gameKey = `${awayAbbr}_${homeAbbr}`;
+  const enrichedGame = enrichedData
+    ? (enrichedData[gameKey] || enrichedData[`${homeAbbr}_${awayAbbr}`] || null)
+    : null;
 
   // Apply park factors for the home team's ballpark
-  const parkFactor = PARK_FACTORS[homeStats.abbr] || null;
+  const parkFactor = PARK_FACTORS[homeAbbr] || null;
   const parkRunsFactor = parkFactor ? parkFactor.runs : 1.0;
 
   // Multiply home team runsPerGame and away team runsAllowedPerGame by park runs factor
   const adjustedHomeRPG = homeStats.runsPerGame * parkRunsFactor;
   const adjustedAwayRAPG = awayStats.runsAllowedPerGame * parkRunsFactor;
 
-  // Home team gets a run bonus for playing at home; away run rate uses park-adjusted pitching quality
-  const homeRunRate = adjustedHomeRPG + homeStats.homeBonus;
-  const awayRunRate = adjustedAwayRAPG;
+  // ── FIP / fatigue pitcher quality multipliers ──────────────────────────────
+  // Home pitcher quality → multiplier on AWAY team's expected runs
+  // Away pitcher quality → multiplier on HOME team's expected runs
+  const homePitcherData  = enrichedGame?.homePitcher || null;
+  const awayPitcherData  = enrichedGame?.awayPitcher || null;
+  const homePitcherMult  = getPitcherQualityMultiplier(homePitcherData, homePitcherData?.lastStart);
+  const awayPitcherMult  = getPitcherQualityMultiplier(awayPitcherData, awayPitcherData?.lastStart);
+
+  // Apply: good home pitcher → away scores fewer; bad away pitcher → home scores more
+  const homeRunRate = (adjustedHomeRPG + homeStats.homeBonus) * awayPitcherMult;
+  const awayRunRate = adjustedAwayRAPG * homePitcherMult;
+
+  // FIP display values
+  const homePitcherFIP = (homePitcherData?.fip != null) ? parseFloat(homePitcherData.fip) : null;
+  const awayPitcherFIP = (awayPitcherData?.fip != null) ? parseFloat(awayPitcherData.fip) : null;
+
+  // Fatigue labels
+  const homePitcherFatigue = homePitcherData?.lastStart?.fatigue || null;
+  const awayPitcherFatigue = awayPitcherData?.lastStart?.fatigue || null;
+  const fatigueNote = [
+    homePitcherData?.lastStart?.fatigueNote ? `${homePitcherData.name || 'Home SP'}: ${homePitcherData.lastStart.fatigueNote}` : null,
+    awayPitcherData?.lastStart?.fatigueNote ? `${awayPitcherData.name || 'Away SP'}: ${awayPitcherData.lastStart.fatigueNote}` : null,
+  ].filter(Boolean).join(' | ') || null;
+
+  // Pitcher adjustment description
+  let pitcherAdjustment = null;
+  if (homePitcherMult !== 1.0 || awayPitcherMult !== 1.0) {
+    const parts = [];
+    if (homePitcherData && homePitcherMult !== 1.0) {
+      const metric = homePitcherFIP != null ? `FIP ${homePitcherFIP}` : `ERA ${homePitcherData.era}`;
+      const direction = homePitcherMult < 1.0 ? 'suppressing' : 'inflating';
+      parts.push(`${homePitcherData.name || 'Home SP'} (${metric}) ${direction} away scoring`);
+    }
+    if (awayPitcherData && awayPitcherMult !== 1.0) {
+      const metric = awayPitcherFIP != null ? `FIP ${awayPitcherFIP}` : `ERA ${awayPitcherData.era}`;
+      const direction = awayPitcherMult < 1.0 ? 'suppressing' : 'inflating';
+      parts.push(`${awayPitcherData.name || 'Away SP'} (${metric}) ${direction} home scoring`);
+    }
+    if (parts.length) pitcherAdjustment = parts.join(' | ');
+  }
+
+  // ── O/U calculation ────────────────────────────────────────────────────────
+  const bookOverUnder = getBookOverUnder(game);
+  const ouCalc = calculateExpectedTotal(homeRunRate, awayRunRate, enrichedGame, parkFactor);
+  const ouEdge = bookOverUnder != null
+    ? Math.round((ouCalc.expectedTotal - bookOverUnder) * 10) / 10
+    : null;
+  let ouRecommendation = 'NO EDGE';
+  if (ouEdge !== null) {
+    if (ouEdge > 0.5)  ouRecommendation = 'OVER';
+    if (ouEdge < -0.5) ouRecommendation = 'UNDER';
+  }
 
   // Build park warning if factor is extreme
   let parkWarning = null;
@@ -132,7 +311,7 @@ function analyzeGame(game) {
   }
 
   // Colorado home games: extreme altitude, add confidence penalty
-  const isCoorsHome = homeStats.abbr === "COL";
+  const isCoorsHome = homeAbbr === "COL";
   const coorsConfidencePenalty = isCoorsHome ? 20 : 0;
 
   // Poisson-based true win probabilities
@@ -196,28 +375,52 @@ function analyzeGame(game) {
       baseConfidence,
       coorsWarning || parkWarning || null
     );
+    // Shared O/U + pitcher fields added to every pick for this game
+    const sharedFields = {
+      // Pitcher quality (FIP/ERA)
+      homePitcherFIP,
+      awayPitcherFIP,
+      homePitcherName: homePitcherData?.name || null,
+      awayPitcherName: awayPitcherData?.name || null,
+      pitcherAdjustment,
+      // Fatigue
+      homePitcherFatigue,
+      awayPitcherFatigue,
+      fatigueNote,
+      // O/U model
+      expectedTotal: ouCalc.expectedTotal,
+      bookTotal: bookOverUnder,
+      ouEdge,
+      ouRecommendation,
+      ouConfidence: ouCalc.confidence,
+      bullpenAdjustment: ouCalc.bullpenAdjustment,
+      weatherAdjustment: ouCalc.weatherAdjustment,
+      parkAdjustment: ouCalc.parkAdjustment,
+    };
+
     picks.push({
       side: "home",
       team: game.home_team,
       opponent: game.away_team,
-      teamAbbr: homeStats.abbr,
-      opponentAbbr: awayStats.abbr,
+      teamAbbr: homeAbbr,
+      opponentAbbr: awayAbbr,
       betType: "Moneyline",
-      pick: `${homeStats.abbr} ML`,
+      pick: `${homeAbbr} ML`,
       bookOddsDecimal: homeOdds,
       bookOddsAmerican: formatAmerican(decimalToAmerican(homeOdds)),
-      trueWinProb: Math.round(homeWin * 1000) / 10,       // e.g. 58.3
+      trueWinProb: Math.round(homeWin * 1000) / 10,
       bookImpliedProb: Math.round(bookTrueHome * 1000) / 10,
-      edgePct: Math.round(homeEdge * 1000) / 10,          // e.g. 8.4
-      kellyPct: Math.round(homeKelly * 1000) / 10,        // e.g. 3.2
+      edgePct: Math.round(homeEdge * 1000) / 10,
+      kellyPct: Math.round(homeKelly * 1000) / 10,
       confidence,
       warning,
       bookmaker,
       gameTime: game.commence_time,
       homeTeam: game.home_team,
       awayTeam: game.away_team,
-      homeRecord: null, // populated separately if you add a stats API
+      homeRecord: null,
       awayRecord: null,
+      ...sharedFields,
     });
   }
 
@@ -230,14 +433,34 @@ function analyzeGame(game) {
       baseConfidence,
       coorsWarning || parkWarning || null
     );
+
+    const sharedFields = {
+      homePitcherFIP,
+      awayPitcherFIP,
+      homePitcherName: homePitcherData?.name || null,
+      awayPitcherName: awayPitcherData?.name || null,
+      pitcherAdjustment,
+      homePitcherFatigue,
+      awayPitcherFatigue,
+      fatigueNote,
+      expectedTotal: ouCalc.expectedTotal,
+      bookTotal: bookOverUnder,
+      ouEdge,
+      ouRecommendation,
+      ouConfidence: ouCalc.confidence,
+      bullpenAdjustment: ouCalc.bullpenAdjustment,
+      weatherAdjustment: ouCalc.weatherAdjustment,
+      parkAdjustment: ouCalc.parkAdjustment,
+    };
+
     picks.push({
       side: "away",
       team: game.away_team,
       opponent: game.home_team,
-      teamAbbr: awayStats.abbr,
-      opponentAbbr: homeStats.abbr,
+      teamAbbr: awayAbbr,
+      opponentAbbr: homeAbbr,
       betType: "Moneyline",
-      pick: `${awayStats.abbr} ML`,
+      pick: `${awayAbbr} ML`,
       bookOddsDecimal: awayOdds,
       bookOddsAmerican: formatAmerican(decimalToAmerican(awayOdds)),
       trueWinProb: Math.round(awayWin * 1000) / 10,
@@ -252,6 +475,7 @@ function analyzeGame(game) {
       awayTeam: game.away_team,
       homeRecord: null,
       awayRecord: null,
+      ...sharedFields,
     });
   }
 
@@ -259,15 +483,15 @@ function analyzeGame(game) {
 }
 
 /**
- * Main analyzer: takes array of games from The Odds API
+ * Main analyzer: takes array of games from The Odds API and optional enriched data.
  * Returns sorted array of picks (highest edge first)
  */
-function analyzePicks(games) {
+function analyzePicks(games, enrichedData) {
   const allPicks = [];
 
   for (const game of games) {
     try {
-      const gamePicks = analyzeGame(game);
+      const gamePicks = analyzeGame(game, enrichedData);
       if (gamePicks) allPicks.push(...gamePicks);
     } catch (err) {
       console.error(`Error analyzing game ${game.id}:`, err.message);

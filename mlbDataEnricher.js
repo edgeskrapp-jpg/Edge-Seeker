@@ -90,8 +90,10 @@ async function fetchPitcherStats(playerId) {
     const stats = data.stats?.[0]?.splits?.[0]?.stat;
     if (!stats) return null;
 
+    const fipRaw = stats.fieldingIndependentPitching;
     return {
       era: parseFloat(stats.era || 0).toFixed(2),
+      fip: (fipRaw != null && parseFloat(fipRaw) > 0) ? parseFloat(fipRaw).toFixed(2) : null,
       whip: parseFloat(stats.whip || 0).toFixed(2),
       strikeoutsPer9: parseFloat(stats.strikeoutsPer9Inn || 0).toFixed(1),
       walksPer9: parseFloat(stats.walksPer9Inn || 0).toFixed(1),
@@ -128,6 +130,50 @@ async function fetchRecentPitcherLog(playerId) {
 
     return `Last ${games.length}: ${summary}`;
   } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch pitcher's most recent start to assess fatigue.
+ * Returns pitch count, days since last start, innings pitched, and fatigue label.
+ */
+async function fetchPitcherLastStart(pitcherId) {
+  if (!pitcherId) return null;
+  const season = new Date().getFullYear();
+  const url = `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=gameLog&season=${season}&group=pitching&limit=1`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const lastGame = data.stats?.[0]?.splits?.[0];
+    if (!lastGame) return null;
+
+    const stat = lastGame.stat;
+    const gameDate = lastGame.date; // YYYY-MM-DD
+    const daysSinceLastStart = Math.floor((Date.now() - new Date(gameDate).getTime()) / (1000 * 60 * 60 * 24));
+    const pitchCount = stat.numberOfPitches || 0;
+    const inningsPitched = parseFloat(stat.inningsPitched || 0);
+
+    let fatigue = 'normal';
+    let fatigueNote = null;
+
+    if (inningsPitched >= 9) {
+      fatigue = 'fatigued';
+      fatigueNote = 'Complete game last start — higher fatigue risk';
+    } else if (daysSinceLastStart <= 3) {
+      fatigue = 'fatigued';
+      fatigueNote = `Only ${daysSinceLastStart} days rest`;
+    } else if (daysSinceLastStart === 4 && pitchCount >= 100) {
+      fatigue = 'fatigued';
+      fatigueNote = `High pitch count (${pitchCount}) on 4 days rest`;
+    } else if (daysSinceLastStart >= 5) {
+      fatigue = 'well_rested';
+      fatigueNote = `${daysSinceLastStart} days rest — well rested`;
+    }
+
+    return { pitchCount, daysSinceLastStart, inningsPitched, fatigue, fatigueNote };
+  } catch (err) {
     return null;
   }
 }
@@ -452,10 +498,11 @@ async function enrichPicks(picks) {
       const homeTeamId = game.teams?.home?.team?.id || MLB_TEAM_IDS[homeAbbr];
       const awayTeamId = game.teams?.away?.team?.id || MLB_TEAM_IDS[awayAbbr];
 
-      // Fetch all data in parallel including Baseball Savant and injuries
+      // Fetch all data in parallel including Baseball Savant, injuries, and last starts
       const [
         homePitcherStats, awayPitcherStats,
         homeLog, awayLog,
+        homeLastStart, awayLastStart,
         weather,
         homeSavant, awaySavant,
         homeBatting, awayBatting,
@@ -466,6 +513,8 @@ async function enrichPicks(picks) {
         fetchPitcherStats(awayPitcherId),
         fetchRecentPitcherLog(homePitcherId),
         fetchRecentPitcherLog(awayPitcherId),
+        fetchPitcherLastStart(homePitcherId),
+        fetchPitcherLastStart(awayPitcherId),
         fetchWeather(homeAbbr),
         fetchPitcherStatcast(homePitcherName, season),
         fetchPitcherStatcast(awayPitcherName, season),
@@ -483,15 +532,17 @@ async function enrichPicks(picks) {
       enriched[gameKey] = {
         homePitcher: {
           name: homePitcherName,
-          ...(homePitcherStats || { era: 'N/A', whip: 'N/A' }),
+          ...(homePitcherStats || { era: 'N/A', whip: 'N/A', fip: null }),
           lastFive: homeLog || 'N/A',
+          lastStart: homeLastStart || null,
           statcast: homeSavant,
           platoon: homePlatoon,
         },
         awayPitcher: {
           name: awayPitcherName,
-          ...(awayPitcherStats || { era: 'N/A', whip: 'N/A' }),
+          ...(awayPitcherStats || { era: 'N/A', whip: 'N/A', fip: null }),
           lastFive: awayLog || 'N/A',
+          lastStart: awayLastStart || null,
           statcast: awaySavant,
           platoon: awayPlatoon,
         },
@@ -530,4 +581,4 @@ function getEnrichedCache() {
   return isCacheValid() ? enrichCache.data : null;
 }
 
-module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, STADIUM_COORDS };
+module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchPitcherLastStart, STADIUM_COORDS };

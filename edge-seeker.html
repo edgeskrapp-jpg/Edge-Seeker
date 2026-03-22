@@ -2886,6 +2886,28 @@
               ${bestPick.eloAdjustment > 0 ? '+' : ''}${bestPick.eloAdjustment}
             </span>
           </div>` : ''}
+          ${(bestPick.homePitcherFIP != null || bestPick.awayPitcherFIP != null) ? `
+          <div class="analysis-row">
+            <span class="analysis-label">Home SP FIP</span>
+            <span class="analysis-value" style="color:${bestPick.homePitcherFIP < 3.5 ? 'var(--green)' : bestPick.homePitcherFIP > 4.8 ? '#FF3A5C' : 'var(--text)'}">
+              ${bestPick.homePitcherFIP != null ? bestPick.homePitcherFIP : '—'}
+            </span>
+          </div>
+          <div class="analysis-row">
+            <span class="analysis-label">Away SP FIP</span>
+            <span class="analysis-value" style="color:${bestPick.awayPitcherFIP < 3.5 ? 'var(--green)' : bestPick.awayPitcherFIP > 4.8 ? '#FF3A5C' : 'var(--text)'}">
+              ${bestPick.awayPitcherFIP != null ? bestPick.awayPitcherFIP : '—'}
+            </span>
+          </div>` : ''}
+          ${(bestPick.homePitcherFatigue === 'fatigued' || bestPick.awayPitcherFatigue === 'fatigued') ? `
+          <div class="analysis-row">
+            <span class="analysis-label">Fatigue Flag</span>
+            <span class="analysis-value" style="color:var(--gold)">⏱ ${
+              bestPick.homePitcherFatigue === 'fatigued' && bestPick.awayPitcherFatigue === 'fatigued'
+                ? 'Both starters'
+                : bestPick.homePitcherFatigue === 'fatigued' ? 'Home SP' : 'Away SP'
+            }</span>
+          </div>` : ''}
         ` : `
           <div style="text-align:center;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px">
             NO EDGE DETECTED FOR THIS GAME<br>
@@ -2929,6 +2951,59 @@
           ${bestPick.eloNote ? `<div class="elo-note">${bestPick.eloNote}</div>` : ''}
           ${bestPick.isEarlySeason ? `<div class="elo-disclaimer">⚠ Preseason seeds — accuracy improves after Week 2</div>` : ''}
         </div>
+      </div>` : ''}
+
+      <!-- O/U MODEL -->
+      ${(bestPick?.expectedTotal != null) ? `
+      <div class="analysis-card">
+        <div class="analysis-card-title">
+          O/U MODEL
+          <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;${
+            bestPick.ouRecommendation === 'OVER'  ? 'color:var(--green)' :
+            bestPick.ouRecommendation === 'UNDER' ? 'color:#FF3A5C' :
+            'color:var(--muted)'}">${bestPick.ouRecommendation || 'NO EDGE'}</div>
+        </div>
+        <div class="analysis-row">
+          <span class="analysis-label">Our Projection</span>
+          <span class="analysis-value cyan">${bestPick.expectedTotal} runs</span>
+        </div>
+        <div class="analysis-row">
+          <span class="analysis-label">Book O/U</span>
+          <span class="analysis-value">${bestPick.bookTotal != null ? bestPick.bookTotal : '—'}</span>
+        </div>
+        ${bestPick.ouEdge != null ? `
+        <div class="analysis-row">
+          <span class="analysis-label">Edge</span>
+          <span class="analysis-value" style="color:${bestPick.ouEdge > 0.5 ? 'var(--green)' : bestPick.ouEdge < -0.5 ? '#FF3A5C' : 'var(--muted)'}">
+            ${bestPick.ouEdge > 0 ? '+' : ''}${bestPick.ouEdge} runs
+          </span>
+        </div>` : ''}
+        <div class="analysis-row">
+          <span class="analysis-label">Model Confidence</span>
+          <span class="analysis-value">${bestPick.ouConfidence || '—'}/100</span>
+        </div>
+        ${(bestPick.bullpenAdjustment !== 0 && bestPick.bullpenAdjustment != null) ? `
+        <div class="analysis-row">
+          <span class="analysis-label">Bullpen Adj</span>
+          <span class="analysis-value" style="color:${bestPick.bullpenAdjustment > 0 ? '#FF3A5C' : 'var(--green)'}">
+            ${bestPick.bullpenAdjustment > 0 ? '+' : ''}${bestPick.bullpenAdjustment} runs
+          </span>
+        </div>` : ''}
+        ${(bestPick.weatherAdjustment !== 0 && bestPick.weatherAdjustment != null) ? `
+        <div class="analysis-row">
+          <span class="analysis-label">Weather Adj</span>
+          <span class="analysis-value" style="color:${bestPick.weatherAdjustment > 0 ? '#FF3A5C' : 'var(--green)'}">
+            ${bestPick.weatherAdjustment > 0 ? '+' : ''}${bestPick.weatherAdjustment} runs
+          </span>
+        </div>` : ''}
+        ${bestPick.pitcherAdjustment ? `
+        <div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);line-height:1.5">
+          ${bestPick.pitcherAdjustment}
+        </div>` : ''}
+        ${bestPick.fatigueNote ? `
+        <div style="margin-top:6px;padding:6px 8px;background:rgba(255,165,0,0.06);border-left:2px solid rgba(255,165,0,0.4);border-radius:4px;font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);line-height:1.5">
+          ⏱ ${bestPick.fatigueNote}
+        </div>` : ''}
       </div>` : ''}
 
       <!-- PREMIUM ANALYSIS -->
