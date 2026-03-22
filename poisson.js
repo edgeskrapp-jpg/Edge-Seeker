@@ -124,12 +124,22 @@ function americanToDecimal(americanOdds) {
 }
 
 /**
- * Confidence score 0-100 based on edge size and Kelly %
+ * Base confidence score driven solely by edge percentage, capped at 60.
+ * All other adjustments (Elo, FIP cap, fatigue, injuries) layer on top.
+ *
+ * Scale:
+ *   edge < 5%  → 0–45  (sparse data / marginal edge)
+ *   edge 5–10% → 45–55
+ *   edge 10%+  → 55–60 (hard cap at 60)
+ *
+ * Kelly is accepted but no longer added to base — edge alone sets the ceiling.
  */
 function confidenceScore(edgePct, kellyPct) {
-  const edgeScore = Math.min(edgePct * 500, 60);   // up to 60 pts from edge
-  const kellyScore = Math.min(kellyPct * 1000, 40); // up to 40 pts from kelly
-  return Math.round(edgeScore + kellyScore);
+  const e = edgePct; // decimal (0.05 = 5%)
+  if (e >= 0.15) return 60;
+  if (e >= 0.10) return Math.round(55 + (e - 0.10) * 100); // 55–60 over last 5%
+  if (e >= 0.05) return Math.round(45 + (e - 0.05) * 200); // 45–55 over mid 5%
+  return Math.max(0, Math.round(30 + e * 300));             // 0–45 below 5%
 }
 
 module.exports = {
