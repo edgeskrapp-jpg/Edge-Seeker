@@ -397,6 +397,13 @@ function analyzeGame(game, enrichedData) {
       confidence = Math.max(0, confidence - 20);
       warning = warning ? `${warning} | TBD pitchers — edge unconfirmed` : 'TBD pitchers — edge unconfirmed';
     }
+
+    // Sub-50% win prob penalty — model projects a loss, edge is purely value-based
+    if (homeWin < 0.50) {
+      confidence = Math.max(0, confidence - 10);
+      warning = warning ? `${warning} | Model projects loss — value play only` : 'Model projects loss — value play only';
+    }
+
     // Shared O/U + pitcher fields added to every pick for this game
     const sharedFields = {
       // Pitcher quality (FIP/ERA)
@@ -460,6 +467,12 @@ function analyzeGame(game, enrichedData) {
     if (bothPitchersTBD) {
       confidence = Math.max(0, confidence - 20);
       warning = warning ? `${warning} | TBD pitchers — edge unconfirmed` : 'TBD pitchers — edge unconfirmed';
+    }
+
+    // Sub-50% win prob penalty — model projects a loss, edge is purely value-based
+    if (awayWin < 0.50) {
+      confidence = Math.max(0, confidence - 10);
+      warning = warning ? `${warning} | Model projects loss — value play only` : 'Model projects loss — value play only';
     }
 
     const sharedFields = {
@@ -678,7 +691,7 @@ function applyEloAdjustment(picks, eloRatings) {
 
     // Cap at 70 when no pitcher FIP data — prevents inflated confidence with TBD/unconfirmed pitchers
     const noFIPData = pick.homePitcherFIP === null && pick.awayPitcherFIP === null;
-    if (noFIPData) newConfidence = Math.min(70, newConfidence);
+    if (noFIPData) newConfidence = Math.min(65, newConfidence);
 
     return {
       ...pick,
