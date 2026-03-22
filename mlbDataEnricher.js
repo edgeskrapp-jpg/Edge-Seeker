@@ -420,13 +420,19 @@ async function fetchRosterAndInjuries(teamId, teamAbbr) {
 
     const [ilData, transData] = await Promise.all([ilRes.json(), transRes.json()]);
 
-    // Parse IL players
-    const ilPlayers = (ilData.roster || []).map(p => ({
-      name: p.person?.fullName || 'Unknown',
-      status: p.status?.description || 'IL',
-      position: p.position?.type || 'Unknown',
-      posAbbr: p.position?.abbreviation || '',
-    }));
+    // Parse IL players — filter to only genuine injury statuses
+    const IL_KEYWORDS = ['il', 'injured', '10-day', '15-day', '60-day', '7-day', 'bereavement', 'paternity', 'restricted', 'suspended'];
+    const ilPlayers = (ilData.roster || [])
+      .map(p => ({
+        name: p.person?.fullName || 'Unknown',
+        status: p.status?.description || 'IL',
+        position: p.position?.type || 'Unknown',
+        posAbbr: p.position?.abbreviation || '',
+      }))
+      .filter(p => {
+        const s = p.status.toLowerCase();
+        return IL_KEYWORDS.some(kw => s.includes(kw)) && !s.includes('active');
+      });
 
     const injuryList = ilPlayers.map(p => `${p.name} (${p.status})`);
 
