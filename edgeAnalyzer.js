@@ -148,11 +148,14 @@ function calculateExpectedTotal(homeRunRate, awayRunRate, enrichedGame, parkFact
   const expectedTotal = Math.round((preAdjTotal + cappedParkAdj) * 10) / 10;
 
   // Confidence scales with data availability
+  const noFipData = !enrichedGame?.homePitcher?.fip && !enrichedGame?.awayPitcher?.fip;
   let confidence = 45;
-  if (enrichedGame?.homePitcher?.fip || enrichedGame?.awayPitcher?.fip) confidence += 15;
+  if (!noFipData) confidence += 15;
   if (enrichedGame?.homeFanGraphs) confidence += 10;
   if (weather) confidence += 10;
   if (parkRunsFactor !== 1.0) confidence += 5;
+
+  if (noFipData) confidence = 25;
 
   return {
     expectedTotal,
@@ -161,6 +164,7 @@ function calculateExpectedTotal(homeRunRate, awayRunRate, enrichedGame, parkFact
     weatherAdjustment: Math.round(weatherAdj * 10) / 10,
     parkAdjustment: parkRunsFactor,
     confidence: Math.min(85, confidence),
+    lowConfidenceNote: noFipData ? 'Low confidence — pitcher data pending' : null,
   };
 }
 
@@ -304,6 +308,11 @@ function analyzeGame(game, enrichedData) {
   if (ouEdge !== null) {
     if (ouEdge >= 1.0)  ouRecommendation = 'OVER';
     if (ouEdge <= -1.0) ouRecommendation = 'UNDER';
+  }
+  if (ouCalc.lowConfidenceNote) {
+    ouRecommendation = ouRecommendation === 'NO EDGE'
+      ? `NO EDGE — ${ouCalc.lowConfidenceNote}`
+      : `${ouRecommendation} — ${ouCalc.lowConfidenceNote}`;
   }
 
   // Build park warning if factor is extreme
