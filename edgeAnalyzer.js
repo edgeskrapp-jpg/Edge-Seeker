@@ -377,15 +377,26 @@ function analyzeGame(game, enrichedData) {
     return { confidence: Math.max(0, confidence), warning };
   }
 
+  // TBD pitcher detection — used for penalty and cap in both home/away picks
+  const bothPitchersTBD = homePitcherFIP === null && awayPitcherFIP === null &&
+    (!homePitcherData?.name || homePitcherData.name === 'TBD') &&
+    (!awayPitcherData?.name || awayPitcherData.name === 'TBD');
+
   // Home team pick
   if (homeEdge >= MIN_EDGE_THRESHOLD) {
     const baseConfidence = confidenceScore(homeEdge, homeKelly) - coorsConfidencePenalty;
-    const { confidence, warning } = applyExtremeEdgeFilters(
+    let { confidence, warning } = applyExtremeEdgeFilters(
       homeEdge,
       homeWin - bookTrueHome,
       baseConfidence,
       coorsWarning || parkWarning || null
     );
+
+    // TBD Pitcher Penalty
+    if (bothPitchersTBD) {
+      confidence = Math.max(0, confidence - 20);
+      warning = warning ? `${warning} | TBD pitchers — edge unconfirmed` : 'TBD pitchers — edge unconfirmed';
+    }
     // Shared O/U + pitcher fields added to every pick for this game
     const sharedFields = {
       // Pitcher quality (FIP/ERA)
@@ -438,12 +449,18 @@ function analyzeGame(game, enrichedData) {
   // Away team pick
   if (awayEdge >= MIN_EDGE_THRESHOLD) {
     const baseConfidence = confidenceScore(awayEdge, awayKelly) - coorsConfidencePenalty;
-    const { confidence, warning } = applyExtremeEdgeFilters(
+    let { confidence, warning } = applyExtremeEdgeFilters(
       awayEdge,
       awayWin - bookTrueAway,
       baseConfidence,
       coorsWarning || parkWarning || null
     );
+
+    // TBD Pitcher Penalty
+    if (bothPitchersTBD) {
+      confidence = Math.max(0, confidence - 20);
+      warning = warning ? `${warning} | TBD pitchers — edge unconfirmed` : 'TBD pitchers — edge unconfirmed';
+    }
 
     const sharedFields = {
       homePitcherFIP,
@@ -615,13 +632,13 @@ function applyEloAdjustment(picks, eloRatings) {
     let eloNote = null;
 
     if (absDiff >= 150) {
-      eloAdj  = favor ?  8 : -15;
+      eloAdj  = favor ? 12 : -25;
       eloNote = favor ? 'Strong Elo advantage' : 'Major Elo disadvantage — verify pick';
     } else if (absDiff >= 100) {
-      eloAdj  = favor ?  5 : -10;
+      eloAdj  = favor ?  8 : -15;
       eloNote = favor ? null : 'Significant Elo disadvantage';
     } else if (absDiff >= 50) {
-      eloAdj  = favor ?  3 :  -5;
+      eloAdj  = favor ?  5 :  -8;
       eloNote = favor ? null : 'Elo disadvantage';
     } else {
       eloAdj  = 0;   // evenly matched (0–49 either direction)
@@ -645,8 +662,8 @@ function applyEloAdjustment(picks, eloRatings) {
     let totalAdj = eloAdj + momAdj;
     if (isEarlySeason) totalAdj = Math.round(totalAdj * 0.5);
 
-    // ── Cap ±15 ────────────────────────────────────────────────────────────
-    const eloAdjustment = Math.max(-15, Math.min(15, totalAdj));
+    // ── Cap ±25 ────────────────────────────────────────────────────────────
+    const eloAdjustment = Math.max(-25, Math.min(25, totalAdj));
 
     // ── Combine notes ──────────────────────────────────────────────────────
     const combinedNote = [eloNote, momNote].filter(Boolean).join(' | ') || null;
@@ -657,7 +674,11 @@ function applyEloAdjustment(picks, eloRatings) {
       warning = warning ? `${warning} | ${combinedNote}` : combinedNote;
     }
 
-    const newConfidence = Math.max(0, Math.min(100, pick.confidence + eloAdjustment));
+    let newConfidence = Math.max(0, Math.min(100, pick.confidence + eloAdjustment));
+
+    // Cap at 70 when no pitcher FIP data — prevents inflated confidence with TBD/unconfirmed pitchers
+    const noFIPData = pick.homePitcherFIP === null && pick.awayPitcherFIP === null;
+    if (noFIPData) newConfidence = Math.min(70, newConfidence);
 
     return {
       ...pick,
