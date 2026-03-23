@@ -9,14 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --cyan: #800020;
-    --cyan-dim: #80002040;
-    --cyan-faint: #80002010;
+    --cyan: #F5A623;
+    --cyan-dim: #F5A62340;
+    --cyan-faint: #F5A62310;
     --gold: #FFB800;
     --red: #FF4444;
-    --bg: #000000;
-    --bg2: #0D0008;
-    --bg3: #0A0005;
+    --bg: #0A0E1A;
+    --bg2: #0D1525;
+    --bg3: #111B2E;
     --border: #1A2830;
     --text: #E8F4F0;
     --muted: #4A6670;
@@ -30,26 +30,12 @@
   html { scroll-behavior: smooth; }
 
   body {
-    background: radial-gradient(ellipse at 50% 35%, #3D0010 0%, #1A000A 20%, #0A0005 50%, #000000 100%);
+    background: radial-gradient(ellipse at 15% 85%, #F5A62312 0%, transparent 50%), radial-gradient(ellipse at 85% 15%, #1E3A6E18 0%, transparent 55%), #0A0E1A;
     background-attachment: fixed;
     color: var(--text);
     font-family: var(--body);
     overflow-x: hidden;
     cursor: crosshair;
-  }
-
-  /* GRID OVERLAY */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 60px 60px;
-    opacity: 0.4;
-    pointer-events: none;
-    z-index: 0;
   }
 
   /* SCAN LINE */
@@ -186,7 +172,7 @@
     font-size: clamp(72px, 12vw, 160px);
     line-height: 0.9;
     letter-spacing: 0.02em;
-    background: linear-gradient(135deg, #FFFFFF 0%, #CC0033 50%, #800020 100%);
+    background: linear-gradient(135deg, #FFFFFF 0%, #F5C842 50%, #F5A623 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -244,7 +230,7 @@
   }
 
   .btn-primary:hover {
-    background: #800020cc;
+    background: #F5A623cc;
     transform: translateY(-2px);
   }
 
@@ -339,7 +325,7 @@
     font-family: var(--display);
     font-size: 48px;
     line-height: 1;
-    background: linear-gradient(135deg, #FFFFFF 0%, #CC0033 100%);
+    background: linear-gradient(135deg, #FFFFFF 0%, #F5A623 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
