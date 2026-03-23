@@ -1,6 +1,6 @@
 /**
  * strikeoutAgent.js
- * EdgeSKR — Specialized Strikeout Props Agent
+ * Edge Seeker — Specialized Strikeout Props Agent
  *
  * Analyzes pitcher K props using:
  * - Baseball Savant whiff rate, K%, spin rate, velocity
@@ -31,7 +31,7 @@ const BALLPARK_K_FACTORS = {
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 
-const STRIKEOUT_SYSTEM_PROMPT = `You are EdgeSKR's specialized Strikeout Props analyst. You are the sharpest K prop analyst in the world.
+const STRIKEOUT_SYSTEM_PROMPT = `You are Edge Seeker's specialized Strikeout Props analyst. You are the sharpest K prop analyst in the world.
 
 Your ONLY job is to find value in pitcher strikeout over/under props.
 

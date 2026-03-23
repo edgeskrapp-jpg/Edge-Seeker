@@ -252,7 +252,7 @@ async function fetchPitcherStatcast(pitcherName, season) {
     // Baseball Savant search API
     const url = `https://baseballsavant.mlb.com/leader/custom?year=${season}&type=pitcher&filter=&sort=4&sortDir=desc&min=10&selections=k_percent,whiff_percent,hard_hit_percent,avg_best_speed,spin_rate_formatted&limit=500`;
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'EdgeSKR/1.0' }
+      headers: { 'User-Agent': 'EdgeSeeker/1.0' }
     });
     const data = await res.json();
 
@@ -285,7 +285,7 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
   try {
     const url = `https://baseballsavant.mlb.com/leader/custom?year=${season}&type=batter&filter=&sort=4&sortDir=desc&min=50&selections=batting_avg,on_base_plus_slg,k_percent,bb_percent,hard_hit_percent,barrel_batted_rate,chase_percent&limit=1000`;
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'EdgeSKR/1.0' }
+      headers: { 'User-Agent': 'EdgeSeeker/1.0' }
     });
     const data = await res.json();
 
@@ -332,7 +332,7 @@ async function fetchPlatoonSplits(pitcherName, season) {
   try {
     const url = `https://baseballsavant.mlb.com/platoon-usage?year=${season}&type=pitcher&min=10`;
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'EdgeSKR/1.0' }
+      headers: { 'User-Agent': 'EdgeSeeker/1.0' }
     });
     const data = await res.json();
 
@@ -376,7 +376,7 @@ async function fetchFanGraphsPitching(teamAbbr) {
     const teamId = FANGRAPHS_TEAM_IDS[teamAbbr];
     if (!teamId) return null;
     const url = `https://www.fangraphs.com/api/leaders/major-league/data?pos=all&stats=pit&lg=all&qual=0&season=2026&season1=2026&team=${teamId}&pageitems=30&type=1`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'EdgeSKR/1.0' } });
+    const res = await fetch(url, { headers: { 'User-Agent': 'EdgeSeeker/1.0' } });
     const data = await res.json();
     const starters = data?.data?.filter(p => p.GS > 0) || [];
     const relievers = data?.data?.filter(p => p.GS === 0) || [];

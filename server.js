@@ -903,7 +903,7 @@ app.get("/api/agent/game-analysis", async (req, res) => {
     const gameEnriched = enrichedData[gameKey] || {};
 
     // Build game-specific prompt
-    const gamePrompt = `You are EdgeSKR's premium MLB game analyst. Analyze this specific matchup and provide:
+    const gamePrompt = `You are Edge Seeker's premium MLB game analyst. Analyze this specific matchup and provide:
 1. Over/Under best bet with projected total runs
 2. Home pitcher analysis with strikeout prop recommendation
 3. Away pitcher analysis with strikeout prop recommendation  
@@ -1863,7 +1863,7 @@ app.get("/admin", async (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EdgeSKR Admin</title>
+<title>Edge Seeker Admin</title>
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -2143,7 +2143,7 @@ app.get("/admin", async (req, res) => {
 <!-- ═══════════════ HEADER ═══════════════ -->
 <div class="header">
   <div class="header-left">
-    <div class="logo">EDGESKR ADMIN</div>
+    <div class="logo">EDGE SEEKER ADMIN</div>
     <div class="subtitle">BACKEND DASHBOARD · RESTRICTED ACCESS</div>
     <div class="time">🕐 ${now} ET &nbsp;·&nbsp; Uptime: ${uptime} min</div>
   </div>
