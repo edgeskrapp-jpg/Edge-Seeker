@@ -15,7 +15,7 @@ const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
 const path = require("path");
-const { analyzePicks, applyInjuryPenalty, applyEloAdjustment } = require("./edgeAnalyzer");
+const { analyzePicks, applyInjuryPenalty, applyEloAdjustment, applySharpMoneySignal } = require("./edgeAnalyzer");
 const { getEnrichedCache } = require("./mlbDataEnricher");
 const { calculateBetPoints, getAccuracyBonus } = require("./pointsConfig");
 const { getFreePick, getPremiumPick, invalidateCache } = require("./agentRouter");
@@ -32,6 +32,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const API_KEY = process.env.ODDS_API_KEY;
 const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
+
+// ─── FEATURE FLAGS ────────────────────────────────────────────────────────────
+const ODDS_API_UPGRADED = false; // Set to true when on paid plan for historical odds + all sharp books
 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────────────
 
@@ -203,6 +206,321 @@ async function fetchQuota() {
   };
 }
 
+// ─── PINNACLE LINE MOVEMENT TRACKER ──────────────────────────────────────────
+
+/**
+ * storeOpeningLines(games)
+ * Called after every fresh Odds API fetch (not from cache).
+ * For each game, extracts Pinnacle odds (+ DraftKings/FanDuel as reference books)
+ * and upserts into Supabase with ON CONFLICT DO NOTHING — preserves true opening line.
+ */
+async function storeOpeningLines(games) {
+  if (!games || games.length === 0) return;
+  const { supabaseQuery } = require('./supabase');
+  const today = new Date().toISOString().split('T')[0];
+  const rows = [];
+
+  for (const game of games) {
+    let pinnacleHome = null, pinnacleAway = null, pinnacleTotal = null;
+    let dkHome = null, dkAway = null;
+    let fdHome = null, fdAway = null;
+
+    for (const bk of game.bookmakers || []) {
+      const key = bk.key?.toLowerCase() || '';
+      const ml = bk.markets?.find(m => m.key === 'h2h');
+      const tot = bk.markets?.find(m => m.key === 'totals');
+
+      const getHomeAway = (market) => {
+        let h = null, a = null;
+        for (const o of market?.outcomes || []) {
+          if (o.name === game.home_team) h = o.price;
+          if (o.name === game.away_team) a = o.price;
+        }
+        return { h, a };
+      };
+
+      if (key === 'pinnacle') {
+        const { h, a } = getHomeAway(ml);
+        pinnacleHome = h;
+        pinnacleAway = a;
+        const over = tot?.outcomes?.find(o => o.name === 'Over');
+        if (over) pinnacleTotal = over.point;
+      } else if (key === 'draftkings') {
+        const { h, a } = getHomeAway(ml);
+        dkHome = h; dkAway = a;
+      } else if (key === 'fanduel') {
+        const { h, a } = getHomeAway(ml);
+        fdHome = h; fdAway = a;
+      }
+    }
+
+    // Only store if we have at least Pinnacle or DK odds
+    if (!pinnacleHome && !dkHome) continue;
+
+    rows.push({
+      game_id: game.id,
+      home_team: game.home_team,
+      away_team: game.away_team,
+      game_date: today,
+      pinnacle_home_odds: pinnacleHome,
+      pinnacle_away_odds: pinnacleAway,
+      pinnacle_total: pinnacleTotal,
+      draftkings_home_odds: dkHome,
+      draftkings_away_odds: dkAway,
+      fanduel_home_odds: fdHome,
+      fanduel_away_odds: fdAway,
+      recorded_at: new Date().toISOString(),
+    });
+  }
+
+  if (rows.length === 0) return;
+
+  try {
+    // POST with resolution=ignore-duplicates — stores opening line, ignores subsequent calls
+    const url = `${process.env.SUPABASE_URL}/rest/v1/opening_lines`;
+    const res = await require('node-fetch')(url, {
+      method: 'POST',
+      headers: {
+        'apikey': process.env.SUPABASE_KEY,
+        'Authorization': `Bearer ${process.env.SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=ignore-duplicates,return=minimal',
+      },
+      body: JSON.stringify(rows),
+    });
+    if (res.ok) {
+      console.log(`📌 Opening lines stored: ${rows.length} games (existing ignored)`);
+    } else {
+      const err = await res.text();
+      console.warn(`⚠️ storeOpeningLines error: ${err}`);
+    }
+  } catch (err) {
+    console.warn('⚠️ storeOpeningLines failed (non-blocking):', err.message);
+  }
+}
+
+/**
+ * analyzeLineMovement(currentGames)
+ * Compares current Pinnacle odds to stored opening lines.
+ * Returns movement objects for all games — used to generate sharpSignal per pick.
+ *
+ * When ODDS_API_UPGRADED = true, also tracks Circa/Bookmaker for triangulation.
+ */
+async function analyzeLineMovement(currentGames) {
+  if (!currentGames || currentGames.length === 0) return [];
+  const { supabaseQuery } = require('./supabase');
+  const today = new Date().toISOString().split('T')[0];
+
+  // Fetch all opening lines for today
+  let openingLines = [];
+  try {
+    openingLines = await supabaseQuery('opening_lines', 'GET', null, `?game_date=eq.${today}`);
+  } catch (err) {
+    console.warn('⚠️ analyzeLineMovement: could not fetch opening lines:', err.message);
+    return [];
+  }
+
+  if (!openingLines || openingLines.length === 0) return [];
+
+  // Build lookup: game_id → opening line row
+  const openingMap = {};
+  for (const row of openingLines) {
+    openingMap[row.game_id] = row;
+  }
+
+  const results = [];
+
+  for (const game of currentGames) {
+    const opening = openingMap[game.id];
+    if (!opening) {
+      results.push({ gameId: game.id, homeTeam: game.home_team, awayTeam: game.away_team, pinnacleMovement: null, totalMovement: null, openingHomeOdds: null, openingAwayOdds: null });
+      continue;
+    }
+
+    // Find current Pinnacle odds
+    let currPinnHome = null, currPinnAway = null, currPinnTotal = null;
+    const sharpBooks = ODDS_API_UPGRADED
+      ? ['pinnacle', 'circa', 'bookmaker']
+      : ['pinnacle'];
+
+    for (const bk of game.bookmakers || []) {
+      const key = bk.key?.toLowerCase() || '';
+      if (!sharpBooks.includes(key)) continue;
+      const ml = bk.markets?.find(m => m.key === 'h2h');
+      const tot = bk.markets?.find(m => m.key === 'totals');
+      for (const o of ml?.outcomes || []) {
+        if (o.name === game.home_team && !currPinnHome) currPinnHome = o.price;
+        if (o.name === game.away_team && !currPinnAway) currPinnAway = o.price;
+      }
+      const over = tot?.outcomes?.find(o => o.name === 'Over');
+      if (over && !currPinnTotal) currPinnTotal = over.point;
+    }
+
+    // No current Pinnacle → neutral
+    if (!currPinnHome || !opening.pinnacle_home_odds) {
+      results.push({
+        gameId: game.id,
+        homeTeam: game.home_team,
+        awayTeam: game.away_team,
+        pinnacleMovement: { homeOddsChange: 0, awayOddsChange: 0, direction: 'stable', magnitude: 'minimal', sharpSignal: 'neutral' },
+        totalMovement: { change: 0, direction: 'stable' },
+        openingHomeOdds: opening.pinnacle_home_odds,
+        openingAwayOdds: opening.pinnacle_away_odds,
+      });
+      continue;
+    }
+
+    // Calculate American odds movement (decimal → American conversion)
+    const decToAmer = (d) => d >= 2.0 ? Math.round((d - 1) * 100) : Math.round(-100 / (d - 1));
+
+    const openHomeAmer = decToAmer(opening.pinnacle_home_odds);
+    const openAwayAmer = decToAmer(opening.pinnacle_away_odds);
+    const currHomeAmer = decToAmer(currPinnHome);
+    const currAwayAmer = decToAmer(currPinnAway);
+
+    // Change: positive = line improved (odds shortened = more likely to win = sharp action)
+    // For favorites (negative): -130 → -140 means it got MORE expensive → moved toward that team
+    // For underdogs (positive): +130 → +120 means line shortened → moved toward that team
+    const homeOddsChange = openHomeAmer - currHomeAmer; // positive = home shortened (more favorite/less dog)
+    const awayOddsChange = openAwayAmer - currAwayAmer;
+
+    const absChange = Math.max(Math.abs(homeOddsChange), Math.abs(awayOddsChange));
+
+    // Magnitude thresholds
+    let magnitude;
+    // Note: "steam" ideally requires time check, but on free plan we estimate by size alone
+    if (absChange >= 8)      magnitude = 'steam';
+    else if (absChange >= 5) magnitude = 'significant';
+    else if (absChange >= 2.5) magnitude = 'moderate';
+    else                     magnitude = 'minimal';
+
+    // Direction: toward_home if home line shortened more, toward_away if away shortened more
+    let direction = 'stable';
+    if (magnitude !== 'minimal') {
+      if (homeOddsChange > awayOddsChange) direction = 'toward_home';
+      else if (awayOddsChange > homeOddsChange) direction = 'toward_away';
+    }
+
+    // Sharp signal (neutral by default — caller applies per-pick direction context)
+    let sharpSignal = 'neutral';
+    if (magnitude === 'steam')        sharpSignal = direction === 'stable' ? 'neutral' : 'steam_detected';
+    else if (magnitude === 'significant') sharpSignal = direction === 'stable' ? 'neutral' : 'significant_move';
+    else if (magnitude === 'minimal') sharpSignal = 'neutral';
+
+    // Total movement
+    let totalMovement = { change: 0, direction: 'stable' };
+    if (opening.pinnacle_total != null && currPinnTotal != null) {
+      const totalChange = currPinnTotal - opening.pinnacle_total;
+      totalMovement = {
+        change: Math.round(totalChange * 10) / 10,
+        direction: totalChange > 0.2 ? 'over' : totalChange < -0.2 ? 'under' : 'stable',
+      };
+    }
+
+    results.push({
+      gameId: game.id,
+      homeTeam: game.home_team,
+      awayTeam: game.away_team,
+      pinnacleMovement: {
+        homeOddsChange,
+        awayOddsChange,
+        openHomeAmer,
+        openAwayAmer,
+        currHomeAmer,
+        currAwayAmer,
+        direction,
+        magnitude,
+        sharpSignal,
+      },
+      totalMovement,
+      openingHomeOdds: openHomeAmer,
+      openingAwayOdds: openAwayAmer,
+    });
+  }
+
+  // Now resolve per-pick sharp signal (toward/against the picked team)
+  // This is used in applySharpMoneySignal in edgeAnalyzer
+  for (const r of results) {
+    if (!r.pinnacleMovement) continue;
+    const pm = r.pinnacleMovement;
+    // Resolve to directional signal based on magnitude + direction
+    if (pm.magnitude === 'minimal') {
+      pm.sharpSignal = 'neutral';
+    } else if (pm.magnitude === 'steam') {
+      pm.sharpSignal = pm.direction === 'toward_home' ? 'strong_confirm_home'
+        : pm.direction === 'toward_away' ? 'strong_confirm_away'
+        : 'neutral';
+    } else if (pm.magnitude === 'significant') {
+      pm.sharpSignal = pm.direction === 'toward_home' ? 'confirm_home'
+        : pm.direction === 'toward_away' ? 'confirm_away'
+        : 'neutral';
+    } else {
+      pm.sharpSignal = 'neutral';
+    }
+  }
+
+  return results;
+}
+
+/**
+ * resolveSharpSignalForPick(pick, movementEntry)
+ * Given a pick's side ('home'|'away') and the movement entry,
+ * resolves the directional sharpSignal used in applySharpMoneySignal.
+ */
+function resolveSharpSignalForPick(side, pm) {
+  if (!pm || pm.magnitude === 'minimal') return 'neutral';
+  if (side === 'home') {
+    if (pm.sharpSignal === 'strong_confirm_home') return 'strong_confirm';
+    if (pm.sharpSignal === 'confirm_home') return 'confirm';
+    if (pm.sharpSignal === 'strong_confirm_away') return 'strong_fade';
+    if (pm.sharpSignal === 'confirm_away') return 'fade';
+  } else {
+    if (pm.sharpSignal === 'strong_confirm_away') return 'strong_confirm';
+    if (pm.sharpSignal === 'confirm_away') return 'confirm';
+    if (pm.sharpSignal === 'strong_confirm_home') return 'strong_fade';
+    if (pm.sharpSignal === 'confirm_home') return 'fade';
+  }
+  return 'neutral';
+}
+
+/**
+ * attachPickSharpSignals(picks, lineMovement)
+ * Attaches the properly-directional sharpSignal to each pick,
+ * then calls applySharpMoneySignal for confidence adjustments.
+ */
+function attachPickSharpSignals(picks, lineMovement) {
+  if (!lineMovement || lineMovement.length === 0) return picks;
+
+  const movementMap = {};
+  for (const m of lineMovement) {
+    movementMap[m.gameId] = m;
+  }
+
+  // Resolve directional signal per pick before passing to applySharpMoneySignal
+  const picksWithGameId = picks.map(pick => {
+    // Find matching movement by homeTeam+awayTeam since picks don't have game.id directly
+    const movement = lineMovement.find(m =>
+      m.homeTeam === pick.homeTeam && m.awayTeam === pick.awayTeam
+    );
+    if (!movement?.pinnacleMovement) return { ...pick, gameId: movement?.gameId };
+    const resolved = resolveSharpSignalForPick(pick.side, movement.pinnacleMovement);
+    const pm = { ...movement.pinnacleMovement, sharpSignal: resolved };
+    return { ...pick, gameId: movement.gameId, _resolvedMovement: { ...movement, pinnacleMovement: pm } };
+  });
+
+  // Build lineMovement array with resolved per-pick signals
+  const resolvedMovement = picksWithGameId
+    .filter(p => p._resolvedMovement)
+    .map(p => p._resolvedMovement);
+
+  const result = applySharpMoneySignal(
+    picksWithGameId.map(p => { const { _resolvedMovement, ...rest } = p; return rest; }),
+    resolvedMovement
+  );
+
+  return result;
+}
+
 // ─── PICK QUALITY FILTERS ────────────────────────────────────────────────────
 
 /**
@@ -302,6 +620,9 @@ app.get("/api/picks", async (req, res) => {
       });
     }
 
+    // Store opening lines on every fresh fetch (UPSERT ignores duplicates)
+    storeOpeningLines(games).catch(err => console.warn('storeOpeningLines non-blocking error:', err.message));
+
     // Pass enriched data (pitcher FIP/fatigue, weather) into the Poisson model
     const cachedEnriched = getEnrichedCache();
     let picks = applyPickFilters(analyzePicks(games, cachedEnriched));
@@ -332,6 +653,16 @@ app.get("/api/picks", async (req, res) => {
       }
     } catch (eloErr) {
       console.warn("⚠️ Elo adjustment skipped:", eloErr.message);
+    }
+
+    // Apply Pinnacle sharp money signal
+    try {
+      const lineMovement = await analyzeLineMovement(games);
+      if (lineMovement && lineMovement.length > 0) {
+        picks = attachPickSharpSignals(picks, lineMovement);
+      }
+    } catch (sharpErr) {
+      console.warn("⚠️ Sharp money signal skipped:", sharpErr.message);
     }
 
     // Track opening odds and add movement field
@@ -434,6 +765,9 @@ app.get("/api/cron/refresh-picks", async (req, res) => {
       return res.json({ success: true, message: "No games today", quota: { remaining, used } });
     }
 
+    // Store opening lines on scheduled refresh
+    storeOpeningLines(games).catch(err => console.warn('storeOpeningLines non-blocking error:', err.message));
+
     const cachedEnriched = getEnrichedCache();
     let picks = applyPickFilters(analyzePicks(games, cachedEnriched));
 
@@ -453,6 +787,14 @@ app.get("/api/cron/refresh-picks", async (req, res) => {
       if (eloRatings && eloRatings.length > 0) picks = applyEloAdjustment(picks, eloRatings);
     } catch (_) {}
 
+    // Apply Pinnacle sharp money signal
+    try {
+      const lineMovement = await analyzeLineMovement(games);
+      if (lineMovement && lineMovement.length > 0) {
+        picks = attachPickSharpSignals(picks, lineMovement);
+      }
+    } catch (_) {}
+
     picks = addOddsMovement(picks);
 
     const responseData = {
@@ -468,6 +810,56 @@ app.get("/api/cron/refresh-picks", async (req, res) => {
   } catch (err) {
     console.error("❌ /api/cron/refresh-picks error:", err.message);
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── SHARP MONEY ROUTES ──────────────────────────────────────────────────────
+
+/**
+ * GET /api/sharp/movement
+ * Returns today's Pinnacle line movement data for all games.
+ * Useful for debugging and verification.
+ */
+app.get("/api/sharp/movement", async (req, res) => {
+  try {
+    let games = [];
+    if (isCacheValid(cache.raw)) {
+      games = cache.raw.data || [];
+    } else {
+      const { games: rawGames } = await fetchMLBOdds();
+      games = rawGames || [];
+      cache.raw = { data: games, fetchedAt: Date.now() };
+    }
+
+    const lineMovement = await analyzeLineMovement(games);
+    const today = new Date().toISOString().split('T')[0];
+    const { supabaseQuery } = require('./supabase');
+
+    let openingLines = [];
+    try {
+      openingLines = await supabaseQuery('opening_lines', 'GET', null, `?game_date=eq.${today}`);
+    } catch (_) {}
+
+    // Summary stats
+    const significantMoves = lineMovement.filter(m =>
+      m.pinnacleMovement && ['steam', 'significant'].includes(m.pinnacleMovement.magnitude)
+    ).length;
+    const steamMoves = lineMovement.filter(m =>
+      m.pinnacleMovement?.magnitude === 'steam'
+    ).length;
+
+    res.json({
+      date: today,
+      gamesTracked: lineMovement.length,
+      openingLinesStored: openingLines.length,
+      significantMovesToday: significantMoves,
+      steamMovesToday: steamMoves,
+      oddsApiUpgraded: ODDS_API_UPGRADED,
+      movement: lineMovement,
+    });
+  } catch (err) {
+    console.error("❌ /api/sharp/movement error:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -2239,6 +2631,75 @@ ${quotaLow ? `<!-- QUOTA ALERT -->
 
 </div>
 
+<!-- ═══════════════ SHARP MONEY ═══════════════ -->
+<div class="section-label">Sharp Money</div>
+<div class="grid-3">
+
+  <div class="card t-red">
+    <div class="card-header">
+      <span class="card-title">Line Movement</span>
+      <span class="card-badge ${ODDS_API_UPGRADED ? 'badge-green' : 'badge-gold'}">${ODDS_API_UPGRADED ? 'UPGRADED' : 'STANDARD'}</span>
+    </div>
+    <div class="row"><span class="row-label">Odds API Plan</span><span class="row-value ${ODDS_API_UPGRADED ? 'c-green' : 'c-gold'}">${ODDS_API_UPGRADED ? 'UPGRADED — All sharp books' : 'STANDARD — Pinnacle only'}</span></div>
+    <div class="row"><span class="row-label">Sharp books tracked</span><span class="row-value c-white">${ODDS_API_UPGRADED ? 'Pinnacle, Circa, Bookmaker' : 'Pinnacle'}</span></div>
+    <div class="row"><span class="row-label">Steam threshold</span><span class="row-value c-muted">8+ pts movement</span></div>
+    <div class="row"><span class="row-label">Significant threshold</span><span class="row-value c-muted">5–7 pts</span></div>
+    <div class="row"><span class="row-label">Upgrade flag</span><span class="row-value c-muted">ODDS_API_UPGRADED in server.js</span></div>
+  </div>
+
+  <div class="card t-red">
+    <div class="card-header">
+      <span class="card-title">Today's Signals</span>
+      <span class="card-badge badge-red">LIVE</span>
+    </div>
+    <div class="row"><span class="row-label">Opening lines stored</span><span class="row-value c-white" id="adminOpeningLines">—</span></div>
+    <div class="row"><span class="row-label">Significant moves</span><span class="row-value c-gold" id="adminSigMoves">—</span></div>
+    <div class="row"><span class="row-label">Steam moves</span><span class="row-value c-red" id="adminSteamMoves">—</span></div>
+    <div class="row"><span class="row-label">Last refresh</span><span class="row-value c-muted" id="adminSharpDate">—</span></div>
+  </div>
+
+  <div class="card t-red">
+    <div class="card-header">
+      <span class="card-title">Pick Impact</span>
+      <span class="card-badge badge-green">TODAY</span>
+    </div>
+    <div class="row"><span class="row-label">Sharp confirms</span><span class="row-value c-green" id="adminSharpConfirm">—</span></div>
+    <div class="row"><span class="row-label">Sharp fades</span><span class="row-value c-red" id="adminSharpFade">—</span></div>
+    <div class="row"><span class="row-label">Steam confirms</span><span class="row-value c-green" id="adminSteamConfirm">—</span></div>
+    <div class="row"><span class="row-label">Steam fades</span><span class="row-value c-red" id="adminSteamFade">—</span></div>
+  </div>
+
+</div>
+
+<script>
+// Load sharp money stats on page load
+(async function loadSharpStats() {
+  try {
+    const r = await fetch('/api/sharp/movement');
+    const d = await r.json();
+    if (!d) return;
+    document.getElementById('adminOpeningLines').textContent = d.openingLinesStored ?? '—';
+    document.getElementById('adminSigMoves').textContent = d.significantMovesToday ?? '—';
+    document.getElementById('adminSteamMoves').textContent = d.steamMovesToday ?? '—';
+    document.getElementById('adminSharpDate').textContent = d.date ?? '—';
+    // Count confirms / fades from pick data
+    const picks = ${JSON.stringify(isCacheValid(cache.picks) ? (cache.picks.data?.picks || []) : [])};
+    let confirms = 0, fades = 0, steamConf = 0, steamFade = 0;
+    for (const p of picks) {
+      const sig = p.pinnacleMovement?.sharpSignal;
+      if (sig === 'strong_confirm') { confirms++; steamConf++; }
+      else if (sig === 'confirm') confirms++;
+      else if (sig === 'strong_fade') { fades++; steamFade++; }
+      else if (sig === 'fade') fades++;
+    }
+    document.getElementById('adminSharpConfirm').textContent = confirms;
+    document.getElementById('adminSharpFade').textContent = fades;
+    document.getElementById('adminSteamConfirm').textContent = steamConf;
+    document.getElementById('adminSteamFade').textContent = steamFade;
+  } catch(e) {}
+})();
+</script>
+
 <!-- ═══════════════ ROW 2: SERVER · SPLIT · SEASON ═══════════════ -->
 <div class="grid-3">
 
@@ -2299,6 +2760,7 @@ ${quotaLow ? `<!-- QUOTA ALERT -->
   <a class="btn" href="/api/digest/send?secret=${secret}" target="_blank">📨 Send Digest</a>
   <a class="btn primary" href="/api/cron/refresh-picks?secret=${secret}" target="_blank">🔄 Refresh Picks Now</a>
   <a class="btn" href="/api/cache/status" target="_blank">📡 Cache Status</a>
+  <a class="btn primary" href="/api/sharp/movement" target="_blank">⚡ Sharp Movement</a>
 </div>
 
 <!-- ═══════════════ UPDATE PICK RESULTS ═══════════════ -->

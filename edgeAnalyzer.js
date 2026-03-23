@@ -711,4 +711,79 @@ function applyEloAdjustment(picks, eloRatings) {
   });
 }
 
-module.exports = { analyzePicks, setLiveStats, applyInjuryPenalty, applyEloAdjustment };
+/**
+ * applySharpMoneySignal(picks, lineMovement)
+ * Adjusts confidence and adds sharp money context to picks
+ * based on Pinnacle line movement data from analyzeLineMovement().
+ * Called in server.js after applyEloAdjustment and applyInjuryPenalty.
+ */
+function applySharpMoneySignal(picks, lineMovement) {
+  if (!lineMovement || lineMovement.length === 0) return picks;
+
+  // Build lookup by gameId
+  const movementMap = {};
+  for (const m of lineMovement) {
+    movementMap[m.gameId] = m;
+  }
+
+  return picks.map(pick => {
+    const movement = movementMap[pick.gameId || ''];
+    if (!movement) {
+      return {
+        ...pick,
+        pinnacleMovement: null,
+        sharpMoneyNote: null,
+        openingOdds: null,
+      };
+    }
+
+    const pm = movement.pinnacleMovement;
+    const signal = pm?.sharpSignal || 'neutral';
+
+    let confidenceAdj = 0;
+    let sharpMoneyNote = null;
+    let warning = pick.warning || null;
+
+    switch (signal) {
+      case 'strong_confirm':
+        confidenceAdj = +12;
+        sharpMoneyNote = '⚡ STEAM MOVE CONFIRMED — sharp action on this pick';
+        warning = warning ? `${warning} | ⚡ STEAM MOVE CONFIRMED` : '⚡ STEAM MOVE CONFIRMED';
+        break;
+      case 'confirm':
+        confidenceAdj = +8;
+        sharpMoneyNote = '📈 Sharp money confirmed on this side';
+        break;
+      case 'neutral':
+        confidenceAdj = 0;
+        sharpMoneyNote = null;
+        break;
+      case 'fade':
+        confidenceAdj = -12;
+        sharpMoneyNote = '⚠️ Sharp money fading this pick';
+        warning = warning ? `${warning} | ⚠️ Sharp money fading this pick` : '⚠️ Sharp money fading this pick';
+        break;
+      case 'strong_fade':
+        confidenceAdj = -20;
+        sharpMoneyNote = '🚨 STEAM MOVE AGAINST — high risk';
+        warning = warning ? `${warning} | 🚨 STEAM MOVE AGAINST — high risk` : '🚨 STEAM MOVE AGAINST — high risk';
+        break;
+    }
+
+    const openingOdds = pick.side === 'home'
+      ? movement.openingHomeOdds
+      : movement.openingAwayOdds;
+
+    return {
+      ...pick,
+      gameId: movement.gameId,
+      confidence: Math.max(0, Math.min(100, pick.confidence + confidenceAdj)),
+      warning,
+      pinnacleMovement: pm || null,
+      sharpMoneyNote,
+      openingOdds: openingOdds || null,
+    };
+  });
+}
+
+module.exports = { analyzePicks, setLiveStats, applyInjuryPenalty, applyEloAdjustment, applySharpMoneySignal };
