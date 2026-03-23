@@ -4,7 +4,7 @@
 - App: "Edge Seeker" (two words, title case)
 - Agent: "EDGESEEKER" (all caps, AI agent identity only)
 - Domain: "edgeseeker.sol" (always lowercase)
-- Social: "@EdgeSeeker"
+- Social: "@EdgeSeekerSOL"
 - Admin: "Edge Seeker Admin"
 
 ## Never Use
@@ -17,7 +17,7 @@
 Run this audit any time new code is added:
 1. Search all .html and .js files for "EdgeSKR" (case insensitive)
 2. Search for "EDGESKR"
-3. Search for "@EdgeSKR"
+3. Search for "@EdgeSKR" or "@EdgeSeeker" (correct is "@EdgeSeekerSOL")
 4. Report all instances with file name and line number
 5. Fix all instances following the approved brand names above
 6. Exception: variable names, comments, and GitHub URLs do not need changing
