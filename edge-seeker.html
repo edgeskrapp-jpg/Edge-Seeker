@@ -27,7 +27,7 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-  body { font-family: 'Instrument Sans', sans-serif; background: radial-gradient(ellipse at 15% 85%, #F5A62312 0%, transparent 50%), radial-gradient(ellipse at 85% 15%, #1E3A6E18 0%, transparent 55%), #0A0E1A;
+  body { font-family: 'Instrument Sans', sans-serif; background: radial-gradient(ellipse at 15% 85%, #F5A62318 0%, transparent 50%), radial-gradient(ellipse at 85% 15%, #1E3A6E18 0%, transparent 55%), #0A0E1A;
   background-attachment: fixed; color: var(--text); min-height: 100vh; overflow-x: hidden; }
 
   /* PAGES */
@@ -92,7 +92,7 @@
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; }
   .badge { font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 10px; border-radius: 20px; letter-spacing: 1px; }
-  .badge.live { background: rgba(255,58,92,0.15); color: var(--red); border: 1px solid rgba(255,58,92,0.3); animation: blink 1.5s infinite; }
+  .badge.live { background: rgba(245,166,35,0.15); color: var(--accent); border: 1px solid rgba(245,166,35,0.35); animation: blink 1.5s infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.6} }
 
   /* FILTER TABS */
@@ -127,9 +127,9 @@
   @keyframes slideIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   .bet-card:hover { border-color: #FFFFFF15; transform: translateY(-2px); }
   .bet-card.top-pick { border-color: rgba(245,166,35,0.4); }
-  .top-pick-badge { position: absolute; top: 12px; right: 12px; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; color: var(--accent); background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.3); padding: 3px 8px; border-radius: 20px; }
+  .top-pick-badge { position: absolute; top: 12px; right: 12px; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; color: #0A0E1A; background: #F5A623; border: 1px solid #F5A623; padding: 3px 8px; border-radius: 20px; font-weight: bold; }
   .bet-matchup { font-size: 13px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.5px; margin-bottom: 10px; }
-  .confidence-badge { display: inline-flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--gold); background: rgba(255,208,96,0.1); border: 1px solid rgba(255,208,96,0.25); padding: 4px 10px; border-radius: 20px; margin-bottom: 10px; }
+  .confidence-badge { display: inline-flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--accent); background: rgba(245,166,35,0.12); border: 1px solid rgba(245,166,35,0.3); padding: 4px 10px; border-radius: 20px; margin-bottom: 10px; }
   .bet-teams { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .team { text-align: center; }
   .team-name { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; }
@@ -140,7 +140,7 @@
   .edge-text { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
   .edge-pct { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--green); letter-spacing: 1px; text-shadow: 0 0 20px rgba(0,255,136,0.5); }
   .edge-bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
-  .edge-fill { height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, var(--green), var(--accent)); transition: width 1s ease; }
+  .edge-fill { height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, #F5C842, var(--accent)); transition: width 1s ease; }
   .bet-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .detail-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 8px; text-align: center; }
   .detail-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
