@@ -2864,7 +2864,7 @@
     }
 
     const gradeColor = hasEdge
-      ? (bestPick.edgePct >= 8 ? 'var(--green)' : bestPick.edgePct >= 5 ? 'var(--gold)' : 'var(--accent)')
+      ? (bestPick.edgePct >= 8 ? '#F5A623' : bestPick.edgePct >= 5 ? 'var(--gold)' : 'var(--accent)')
       : 'var(--muted)';
 
     // Pre-compute Sharp Money HTML (avoids triple-nested template literal syntax errors)
@@ -2973,7 +2973,7 @@
           </div>
           <div class="analysis-row">
             <span class="analysis-label">Edge</span>
-            <span class="analysis-value green">+${bestPick.edgePct}%</span>
+            <span class="analysis-value" style="color:#F5A623">+${bestPick.edgePct}%</span>
           </div>
           <div class="analysis-row">
             <span class="analysis-label">Book Odds</span>
