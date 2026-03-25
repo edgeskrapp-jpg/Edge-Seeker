@@ -71,6 +71,11 @@ const cache = {
   raw: { data: null, fetchedAt: null },
   strikeouts: { data: null, date: null },
 };
+
+// ─── CACHE BYPASS FLAG ────────────────────────────────────────────────────────
+// When true, /api/picks skips all cache logic and always hits the Odds API fresh.
+// Toggle via POST /api/admin/cache-bypass — disable when done to conserve quota.
+let CACHE_BYPASS = false;
 // ─── SCHEDULE-AWARE CACHE ─────────────────────────────────────────────────────
 // Picks cache refreshes exactly twice daily at 11AM ET and 5PM ET.
 // All other requests serve cached data — zero extra API calls between windows.
@@ -632,18 +637,20 @@ app.get("/api/picks", async (req, res) => {
   try {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
 
-    // Rate-limited: same IP hit > 3× in 10 min — serve cache regardless of age
-    if (checkRateLimit(ip) && cache.picks.data) {
-      const cached = cache.picks.data;
-      const picksWithMovement = addOddsMovement(cached.picks || []);
-      return res.json({ ...cached, picks: picksWithMovement, cached: true, rateLimited: true });
-    }
+    if (!CACHE_BYPASS) {
+      // Rate-limited: same IP hit > 3× in 10 min — serve cache regardless of age
+      if (checkRateLimit(ip) && cache.picks.data) {
+        const cached = cache.picks.data;
+        const picksWithMovement = addOddsMovement(cached.picks || []);
+        return res.json({ ...cached, picks: picksWithMovement, cached: true, rateLimited: true });
+      }
 
-    // Return cache if within time-based TTL — add movement data on every call
-    if (isPicksCacheValid()) {
-      const cached = cache.picks.data;
-      const picksWithMovement = addOddsMovement(cached.picks || []);
-      return res.json({ ...cached, picks: picksWithMovement, cached: true });
+      // Return cache if within time-based TTL — add movement data on every call
+      if (isPicksCacheValid()) {
+        const cached = cache.picks.data;
+        const picksWithMovement = addOddsMovement(cached.picks || []);
+        return res.json({ ...cached, picks: picksWithMovement, cached: true });
+      }
     }
 
     const { games, remaining, used } = await fetchMLBOdds();
@@ -2214,6 +2221,26 @@ app.get("/api/cron/auto-run-agent", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/cache-bypass
+ * Toggles CACHE_BYPASS on/off. When enabled, /api/picks always fetches fresh data.
+ * Protected by admin secret.  Body: { secret, enable? } — omit `enable` to toggle.
+ */
+app.post("/api/admin/cache-bypass", (req, res) => {
+  const secret = req.body?.secret || req.query.secret || req.headers['x-admin-secret'];
+  if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden. Admin secret required.' });
+  }
+  // Explicit enable/disable if provided, otherwise toggle
+  if (typeof req.body?.enable === 'boolean') {
+    CACHE_BYPASS = req.body.enable;
+  } else {
+    CACHE_BYPASS = !CACHE_BYPASS;
+  }
+  console.log(`🔧 CACHE_BYPASS set to ${CACHE_BYPASS}`);
+  res.json({ cacheBypas: CACHE_BYPASS, message: CACHE_BYPASS ? 'Cache bypass ENABLED — every /api/picks call hits the Odds API.' : 'Cache bypass DISABLED — normal TTL caching resumed.' });
+});
+
 // ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
 
 /**
@@ -2661,6 +2688,23 @@ ${quotaEmergency ? `<!-- QUOTA EMERGENCY -->
     <div class="row"><span class="row-label">Has data</span><span class="row-value ${cache.picks.data ? 'c-green' : 'c-red'}">${cache.picks.data ? `${cache.picks.data.total || 0} picks` : 'Empty'}</span></div>
   </div>
 
+  <div class="card t-red" id="bypassCard">
+    <div class="card-header">
+      <span class="card-title">Cache Bypass</span>
+      <span class="card-badge ${CACHE_BYPASS ? 'badge-red' : 'badge-green'}" id="bypassBadge">${CACHE_BYPASS ? 'LIVE — NO CACHE' : 'CACHED'}</span>
+    </div>
+    <div class="row"><span class="row-label">Bypass status</span><span class="row-value ${CACHE_BYPASS ? 'c-red' : 'c-green'}" id="bypassStatus">${CACHE_BYPASS ? '🔴 ENABLED — hitting API live' : '🟢 DISABLED — serving cache'}</span></div>
+    <div class="row"><span class="row-label">Cache age</span><span class="row-value c-muted">${cacheAgeMin !== null ? cacheAgeMin + ' min' : 'Empty'}</span></div>
+    <div class="row" style="margin-top:10px">
+      <button onclick="toggleBypass()" id="bypassBtn" style="width:100%;padding:10px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;background:${CACHE_BYPASS ? '#22c55e' : '#ef4444'};color:#fff;transition:opacity 0.2s">
+        ${CACHE_BYPASS ? '✅ DISABLE BYPASS' : '🔄 BYPASS CACHE'}
+      </button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <span style="font-family:'DM Mono',monospace;font-size:10px;color:#F5A623;letter-spacing:0.5px">⚠️ Bypass uses 1 API call per refresh — disable when done</span>
+    </div>
+  </div>
+
   <div class="card t-blue">
     <div class="card-header">
       <span class="card-title">Refresh Windows</span>
@@ -2844,6 +2888,33 @@ ${quotaEmergency ? `<!-- QUOTA EMERGENCY -->
 </div>
 
 <script>
+async function toggleBypass() {
+  const btn = document.getElementById('bypassBtn');
+  btn.disabled = true;
+  btn.textContent = 'Working...';
+  try {
+    const res = await fetch('/api/admin/cache-bypass', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: '${secret}' })
+    });
+    const data = await res.json();
+    if (!res.ok) { alert('Error: ' + (data.error || res.status)); btn.disabled = false; return; }
+    const enabled = data.cacheBypas; // note: matches server key
+    document.getElementById('bypassBadge').textContent  = enabled ? 'LIVE — NO CACHE' : 'CACHED';
+    document.getElementById('bypassBadge').className    = 'card-badge ' + (enabled ? 'badge-red' : 'badge-green');
+    document.getElementById('bypassStatus').textContent = enabled ? '🔴 ENABLED — hitting API live' : '🟢 DISABLED — serving cache';
+    document.getElementById('bypassStatus').className   = 'row-value ' + (enabled ? 'c-red' : 'c-green');
+    btn.style.background  = enabled ? '#22c55e' : '#ef4444';
+    btn.textContent       = enabled ? '✅ DISABLE BYPASS' : '🔄 BYPASS CACHE';
+    btn.disabled = false;
+  } catch (err) {
+    alert('Request failed: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '🔄 BYPASS CACHE';
+  }
+}
+
 async function updateResult() {
   const id = document.getElementById('pickId').value.trim();
   const result = document.getElementById('pickResult').value;
