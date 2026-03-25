@@ -1011,7 +1011,7 @@
   </div>
 
   <div class="last-updated" id="lastUpdated">
-    Updated <span id="updatedTime">—</span> · auto-refreshes every 10 min
+    Updated <span id="updatedTime">—</span> · auto-refreshes every 60 min
   </div>
 
   <div id="picksContainer">
@@ -1737,6 +1737,14 @@
         const t = new Date(data.fetchedAt);
         document.getElementById('updatedTime').textContent = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         document.getElementById('lastUpdated').style.display = 'block';
+      }
+      // Pause auto-refresh if quota is critically low (< 50 remaining)
+      const quotaRemaining = parseInt(data.quota?.remaining);
+      if (!isNaN(quotaRemaining) && quotaRemaining < 50) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+        document.getElementById('lastUpdated').textContent = `Updated ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ⚠️ auto-refresh paused (quota critical)`;
+        console.warn('⚠️ Odds API quota below 50 — auto-refresh paused.');
       }
       renderPicks(allPicks);
     } catch (err) {
@@ -4426,7 +4434,7 @@
   }
 
   // ── AUTO-REFRESH ──────────────────────────────────────────────────────────
-  setInterval(loadPicks, 10 * 60 * 1000);
+  let autoRefreshTimer = setInterval(loadPicks, 60 * 60 * 1000);
 
   // ── INIT ──────────────────────────────────────────────────────────────────
   loadPicks();

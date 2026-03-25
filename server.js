@@ -164,6 +164,36 @@ function isCacheValid(entry) {
   return entry.fetchedAt > lastRefresh.getTime();
 }
 
+// ─── TIME-BASED PICKS CACHE ──────────────────────────────────────────────────
+// Separate TTL-based cache validity for /api/picks — more conservative than the
+// schedule-based isCacheValid, designed to reduce Odds API quota consumption.
+function getPicksCacheDuration() {
+  const etOff = getETOffset() * 60 * 60 * 1000;
+  const hourET = new Date(Date.now() + etOff).getUTCHours();
+  if (hourET >= 6  && hourET < 10) return 2  * 60 * 60 * 1000; // 2h  — pre-game research
+  if (hourET >= 10 && hourET < 19) return 30 * 60 * 1000;      // 30m — active game day
+  return 4 * 60 * 60 * 1000;                                    // 4h  — overnight
+}
+
+function isPicksCacheValid() {
+  const { data, fetchedAt } = cache.picks;
+  if (!data || !fetchedAt) return false;
+  return Date.now() - fetchedAt < getPicksCacheDuration();
+}
+
+// ─── RATE LIMITER ─────────────────────────────────────────────────────────────
+// If the same IP hits /api/picks more than 3× in 10 min, serve cache regardless of age.
+const ipRequestLog = new Map();
+const RATE_WINDOW_MS = 10 * 60 * 1000;
+const RATE_MAX_HITS  = 3;
+
+function checkRateLimit(ip) {
+  const now  = Date.now();
+  const prev = (ipRequestLog.get(ip) || []).filter(t => now - t < RATE_WINDOW_MS);
+  ipRequestLog.set(ip, [...prev, now]);
+  return prev.length >= RATE_MAX_HITS; // true = over limit, serve cache
+}
+
 // ─── ODDS API HELPERS ────────────────────────────────────────────────────────
 
 /**
@@ -600,8 +630,17 @@ app.get("/api/health", (req, res) => {
  */
 app.get("/api/picks", async (req, res) => {
   try {
-    // Return cache if valid — add movement data on every call
-    if (isCacheValid(cache.picks)) {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+
+    // Rate-limited: same IP hit > 3× in 10 min — serve cache regardless of age
+    if (checkRateLimit(ip) && cache.picks.data) {
+      const cached = cache.picks.data;
+      const picksWithMovement = addOddsMovement(cached.picks || []);
+      return res.json({ ...cached, picks: picksWithMovement, cached: true, rateLimited: true });
+    }
+
+    // Return cache if within time-based TTL — add movement data on every call
+    if (isPicksCacheValid()) {
       const cached = cache.picks.data;
       const picksWithMovement = addOddsMovement(cached.picks || []);
       return res.json({ ...cached, picks: picksWithMovement, cached: true });
@@ -692,6 +731,10 @@ app.get("/api/picks", async (req, res) => {
  * Returns raw odds data from The Odds API — useful for debugging
  */
 app.get("/api/odds/raw", async (req, res) => {
+  const secret = req.query.secret || req.headers['x-admin-secret'];
+  if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden. Provide ?secret=<ADMIN_SECRET> or X-Admin-Secret header.' });
+  }
   try {
     if (isCacheValid(cache.raw)) {
       return res.json({ data: cache.raw.data, cached: true });
@@ -2242,10 +2285,13 @@ app.get("/admin", async (req, res) => {
     ? new Date(cache.picks.fetchedAt).toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })
     : 'Never';
 
-  // Overall system health
-  const quotaOk = isNaN(parseInt(oddsQuota.remaining)) || parseInt(oddsQuota.remaining) > 150;
-  const quotaLow = !isNaN(parseInt(oddsQuota.remaining)) && parseInt(oddsQuota.remaining) < 150;
-  const allHealthy = quotaOk;
+  // Overall system health — tiered quota thresholds
+  const _qr = parseInt(oddsQuota.remaining);
+  const quotaEmergency = !isNaN(_qr) && _qr < 50;   // red CRITICAL — auto-refresh paused
+  const quotaCritical  = !isNaN(_qr) && _qr < 100;  // red warning
+  const quotaWarning   = !isNaN(_qr) && _qr < 200;  // yellow warning
+  const quotaOk        = isNaN(_qr) || _qr >= 200;
+  const allHealthy     = quotaOk;
   const activeSplitPcts = PRIZE_POOL_ENABLED
     ? { ops: 70, pool: 20, treas: 10 }
     : { ops: Math.round(SPLIT_CONFIG.operations * 100), pool: Math.round(SPLIT_CONFIG.prizePool * 100), treas: Math.round(SPLIT_CONFIG.treasury * 100) };
@@ -2545,10 +2591,18 @@ app.get("/admin", async (req, res) => {
   </div>
 </div>
 
-${quotaLow ? `<!-- QUOTA ALERT -->
-<div class="alert-banner">
-  ⚠️ &nbsp;<strong>ODDS API QUOTA LOW</strong> — ${oddsQuota.remaining} requests remaining this month.
+${quotaEmergency ? `<!-- QUOTA EMERGENCY -->
+<div class="alert-banner" style="background:rgba(220,38,38,0.18);border-color:#dc2626">
+  🚨 &nbsp;<strong>QUOTA CRITICAL — AUTO-REFRESH PAUSED</strong> — Only ${oddsQuota.remaining} requests remaining this month. Upgrade immediately.
   &nbsp;<a href="https://the-odds-api.com" target="_blank">Upgrade at the-odds-api.com →</a>
+</div>` : quotaCritical ? `<!-- QUOTA CRITICAL -->
+<div class="alert-banner" style="background:rgba(220,38,38,0.12);border-color:#dc2626">
+  ❌ &nbsp;<strong>QUOTA CRITICAL</strong> — ${oddsQuota.remaining} requests remaining this month. Upgrade soon.
+  &nbsp;<a href="https://the-odds-api.com" target="_blank">Upgrade at the-odds-api.com →</a>
+</div>` : quotaWarning ? `<!-- QUOTA WARNING -->
+<div class="alert-banner" style="background:rgba(245,166,35,0.12);border-color:#F5A623">
+  ⚠️ &nbsp;<strong>QUOTA WARNING</strong> — ${oddsQuota.remaining} requests remaining this month.
+  &nbsp;<a href="https://the-odds-api.com" target="_blank">Monitor at the-odds-api.com →</a>
 </div>` : ''}
 
 <!-- ═══════════════ ROW 1: ODDS · DB · AI ═══════════════ -->
@@ -2558,7 +2612,7 @@ ${quotaLow ? `<!-- QUOTA ALERT -->
   <div class="card t-cyan">
     <div class="card-header">
       <span class="card-title">Odds API</span>
-      <span class="card-badge ${parseInt(oddsQuota.remaining) > 150 ? 'badge-green' : 'badge-red'}">${parseInt(oddsQuota.remaining) > 150 ? 'HEALTHY' : 'LOW'}</span>
+      <span class="card-badge ${quotaEmergency ? 'badge-red' : quotaCritical ? 'badge-red' : quotaWarning ? 'badge-yellow' : 'badge-green'}">${quotaEmergency ? 'CRITICAL' : quotaCritical ? 'CRITICAL' : quotaWarning ? 'LOW' : 'HEALTHY'}</span>
     </div>
     <div class="row"><span class="row-label">Remaining</span><span class="row-value c-cyan">${oddsQuota.remaining}</span></div>
     <div class="row"><span class="row-label">Used this month</span><span class="row-value c-white">${oddsQuota.used}</span></div>
