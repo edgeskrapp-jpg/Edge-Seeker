@@ -163,6 +163,89 @@ function stripToFreeTier(picks) {
   });
 }
 
+// ─── GAME WINDOW + GRADE SYSTEM ───────────────────────────────────────────────
+
+function getGameAnalysisStatus(commenceTime) {
+  const now = new Date();
+  const gameTime = new Date(commenceTime);
+  const minutesUntilGame = (gameTime - now) / (1000 * 60);
+  const hoursUntilGame = minutesUntilGame / 60;
+
+  if (minutesUntilGame < -15) {
+    return { status: 'completed', hoursUntilGame, label: 'COMPLETED', maxGrade: 'PASS', message: 'Game has started or concluded' };
+  }
+  if (minutesUntilGame < 15) {
+    return { status: 'in_progress', hoursUntilGame, label: 'IN PROGRESS', maxGrade: 'PASS', message: 'Game is currently in progress' };
+  }
+  if (minutesUntilGame <= 60) {
+    return { status: 'final_window', hoursUntilGame, label: 'FINAL CALL', maxGrade: 'A', message: 'Final analysis — verify no late scratches' };
+  }
+  if (hoursUntilGame <= 3) {
+    return { status: 'prime_window', hoursUntilGame, label: 'PRIME TIME', maxGrade: 'A', message: 'Optimal analysis window — lineups typically confirmed' };
+  }
+  if (hoursUntilGame <= 6) {
+    return { status: 'analysis_window', hoursUntilGame, label: 'EARLY LOOK', maxGrade: 'B', message: 'Early analysis — lineups may not be confirmed yet' };
+  }
+  return { status: 'too_early', hoursUntilGame, label: 'TOO EARLY', maxGrade: 'C', message: 'Check back closer to first pitch for confirmed lineups' };
+}
+
+function getPitcherConfirmationStatus(homePitcherName, awayPitcherName) {
+  const isTBD = n => !n || n.trim() === '' || n.trim().toUpperCase() === 'TBD';
+  const homeTBD = isTBD(homePitcherName);
+  const awayTBD = isTBD(awayPitcherName);
+  if (!homeTBD && !awayTBD) {
+    return { status: 'both_confirmed', gradeImpact: 0, confidenceImpact: 0, label: '✓ PITCHERS CONFIRMED', message: 'Both starting pitchers confirmed' };
+  }
+  if (homeTBD && awayTBD) {
+    return { status: 'both_tbd', gradeImpact: -2, confidenceImpact: -20, label: '⚠ PITCHERS TBD', message: 'Starting pitchers not yet announced' };
+  }
+  return { status: 'one_confirmed', gradeImpact: -1, confidenceImpact: -10, label: '⚠ ONE PITCHER TBD', message: 'One starting pitcher not yet confirmed' };
+}
+
+function calculatePickGrade(confidence, windowMaxGrade, pitcherGradeImpact) {
+  const gradeOrder = { A: 3, B: 2, C: 1, PASS: 0 };
+  const grades = ['PASS', 'C', 'B', 'A'];
+  let idx = confidence >= 70 ? 3 : confidence >= 55 ? 2 : confidence >= 40 ? 1 : 0;
+  if (idx === 0) return 'PASS';
+  idx = Math.min(idx, gradeOrder[windowMaxGrade] ?? 3);
+  idx = Math.max(0, idx + (pitcherGradeImpact || 0));
+  return grades[idx] || 'PASS';
+}
+
+// Applies window status + deterministic grade. Filters out in_progress/completed.
+// withPitcher=true applies pitcher confirmation penalty (premium only).
+function applyWindowAndGrade(picks, withPitcher = false) {
+  return picks
+    .map(pick => {
+      const ws = getGameAnalysisStatus(pick.gameTime);
+      const ps = withPitcher
+        ? getPitcherConfirmationStatus(pick.homePitcherName, pick.awayPitcherName)
+        : { status: 'unknown', gradeImpact: 0, confidenceImpact: 0, label: '', message: '' };
+
+      const adjustedConf = withPitcher
+        ? Math.max(0, pick.confidence + ps.confidenceImpact)
+        : pick.confidence;
+
+      const grade = calculatePickGrade(adjustedConf, ws.maxGrade, withPitcher ? ps.gradeImpact : 0);
+
+      return {
+        ...pick,
+        confidence: adjustedConf,
+        grade,
+        windowStatus: ws.status,
+        windowLabel: ws.label,
+        hoursUntilGame: Math.round(ws.hoursUntilGame * 10) / 10,
+        windowMessage: ws.message,
+        ...(withPitcher ? {
+          pitcherStatus: ps.status,
+          pitcherStatusLabel: ps.label,
+          pitcherMessage: ps.message,
+        } : {}),
+      };
+    })
+    .filter(p => p.windowStatus !== 'in_progress' && p.windowStatus !== 'completed');
+}
+
 // ─── TEAM ABBREVIATION HELPER (server-side) ──────────────────────────────────
 function getTeamAbbrServer(fullName) {
   const map = {
@@ -730,6 +813,9 @@ app.get("/api/picks", async (req, res) => {
       console.warn("⚠️ Elo adjustment skipped:", eloErr.message);
     }
 
+    // Apply game window status + deterministic grade (free tier: no pitcher penalty)
+    picks = applyWindowAndGrade(picks, false);
+
     // Track opening odds and add movement field
     picks = addOddsMovement(picks);
     // Strip premium-only fields before caching and responding
@@ -823,6 +909,9 @@ app.get("/api/picks/premium", async (req, res) => {
     } catch (sharpErr) {
       console.warn("⚠️ Premium sharp signals skipped:", sharpErr.message);
     }
+
+    // Apply game window status + deterministic grade (premium: with pitcher confirmation penalty)
+    picks = applyWindowAndGrade(picks, true);
 
     picks = addOddsMovement(picks);
 

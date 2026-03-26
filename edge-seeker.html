@@ -104,6 +104,46 @@
   .last-updated { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: center; margin-bottom: 16px; letter-spacing: 0.5px; display: none; }
   .last-updated span { color: var(--accent); }
 
+  /* GRADE SUMMARY BAR */
+  .grade-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow-x: auto; scrollbar-width: none; }
+  .grade-bar::-webkit-scrollbar { display: none; }
+  .grade-btn { display: flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 20px; border: 1px solid; background: transparent; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; transition: all 0.2s; flex-shrink: 0; white-space: nowrap; }
+  .grade-btn.g-all  { border-color: var(--border); color: var(--muted); }
+  .grade-btn.g-all.active  { border-color: var(--accent); color: var(--accent); background: rgba(245,166,35,0.08); }
+  .grade-btn.g-a    { border-color: rgba(245,166,35,0.4); color: #F5A623; }
+  .grade-btn.g-a.active    { background: rgba(245,166,35,0.12); }
+  .grade-btn.g-b    { border-color: rgba(110,180,245,0.4); color: #6EB4F5; }
+  .grade-btn.g-b.active    { background: rgba(110,180,245,0.12); }
+  .grade-btn.g-c    { border-color: rgba(136,135,128,0.4); color: #888780; }
+  .grade-btn.g-c.active    { background: rgba(136,135,128,0.1); }
+  .grade-count { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 0.5px; line-height: 1; }
+  .grade-bar-games { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.5px; flex-shrink: 0; }
+
+  /* GRADE CARD ACCENTS */
+  .bet-card.g-a { border-left: 3px solid #F5A623; }
+  .bet-card.g-b { border-left: 3px solid #6EB4F5; }
+  .bet-card.g-c { border-left: 3px solid #888780; }
+
+  /* WINDOW STATUS PILL */
+  .window-pill { display: inline-flex; align-items: center; gap: 3px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.4px; padding: 2px 8px; border-radius: 10px; }
+  .window-pill.prime  { color: #F5A623; background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.25); }
+  .window-pill.final  { color: #00FF88; background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.25); }
+  .window-pill.early  { color: var(--muted); background: rgba(90,106,133,0.1); border: 1px solid rgba(90,106,133,0.25); }
+  .window-pill.too_early { color: #888780; background: rgba(136,135,128,0.08); border: 1px solid rgba(136,135,128,0.2); }
+
+  /* HOW TO READ THIS EXPLAINER */
+  .explainer-card { background: var(--surface); border: 1px solid rgba(245,166,35,0.3); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
+  .explainer-hdr { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; }
+  .explainer-hdr-title { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1.5px; color: var(--accent); }
+  .explainer-hdr-toggle { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+  .explainer-body { padding: 0 16px 14px; }
+  .explainer-sec-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); margin: 12px 0 6px; }
+  .explainer-item { padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .explainer-item:last-child { border-bottom: none; }
+  .explainer-term { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); margin-bottom: 2px; }
+  .explainer-def { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .explainer-disclaimer { margin-top: 12px; padding: 10px 12px; background: rgba(90,106,133,0.06); border: 1px solid var(--border); border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); line-height: 1.8; letter-spacing: 0.3px; }
+
   /* LOADING / ERROR / EMPTY */
   .loading-state { text-align: center; padding: 60px 20px; }
   .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
@@ -974,27 +1014,84 @@
   <!-- OPENING DAY COUNTDOWN BANNER (Feature 9) -->
   <div id="openingDayBanner" style="display:none"></div>
 
-  <div class="stats-row">
-    <div class="stat-card green">
-      <div class="stat-label">Today's Picks</div>
-      <div class="stat-value green" id="statPicks">—</div>
-      <div class="stat-sub">Edges found</div>
+  <!-- HOW TO READ THIS — collapsible explainer -->
+  <div class="explainer-card" id="explainerCard">
+    <div class="explainer-hdr" onclick="toggleExplainer()">
+      <div class="explainer-hdr-title">📖 HOW TO READ THIS</div>
+      <div class="explainer-hdr-toggle" id="explainerToggle">▼ EXPAND</div>
     </div>
-    <div class="stat-card gold">
-      <div class="stat-label">Avg Edge</div>
-      <div class="stat-value gold" id="statAvgEdge">—</div>
-      <div class="stat-sub">vs book odds</div>
+    <div class="explainer-body" id="explainerBody" style="display:none">
+      <div class="explainer-sec-title">GRADE SYSTEM</div>
+      <div class="explainer-item">
+        <div class="explainer-term" style="color:#F5A623">Grade A — Highest Confidence</div>
+        <div class="explainer-def">Multiple independent data sources agree. Optimal game window. Confirmed pitcher matchup. Edge 8%+ with 70+ model confidence.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term" style="color:#6EB4F5">Grade B — Solid Discrepancy</div>
+        <div class="explainer-def">Most signals point the same direction. Some data still pending confirmation. Edge 5–8% with 55+ confidence.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term" style="color:#888780">Grade C — Early Look</div>
+        <div class="explainer-def">Limited data available. Check back closer to game time for updated analysis. Edge 3–5% with 40+ confidence.</div>
+      </div>
+
+      <div class="explainer-sec-title">KEY TERMS</div>
+      <div class="explainer-item">
+        <div class="explainer-term">Edge %</div>
+        <div class="explainer-def">The difference between our model's calculated true probability and the market's implied probability. A positive edge means our model calculates this team as more likely to win than the market implies.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term">Kelly %</div>
+        <div class="explainer-def">A mathematical formula suggesting proportional allocation based on edge size and odds. For reference only — not a recommendation of any kind.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term">True Win Prob</div>
+        <div class="explainer-def">Our model's calculated probability of this team winning, based on all available data including Poisson distributions, park factors, and Elo ratings.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term">Book Implied Prob</div>
+        <div class="explainer-def">The probability implied by the current market odds, after removing the market's margin.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term">Elo Rating</div>
+        <div class="explainer-def">A dynamic team strength rating updated after every game result. Higher rating indicates stronger recent performance relative to the rest of the league.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term">Moneyline</div>
+        <div class="explainer-def">The market odds for each team to win outright. Our model calculates a true probability and compares it to what the odds imply.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term">+ odds (e.g. +140)</div>
+        <div class="explainer-def">The market implies this team has less than a 50% probability of winning. Our model may calculate a higher probability, creating a potential discrepancy.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term">− odds (e.g. −160)</div>
+        <div class="explainer-def">The market implies this team has greater than a 50% probability of winning. Our model may calculate a lower probability, or confirm the favorite.</div>
+      </div>
+      <div class="explainer-item">
+        <div class="explainer-term">Over/Under</div>
+        <div class="explainer-def">The projected total runs scored in the game. Our model calculates an expected run total using Poisson distributions and compares to the market line.</div>
+      </div>
+
+      <div class="explainer-disclaimer">
+        Edge Seeker provides statistical probability analysis only. All outputs are mathematical models — not recommendations of any kind. Past model accuracy does not guarantee future results. You are solely responsible for all decisions made using this platform. Edge Seeker does not provide financial, gambling, or investment advice of any kind. Must be 18+ to use this platform.
+      </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Top Edge</div>
-      <div class="stat-value cyan" id="statTopEdge">—</div>
-      <div class="stat-sub">Best pick today</div>
-    </div>
-    <div class="stat-card purple">
-      <div class="stat-label">Games Today</div>
-      <div class="stat-value" style="color:#F5A623" id="statGames">—</div>
-      <div class="stat-sub">Analyzed</div>
-    </div>
+  </div>
+
+  <!-- GRADE SUMMARY BAR -->
+  <div class="grade-bar">
+    <button class="grade-btn g-all active" id="gradeBtnAll" onclick="filterByGrade('ALL', this)">ALL</button>
+    <button class="grade-btn g-a" id="gradeBtnA" onclick="filterByGrade('A', this)">
+      <span class="grade-count" id="gradeCountA">—</span><span>A</span>
+    </button>
+    <button class="grade-btn g-b" id="gradeBtnB" onclick="filterByGrade('B', this)">
+      <span class="grade-count" id="gradeCountB">—</span><span>B</span>
+    </button>
+    <button class="grade-btn g-c" id="gradeBtnC" onclick="filterByGrade('C', this)">
+      <span class="grade-count" id="gradeCountC">—</span><span>C</span>
+    </button>
+    <div class="grade-bar-games">⏰ <span id="gradeTodayGames">—</span> GAMES</div>
   </div>
 
   <!-- CATEGORY SWITCHER -->
@@ -1408,7 +1505,7 @@
     </div>
     <div id="slipActions" style="display:none">
       <div class="slip-stake-row">
-        <input class="slip-stake-input" id="slipStake" type="number" placeholder="Stake per pick ($)" />
+        <input class="slip-stake-input" id="slipStake" type="number" placeholder="Amount per pick ($)" />
       </div>
       <button class="slip-log-btn" onclick="logAllSlipBets()">LOG ALL TO TRACKER</button>
     </div>
@@ -1776,16 +1873,22 @@
 
   function updateStats(data) {
     const picks = data.picks || [];
-    document.getElementById('statPicks').textContent = picks.length || '0';
-    document.getElementById('statGames').textContent = data.gamesAnalyzed || '0';
-    if (picks.length > 0) {
-      const avg = picks.reduce((s, p) => s + p.edgePct, 0) / picks.length;
-      document.getElementById('statAvgEdge').textContent = `+${avg.toFixed(1)}%`;
-      document.getElementById('statTopEdge').textContent = `+${picks[0].edgePct}%`;
-    } else {
-      document.getElementById('statAvgEdge').textContent = 'N/A';
-      document.getElementById('statTopEdge').textContent = 'N/A';
-    }
+    const countA = picks.filter(p => p.grade === 'A').length;
+    const countB = picks.filter(p => p.grade === 'B').length;
+    const countC = picks.filter(p => p.grade === 'C').length;
+    document.getElementById('gradeCountA').textContent = countA;
+    document.getElementById('gradeCountB').textContent = countB;
+    document.getElementById('gradeCountC').textContent = countC;
+    document.getElementById('gradeTodayGames').textContent = data.gamesAnalyzed || '0';
+    // Keep hidden stat IDs populated for any remaining references
+    const statPicks = document.getElementById('statPicks');
+    const statGames = document.getElementById('statGames');
+    const statAvg = document.getElementById('statAvgEdge');
+    const statTop = document.getElementById('statTopEdge');
+    if (statPicks) statPicks.textContent = picks.length || '0';
+    if (statGames) statGames.textContent = data.gamesAnalyzed || '0';
+    if (statAvg && picks.length > 0) statAvg.textContent = `+${(picks.reduce((s,p)=>s+p.edgePct,0)/picks.length).toFixed(1)}%`;
+    if (statTop && picks.length > 0) statTop.textContent = `+${picks[0].edgePct}%`;
   }
 
   function renderPicks(picks) {
@@ -1811,66 +1914,96 @@
   function buildCard(pick, i) {
     const isTop = i === 0;
     const conf = pick.confidence || 0;
+    const grade = pick.grade || 'C';
     const barW = Math.min(100, Math.max(20, ((pick.edgePct - 3) / 12) * 80 + 20));
     const trueAmerican = probToAmerican(pick.trueWinProb / 100);
     const gameTime = fmtTime(pick.gameTime);
     const mvt = pick.movement || 'stable';
     const mvtBadge = mvt === 'moved_toward' ? '📈 LINE MOVING' : mvt === 'moved_against' ? '📉 LINE SHIFTED' : '';
+
+    // Grade visual config
+    const gradeColor = grade === 'A' ? '#F5A623' : grade === 'B' ? '#6EB4F5' : '#888780';
+    const gradeLabel = grade === 'A' ? 'GRADE A · PRIME PICK' : grade === 'B' ? 'GRADE B · SOLID PICK' : 'GRADE C · EARLY LOOK';
+    const gradeSub   = grade === 'A' ? 'All signals confirmed' : grade === 'B' ? 'Most signals confirmed' : 'Limited data available';
+
+    // Window pill config
+    const wl = pick.windowLabel || '';
+    const hrs = pick.hoursUntilGame != null ? pick.hoursUntilGame : null;
+    const hrsStr = hrs != null ? `${Math.abs(hrs).toFixed(1)} HRS · ` : '';
+    const pillClass = wl === 'PRIME TIME' ? 'prime' : wl === 'FINAL CALL' ? 'final' : wl === 'TOO EARLY' ? 'too_early' : 'early';
+
     const card = document.createElement('div');
-    card.className = `bet-card${isTop ? ' top-pick' : ''}`;
+    card.className = `bet-card g-${grade.toLowerCase()}${isTop ? ' top-pick' : ''}`;
     card.style.animationDelay = `${i * 0.08}s`;
     card.innerHTML = `
       ${isTop ? '<div class="top-pick-badge">⚡ TOP PICK</div>' : ''}
-      <div class="bet-matchup">⚾ MLB · ${gameTime} · ${(pick.betType||'Moneyline').toUpperCase()}</div>
-      <div class="confidence-badge" style="display:flex;align-items:center;justify-content:space-between">
-        <span>BASIC ANALYSIS · ${conf}/100</span>
-        <span style="font-size:10px;color:var(--muted);letter-spacing:0.5px">🔒 PREMIUM</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:${gradeColor};line-height:1;letter-spacing:1px">${grade}</div>
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:${gradeColor};letter-spacing:1px">${gradeLabel}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:1px">${gradeSub}</div>
+          </div>
+        </div>
+        ${wl ? `<span class="window-pill ${pillClass}">🕐 ${hrsStr}${wl}</span>` : ''}
       </div>
+      <div class="bet-matchup">⚾ MLB · ${gameTime} · ${(pick.betType||'Moneyline').toUpperCase()}</div>
       <div class="bet-teams">
-        <div class="team"><div class="team-name">${pick.teamAbbr}</div><div class="team-record">${pick.trueWinProb}% win</div></div>
+        <div class="team"><div class="team-name">${pick.teamAbbr}</div><div class="team-record">${pick.trueWinProb}% true prob</div></div>
         <div class="vs">VS</div>
-        <div class="team"><div class="team-name">${pick.opponentAbbr}</div><div class="team-record">${(100-pick.trueWinProb).toFixed(1)}% win</div></div>
+        <div class="team"><div class="team-name">${pick.opponentAbbr}</div><div class="team-record">${(100-pick.trueWinProb).toFixed(1)}% true prob</div></div>
       </div>
       <div class="edge-section">
         <div class="edge-label">
-          <span class="edge-text">EDGE DETECTED · ${pick.pick}</span>
+          <span class="edge-text">PROBABILITY DISCREPANCY · ${pick.pick}</span>
           <span class="edge-pct">+${pick.edgePct}%</span>
         </div>
         <div class="edge-bar"><div class="edge-fill" data-width="${barW}" style="width:0"></div></div>
       </div>
       <div class="bet-details">
-        <div class="detail-item"><div class="detail-label">Book Odds</div><div class="detail-value cyan">${pick.bookOddsAmerican}</div></div>
+        <div class="detail-item"><div class="detail-label">Market Odds</div><div class="detail-value cyan">${pick.bookOddsAmerican}</div></div>
         <div class="detail-item"><div class="detail-label">True Odds</div><div class="detail-value green">${trueAmerican}</div></div>
         <div class="detail-item"><div class="detail-label">Kelly %</div><div class="detail-value gold">${pick.kellyPct}%</div></div>
       </div>
-      ${mvtBadge ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:0.5px">${mvtBadge}</div>` : ''}
-      <div style="margin-top:12px;padding:10px 12px;background:rgba(153,69,255,0.06);border:1px solid rgba(153,69,255,0.2);border-radius:10px">
-        <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:8px">🔒 PREMIUM ANALYSIS</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 FIP Pitcher Grade</div>
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Sharp Money Signal</div>
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Bullpen ERA</div>
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Pitcher Fatigue</div>
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Weather Impact</div>
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Injury Report</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">${mvtBadge || `📊 MODEL CONF: ${conf}/100`}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 <span style="color:var(--sol)">UNLOCK PREMIUM →</span></div>
+      </div>
+      <div style="margin-top:10px;padding:8px 12px;background:rgba(153,69,255,0.05);border:1px solid rgba(153,69,255,0.18);border-radius:10px">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:6px">🔒 FULL ANALYSIS AVAILABLE IN PREMIUM</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 10px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">🔒 FIP Pitcher Grade</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">🔒 Sharp Money Signal</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">🔒 Bullpen ERA</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">🔒 Pitcher Fatigue</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">🔒 Weather Impact</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">🔒 Injury Report</div>
         </div>
-        <button onclick="event.stopPropagation();showPage('edgeseeker',document.querySelector('.nav-item:last-child'))" style="width:100%;margin-top:10px;padding:8px;background:linear-gradient(90deg,rgba(153,69,255,0.3),rgba(245,166,35,0.2));border:1px solid rgba(153,69,255,0.4);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer">UNLOCK PREMIUM →</button>
+        <button onclick="event.stopPropagation();showPage('edgeseeker',document.querySelector('.nav-item:last-child'))" style="width:100%;margin-top:8px;padding:7px;background:linear-gradient(90deg,rgba(153,69,255,0.25),rgba(245,166,35,0.15));border:1px solid rgba(153,69,255,0.35);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer">UNLOCK FULL ANALYSIS →</button>
       </div>
       <div class="book-tag">
-        <span class="book-name">📖 ${pick.bookmaker || 'Best line'}</span>
+        <span class="book-name">📖 ${pick.bookmaker || 'Best available'}</span>
         <span class="game-time">${gameTime}</span>
       </div>
     `;
     card.addEventListener('click', () => {
-      document.getElementById('betPick').value = pick.pick;
-      document.getElementById('betOdds').value = pick.bookOddsAmerican;
-      openBetModal();
+      openGameDetail(pick);
     });
     return card;
   }
 
+  let currentGradeFilter = 'ALL';
+
+  function filterByGrade(grade, el) {
+    currentGradeFilter = grade;
+    document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
+    if (el) el.classList.add('active');
+    renderPicks(allPicks);
+  }
+
   function filterPicks(picks) {
-    if (currentFilter === 'ALL')    return picks;
+    // Grade filter takes precedence when set
+    if (currentGradeFilter !== 'ALL') return picks.filter(p => p.grade === currentGradeFilter);
     if (currentFilter === 'HIGH')   return picks.filter(p => p.confidence >= 70);
     if (currentFilter === 'MEDIUM') return picks.filter(p => p.confidence >= 40 && p.confidence < 70);
     if (currentFilter === 'LOW')    return picks.filter(p => p.confidence < 40);
@@ -1881,7 +2014,19 @@
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
     currentFilter = filter;
+    currentGradeFilter = 'ALL';
+    document.getElementById('gradeBtnAll')?.classList.add('active');
+    document.querySelectorAll('.grade-btn:not(#gradeBtnAll)').forEach(b => b.classList.remove('active'));
     renderPicks(allPicks);
+  }
+
+  function toggleExplainer() {
+    const body = document.getElementById('explainerBody');
+    const toggle = document.getElementById('explainerToggle');
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    toggle.textContent = open ? '▼ EXPAND' : '▲ COLLAPSE';
+    if (!open) localStorage.setItem('explainerSeen', '1');
   }
 
   // (bankroll tracker removed)
@@ -3213,7 +3358,7 @@
           Claude Opus deep-dives this specific matchup with pitcher stats, weather, line movement, over/under analysis, and player prop recommendations.
         </div>
         <div class="paywall-features" style="margin-bottom:16px">
-          <div class="paywall-feature"><div class="paywall-feature-icon">📊</div><div class="paywall-feature-text">Over/Under best bet with projected total</div></div>
+          <div class="paywall-feature"><div class="paywall-feature-icon">📊</div><div class="paywall-feature-text">Over/Under probability analysis with projected total</div></div>
           <div class="paywall-feature"><div class="paywall-feature-icon">⚾</div><div class="paywall-feature-text">Top pitcher to target (K's, ERA matchup)</div></div>
           <div class="paywall-feature"><div class="paywall-feature-icon">🔥</div><div class="paywall-feature-text">Hot batter to watch (hits, HR, RBI)</div></div>
           <div class="paywall-feature"><div class="paywall-feature-icon">🌤️</div><div class="paywall-feature-text">Weather impact on scoring</div></div>
@@ -3298,7 +3443,7 @@
     container.innerHTML = `
       <!-- OVER/UNDER -->
       <div class="ou-card">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">OVER/UNDER BEST BET</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">OVER/UNDER ANALYSIS</div>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
           <div class="ou-line">${analysis.ouLine || '—'}</div>
           <div>
@@ -4085,7 +4230,7 @@
       Math.round(wins / resolved.length * 100) + '%' : '0%';
 
     if (filtered.length === 0) {
-      listEl.innerHTML = '<div class="empty-state visible"><div class="empty-icon">📋</div><div class="empty-title">NO BETS YET</div><div class="empty-msg">Import from Kalshi or Polymarket, or add manually above.</div></div>';
+      listEl.innerHTML = '<div class="empty-state visible"><div class="empty-icon">📋</div><div class="empty-title">NO PICKS TRACKED YET</div><div class="empty-msg">Import from Kalshi or Polymarket, or add manually above.</div></div>';
       return;
     }
 
@@ -4613,7 +4758,125 @@
     } catch (_) {}
   })();
 
+  // ── GAME DETAIL WITH WHY THIS PICK ────────────────────────────────────────
+  function openGameDetail(pick) {
+    const screen = document.getElementById('gameDetailScreen');
+    const title  = document.getElementById('gameDetailTitle');
+    const body   = document.getElementById('gameDetailBody');
+    if (!screen || !body) return;
+
+    title.textContent = `${pick.teamAbbr} vs ${pick.opponentAbbr}`;
+
+    const grade = pick.grade || 'C';
+    const gradeColor = grade === 'A' ? '#F5A623' : grade === 'B' ? '#6EB4F5' : '#888780';
+    const conf = pick.confidence || 0;
+    const eloHome = pick.homeElo ? `Home Elo ${pick.homeElo}` : null;
+    const eloAway = pick.awayElo ? `Away Elo ${pick.awayElo}` : null;
+    const eloDiff = pick.eloDiff != null ? Math.abs(pick.eloDiff) : null;
+    const eloFavor = pick.eloDiff > 0 ? pick.teamAbbr : pick.opponentAbbr;
+
+    const whyRows = [];
+
+    // Poisson probability
+    whyRows.push(`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:3px">📊 POISSON MODEL</div>
+      <div style="font-size:13px;line-height:1.6;color:var(--text)">Poisson model calculates <strong>${pick.teamAbbr}</strong> true win probability at <strong>${pick.trueWinProb}%</strong> vs <strong>${pick.bookImpliedProb}%</strong> market implied — a <strong>+${pick.edgePct}%</strong> discrepancy.</div>
+    </div>`);
+
+    // Elo
+    if (eloHome && eloAway) {
+      const advantage = eloDiff >= 50 ? `a ${eloDiff}-point advantage` : `a near-even matchup (${eloDiff}-point difference)`;
+      whyRows.push(`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:3px">📈 ELO RATINGS</div>
+        <div style="font-size:13px;line-height:1.6;color:var(--text)">${eloHome} / ${eloAway} — <strong>${eloFavor}</strong> holds ${advantage}.</div>
+        ${pick.eloNote ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);margin-top:4px">${pick.eloNote}</div>` : ''}
+      </div>`);
+    }
+
+    // Window
+    if (pick.windowLabel) {
+      whyRows.push(`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:3px">🕐 ANALYSIS WINDOW</div>
+        <div style="font-size:13px;line-height:1.6;color:var(--text)">${pick.windowMessage} (${pick.windowLabel})</div>
+      </div>`);
+    }
+
+    // Pitcher (free tier shows TBD prompt)
+    whyRows.push(`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:3px">⚾ PITCHER MATCHUP</div>
+      <div style="font-size:13px;line-height:1.6;color:var(--text)">${
+        pick.homePitcherName && pick.homePitcherName !== 'TBD'
+          ? `Home: <strong>${pick.homePitcherName}</strong>${pick.homePitcherFIP ? ` · FIP ${pick.homePitcherFIP}` : ''}`
+          : '⚠ Home pitcher unconfirmed — analysis may shift with lineup confirmation'
+      }</div>
+      <div style="font-size:13px;line-height:1.6;color:var(--text);margin-top:4px">${
+        pick.awayPitcherName && pick.awayPitcherName !== 'TBD'
+          ? `Away: <strong>${pick.awayPitcherName}</strong>${pick.awayPitcherFIP ? ` · FIP ${pick.awayPitcherFIP}` : ''}`
+          : '⚠ Away pitcher unconfirmed — analysis may shift with lineup confirmation'
+      }</div>
+    </div>`);
+
+    // Odds movement
+    if (pick.movement && pick.movement !== 'stable') {
+      const mvtText = pick.movement === 'moved_toward'
+        ? 'Line movement confirms this probability discrepancy — market odds have moved in the same direction as the model'
+        : 'Line movement diverges from this model output — market odds have shifted against this probability calculation';
+      whyRows.push(`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:3px">📉 LINE MOVEMENT</div>
+        <div style="font-size:13px;line-height:1.6;color:var(--text)">${mvtText}</div>
+      </div>`);
+    }
+
+    // Warning
+    if (pick.warning) {
+      whyRows.push(`<div style="padding:10px 0">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);margin-bottom:3px">⚠ RISK FACTOR</div>
+        <div style="font-size:13px;line-height:1.6;color:var(--muted)">${pick.warning}</div>
+      </div>`);
+    }
+
+    body.innerHTML = `
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:${gradeColor};line-height:1">${grade}</div>
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:11px;color:${gradeColor};letter-spacing:1px">${pick.pick}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">${fmtTime(pick.gameTime)} · Conf ${conf}/100</div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--accent);margin-bottom:10px">WHY THIS PICK</div>
+          ${whyRows.join('')}
+        </div>
+
+        <div style="background:rgba(153,69,255,0.06);border:1px solid rgba(153,69,255,0.2);border-radius:14px;padding:14px;text-align:center">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:8px">🔒 FULL ANALYSIS IN PREMIUM</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px">FIP pitcher grades · Sharp money signals · Bullpen ERA · Fatigue · Weather</div>
+          <button onclick="showPage('edgeseeker',document.querySelector('.nav-item:last-child'));closeGameDetail()" style="padding:10px 20px;background:linear-gradient(90deg,rgba(153,69,255,0.3),rgba(245,166,35,0.2));border:1px solid rgba(153,69,255,0.4);border-radius:10px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;cursor:pointer">UNLOCK FULL ANALYSIS →</button>
+        </div>
+
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.7;padding:0 8px">
+          Statistical probability analysis only. Not a recommendation of any kind. You are solely responsible for all decisions.
+        </div>
+      </div>`;
+
+    screen.classList.add('active');
+  }
+
+  function closeGameDetail() {
+    document.getElementById('gameDetailScreen')?.classList.remove('active');
+  }
+
   // ── INIT ──────────────────────────────────────────────────────────────────
+  // Auto-expand explainer on first visit
+  if (!localStorage.getItem('explainerSeen')) {
+    const body = document.getElementById('explainerBody');
+    const toggle = document.getElementById('explainerToggle');
+    if (body) body.style.display = 'block';
+    if (toggle) toggle.textContent = '▲ COLLAPSE';
+  }
+
   loadPicks();
 </script>
 </body>
