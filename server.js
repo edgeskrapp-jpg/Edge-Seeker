@@ -655,11 +655,24 @@ app.get("/api/picks", async (req, res) => {
 
     const { games, remaining, used } = await fetchMLBOdds();
 
-    if (!games || games.length === 0) {
+    // Filter to only today's games in ET timezone
+    const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+    const todayET = new Date(nowET);
+    const todayDateStr = todayET.toISOString().split('T')[0]; // "2026-03-26"
+
+    const todayGames = (games || []).filter(game => {
+      const gameInET = new Date(game.commence_time).toLocaleString("en-US", {timeZone: "America/New_York"});
+      const gameDateStr = new Date(gameInET).toISOString().split('T')[0];
+      return gameDateStr === todayDateStr;
+    });
+
+    if (!games || games.length === 0 || todayGames.length === 0) {
       return res.json({
         picks: [],
         total: 0,
-        message: "No MLB games found for today. Check back later.",
+        gamesAnalyzed: 0,
+        noGamesToday: true,
+        message: "No games scheduled today",
         cached: false,
         fetchedAt: new Date().toISOString(),
         quota: { remaining, used },
@@ -667,11 +680,11 @@ app.get("/api/picks", async (req, res) => {
     }
 
     // Store opening lines on every fresh fetch (UPSERT ignores duplicates)
-    storeOpeningLines(games).catch(err => console.warn('storeOpeningLines non-blocking error:', err.message));
+    storeOpeningLines(todayGames).catch(err => console.warn('storeOpeningLines non-blocking error:', err.message));
 
     // Pass enriched data (pitcher FIP/fatigue, weather) into the Poisson model
     const cachedEnriched = getEnrichedCache();
-    let picks = applyPickFilters(analyzePicks(games, cachedEnriched));
+    let picks = applyPickFilters(analyzePicks(todayGames, cachedEnriched));
 
     // Apply injury confidence penalties
     if (cachedEnriched) {
@@ -703,7 +716,7 @@ app.get("/api/picks", async (req, res) => {
 
     // Apply Pinnacle sharp money signal
     try {
-      const lineMovement = await analyzeLineMovement(games);
+      const lineMovement = await analyzeLineMovement(todayGames);
       if (lineMovement && lineMovement.length > 0) {
         picks = attachPickSharpSignals(picks, lineMovement);
       }
@@ -717,7 +730,8 @@ app.get("/api/picks", async (req, res) => {
     const responseData = {
       picks,
       total: picks.length,
-      gamesAnalyzed: games.length,
+      gamesAnalyzed: todayGames.length,
+      noGamesToday: false,
       cached: false,
       fetchedAt: new Date().toISOString(),
       quota: { remaining, used },

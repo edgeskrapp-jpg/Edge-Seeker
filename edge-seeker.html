@@ -1006,7 +1006,10 @@
   </div>
 
   <div class="section-header">
-    <div class="section-title" id="picksPageTitle">TODAY'S GAMES</div>
+    <div>
+      <div class="section-title" id="picksPageTitle">TODAY'S GAMES</div>
+      <div id="todayDateDisplay" style="font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:0.04em;"></div>
+    </div>
     <div class="badge live">● LIVE ODDS</div>
   </div>
 
@@ -1027,8 +1030,8 @@
     </div>
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">⚾</div>
-      <div class="empty-title">NO GAMES TODAY</div>
-      <div class="empty-msg">No MLB games with odds available right now.<br>Check back closer to Opening Night March 25th.</div>
+      <div class="empty-title" id="emptyTitle">NO GAMES TODAY</div>
+      <div class="empty-msg" id="emptyMsg">No games scheduled today — check back tomorrow.</div>
     </div>
     <div class="games-grid" id="picksList"></div>
   </div>
@@ -1725,6 +1728,9 @@
   }
 
   // ── PICKS ─────────────────────────────────────────────────────────────────
+  let noGamesToday = false;
+  let gamesAnalyzedCount = 0;
+
   async function loadPicks() {
     showLoading();
     try {
@@ -1732,6 +1738,8 @@
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
       allPicks = data.picks || [];
+      noGamesToday = data.noGamesToday || false;
+      gamesAnalyzedCount = data.gamesAnalyzed || 0;
       updateStats(data);
       if (data.fetchedAt) {
         const t = new Date(data.fetchedAt);
@@ -1772,7 +1780,17 @@
     const list = document.getElementById('picksList');
     list.innerHTML = ''; // always clear before empty check so old content never lingers
     const filtered = filterPicks(picks);
-    if (!filtered || filtered.length === 0) { document.getElementById('emptyState').classList.add('visible'); return; }
+    if (!filtered || filtered.length === 0) {
+      if (noGamesToday) {
+        document.getElementById('emptyTitle').textContent = 'NO GAMES TODAY';
+        document.getElementById('emptyMsg').textContent = 'No games scheduled today — check back tomorrow.';
+      } else {
+        document.getElementById('emptyTitle').textContent = 'NO EDGES FOUND';
+        document.getElementById('emptyMsg').textContent = `No edges found today — EDGESEEKER is watching ${gamesAnalyzedCount} game${gamesAnalyzedCount !== 1 ? 's' : ''}`;
+      }
+      document.getElementById('emptyState').classList.add('visible');
+      return;
+    }
     filtered.forEach((pick, i) => list.appendChild(buildCard(pick, i)));
     setTimeout(() => { document.querySelectorAll('.edge-fill').forEach(el => { el.style.width = el.dataset.width + '%'; }); }, 100);
   }
@@ -4435,6 +4453,26 @@
 
   // ── AUTO-REFRESH ──────────────────────────────────────────────────────────
   let autoRefreshTimer = setInterval(loadPicks, 60 * 60 * 1000);
+
+  // ── DATE HEADER ───────────────────────────────────────────────────────────
+  (function setTodayDateDisplay() {
+    try {
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        weekday: "long", month: "long", day: "numeric", year: "numeric"
+      }).formatToParts(now);
+      const weekday = parts.find(p => p.type === "weekday").value;
+      const month = parts.find(p => p.type === "month").value;
+      const day = parseInt(parts.find(p => p.type === "day").value);
+      const year = parts.find(p => p.type === "year").value;
+      const suffix = [, "st","nd","rd"][day] || "th";
+      const isOpeningDay = month === "March" && day === 26 && year === "2026";
+      const extra = isOpeningDay ? " · Opening Day 2026" : "";
+      const el = document.getElementById("todayDateDisplay");
+      if (el) el.textContent = `${weekday}, ${month} ${day}${suffix}${extra}`;
+    } catch (_) {}
+  })();
 
   // ── INIT ──────────────────────────────────────────────────────────────────
   loadPicks();
