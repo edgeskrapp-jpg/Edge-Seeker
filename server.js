@@ -708,6 +708,15 @@ app.get("/api/health", (req, res) => {
 });
 
 /**
+ * GET /api/config/rpc
+ * Returns the Solana RPC URL for the frontend to use.
+ * Keeps the actual URL server-side so it can be updated via env var without code changes.
+ */
+app.get("/api/config/rpc", (req, res) => {
+  res.json({ rpcUrl: SOLANA_RPC });
+});
+
+/**
  * GET /api/picks
  * Main endpoint — returns analyzed picks sorted by edge %
  *
@@ -1240,7 +1249,7 @@ const FREE_ACCESS_WALLETS = [
   "8YPA4TV2rKkFdeJwvhQZPm6CNMNAm9sjP98p3DZSEgcL", // Owner testing wallet
 ];
 const PREMIUM_PRICE_SOL = 0.01; // 0.01 SOL per day
-const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+const SOLANA_RPC = process.env.SOLANA_RPC_URL || 'https://rpc.ankr.com/solana';
 
 const OPERATIONS_WALLET = "5r2Pz7A3EYsvSZrusoWwkEiaMWcMXUEn9CAxc8p1qDrB";
 const PRIZE_POOL_WALLET = "ATjh5UUu8bof58mGRECHcZdYGVxYLVKvxAR3Nhy6vUWv";

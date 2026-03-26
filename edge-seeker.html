@@ -2113,7 +2113,8 @@
   // Uses the real Phantom / Solflare / Backpack browser extension APIs
   // SOL balance fetched from Solana mainnet RPC
 
-  const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
+  // RPC URL fetched from backend on init so it can be changed via env var without code deploys
+  let SOLANA_RPC = 'https://rpc.ankr.com/solana'; // default fallback until /api/config/rpc responds
 
   // Detect which wallets are installed
   function getProvider(name) {
@@ -2272,6 +2273,12 @@
     document.getElementById('solBalanceUsd').textContent = '';
     showToast('Wallet disconnected');
   }
+
+  // Fetch RPC URL from backend so it stays server-side configurable
+  fetch(`${API_BASE}/api/config/rpc`)
+    .then(r => r.json())
+    .then(d => { if (d.rpcUrl) SOLANA_RPC = d.rpcUrl; })
+    .catch(() => { /* keep default fallback */ });
 
   // Auto-reconnect if wallet was previously connected
   window.addEventListener('load', async () => {
@@ -3715,8 +3722,6 @@
 
     try {
       // Build the SOL transfer transaction
-      const connection = { rpcUrl: 'https://api.mainnet-beta.solana.com' };
-
       // Use Phantom's built-in transfer
       const lamports = Math.floor(PREMIUM_PRICE_SOL * LAMPORTS_PER_SOL);
 
@@ -3770,7 +3775,7 @@
       throw new Error('Solana Web3 not loaded');
     }
     const { Transaction, SystemProgram, PublicKey, Connection } = window.solanaWeb3;
-    const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+    const connection = new Connection(SOLANA_RPC, 'confirmed');
     const { blockhash } = await connection.getLatestBlockhash();
 
     const tx = new Transaction().add(
