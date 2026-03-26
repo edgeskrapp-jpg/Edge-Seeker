@@ -1458,6 +1458,12 @@ app.get("/api/agent/premium", async (req, res) => {
   try {
     const { wallet } = req.query;
 
+    console.log(`[premium] Request — wallet: ${wallet || '(none)'}`);
+    console.log(`[premium] Whitelist: ${JSON.stringify(FREE_ACCESS_WALLETS)}`);
+    if (wallet) {
+      console.log(`[premium] Is whitelisted: ${FREE_ACCESS_WALLETS.includes(wallet)}`);
+    }
+
     // Verify wallet is provided
     if (!wallet) {
       return res.status(401).json({
@@ -1503,6 +1509,54 @@ app.get("/api/agent/premium", async (req, res) => {
   }
 });
 
+
+/**
+ * GET /api/debug/wallet
+ * Admin-only: shows whitelist status and premium eligibility for a wallet
+ */
+app.get("/api/debug/wallet", async (req, res) => {
+  const secret = req.query.secret || req.headers['x-admin-secret'];
+  if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden. Provide ?secret=<ADMIN_SECRET>.' });
+  }
+
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'wallet param required' });
+
+  const isWhitelisted = FREE_ACCESS_WALLETS.includes(wallet);
+  const payment = await verifyPayment(wallet).catch(err => ({ paid: false, reason: err.message }));
+
+  // Fetch recent transactions from the revenue wallet for this sender
+  let recentTxs = [];
+  try {
+    const sigRes = await fetch(SOLANA_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1,
+        method: "getSignaturesForAddress",
+        params: [wallet, { limit: 10 }]
+      })
+    });
+    const sigData = await sigRes.json();
+    recentTxs = (sigData.result || []).map(s => ({
+      signature: s.signature,
+      blockTime: s.blockTime ? new Date(s.blockTime * 1000).toISOString() : null,
+      err: s.err,
+    }));
+  } catch (e) {
+    recentTxs = [{ error: e.message }];
+  }
+
+  res.json({
+    wallet,
+    isWhitelisted,
+    freeAccessWallets: FREE_ACCESS_WALLETS,
+    premiumWouldBeGranted: payment.paid,
+    paymentDetails: payment,
+    recentTransactions: recentTxs,
+  });
+});
 
 /**
  * GET /api/agent/game-analysis
