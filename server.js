@@ -36,6 +36,10 @@ const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
 // ─── FEATURE FLAGS ────────────────────────────────────────────────────────────
 const ODDS_API_UPGRADED = false; // Set to true when on paid plan for historical odds + all sharp books
 
+// ─── TIER DEFINITIONS ─────────────────────────────────────────────────────────
+const FREE_TIER_LAYERS = ['poisson', 'parkFactors', 'elo', 'oddsMovement'];
+const PREMIUM_LAYERS = ['poisson', 'parkFactors', 'elo', 'oddsMovement', 'fip', 'fatigue', 'injuries', 'pinnacle', 'bullpen', 'weather', 'fanGraphs', 'statcast'];
+
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────────────
 
 app.use(express.json());
@@ -138,6 +142,24 @@ function addOddsMovement(picks) {
     const out = { ...pick, movement };
     if (movement === 'moved_against') out.confidence = Math.max(0, (out.confidence || 0) - 10);
     return out;
+  });
+}
+
+// Strip premium-only fields from picks — free tier response only
+function stripToFreeTier(picks) {
+  return picks.map(pick => {
+    const {
+      homePitcherFIP, awayPitcherFIP, pitcherAdjustment,
+      homePitcherFatigue, awayPitcherFatigue, fatigueNote,
+      bullpenAdjustment, weatherAdjustment,
+      pinnacleMovement, sharpMoneyNote,
+      ...freePick
+    } = pick;
+    return {
+      ...freePick,
+      upgradeAvailable: true,
+      upgradeNote: "Premium analysis includes FIP, bullpen, sharp money, fatigue and weather signals",
+    };
   });
 }
 
@@ -642,14 +664,14 @@ app.get("/api/picks", async (req, res) => {
       if (checkRateLimit(ip) && cache.picks.data) {
         const cached = cache.picks.data;
         const picksWithMovement = addOddsMovement(cached.picks || []);
-        return res.json({ ...cached, picks: picksWithMovement, cached: true, rateLimited: true });
+        return res.json({ ...cached, picks: stripToFreeTier(picksWithMovement), cached: true, rateLimited: true });
       }
 
       // Return cache if within time-based TTL — add movement data on every call
       if (isPicksCacheValid()) {
         const cached = cache.picks.data;
         const picksWithMovement = addOddsMovement(cached.picks || []);
-        return res.json({ ...cached, picks: picksWithMovement, cached: true });
+        return res.json({ ...cached, picks: stripToFreeTier(picksWithMovement), cached: true });
       }
     }
 
@@ -682,16 +704,10 @@ app.get("/api/picks", async (req, res) => {
     // Store opening lines on every fresh fetch (UPSERT ignores duplicates)
     storeOpeningLines(todayGames).catch(err => console.warn('storeOpeningLines non-blocking error:', err.message));
 
-    // Pass enriched data (pitcher FIP/fatigue, weather) into the Poisson model
-    const cachedEnriched = getEnrichedCache();
-    let picks = applyPickFilters(analyzePicks(todayGames, cachedEnriched));
+    // Free tier — Poisson + park factors only (no FIP/fatigue/bullpen/weather enrichment)
+    let picks = applyPickFilters(analyzePicks(todayGames, null));
 
-    // Apply injury confidence penalties
-    if (cachedEnriched) {
-      picks = applyInjuryPenalty(picks, cachedEnriched);
-    }
-
-    // Apply Elo-based confidence adjustments
+    // Apply Elo-based confidence adjustments (free tier)
     try {
       const { supabaseQuery } = require("./supabase");
       let eloRatings = [];
@@ -714,18 +730,10 @@ app.get("/api/picks", async (req, res) => {
       console.warn("⚠️ Elo adjustment skipped:", eloErr.message);
     }
 
-    // Apply Pinnacle sharp money signal
-    try {
-      const lineMovement = await analyzeLineMovement(todayGames);
-      if (lineMovement && lineMovement.length > 0) {
-        picks = attachPickSharpSignals(picks, lineMovement);
-      }
-    } catch (sharpErr) {
-      console.warn("⚠️ Sharp money signal skipped:", sharpErr.message);
-    }
-
     // Track opening odds and add movement field
     picks = addOddsMovement(picks);
+    // Strip premium-only fields before caching and responding
+    picks = stripToFreeTier(picks);
 
     const responseData = {
       picks,
@@ -743,6 +751,94 @@ app.get("/api/picks", async (req, res) => {
     res.json(responseData);
   } catch (err) {
     console.error("❌ /api/picks error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/picks/premium
+ * Premium tier — full model with FIP, fatigue, bullpen, weather, sharp signals
+ * Requires wallet payment verification
+ */
+app.get("/api/picks/premium", async (req, res) => {
+  try {
+    const { wallet } = req.query;
+    if (!wallet) {
+      return res.status(401).json({ error: "Wallet required", message: "Connect your Phantom wallet to access premium picks" });
+    }
+
+    const payment = await verifyPayment(wallet);
+    if (!payment.paid) {
+      return res.status(402).json({
+        error: "Payment required",
+        message: `Send ${PREMIUM_PRICE_SOL} SOL to unlock premium picks`,
+        price: PREMIUM_PRICE_SOL,
+        revenueWallet: REVENUE_WALLET,
+        reason: payment.reason,
+      });
+    }
+
+    const { games, remaining, used } = await fetchMLBOdds();
+
+    // ET date filter
+    const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+    const todayET = new Date(nowET);
+    const todayDateStr = todayET.toISOString().split('T')[0];
+    const todayGames = (games || []).filter(game => {
+      const gameInET = new Date(game.commence_time).toLocaleString("en-US", {timeZone: "America/New_York"});
+      return new Date(gameInET).toISOString().split('T')[0] === todayDateStr;
+    });
+
+    if (!todayGames.length) {
+      return res.json({ picks: [], gamesAnalyzed: 0, noGamesToday: true, tier: 'premium', layers: PREMIUM_LAYERS, fetchedAt: new Date().toISOString() });
+    }
+
+    // Full premium analysis — all layers active
+    const cachedEnriched = getEnrichedCache();
+    let picks = applyPickFilters(analyzePicks(todayGames, cachedEnriched));
+
+    if (cachedEnriched) picks = applyInjuryPenalty(picks, cachedEnriched);
+
+    // Elo adjustment
+    try {
+      const { supabaseQuery } = require("./supabase");
+      let eloRatings = [];
+      try {
+        eloRatings = await supabaseQuery("elo_ratings", "GET", null, "?order=elo.desc");
+      } catch (_) {
+        const { OPENING_DAY_ELO } = require("./eloSystem");
+        eloRatings = Object.entries(OPENING_DAY_ELO).map(([abbr, data]) => ({
+          team_abbr: abbr, elo: data.elo, wins: data.wins || 0, losses: data.losses || 0,
+        }));
+      }
+      if (eloRatings?.length) picks = applyEloAdjustment(picks, eloRatings);
+    } catch (eloErr) {
+      console.warn("⚠️ Premium Elo adjustment skipped:", eloErr.message);
+    }
+
+    // Pinnacle sharp money signal
+    try {
+      const lineMovement = await analyzeLineMovement(todayGames);
+      if (lineMovement?.length) picks = attachPickSharpSignals(picks, lineMovement);
+    } catch (sharpErr) {
+      console.warn("⚠️ Premium sharp signals skipped:", sharpErr.message);
+    }
+
+    picks = addOddsMovement(picks);
+
+    res.json({
+      picks,
+      total: picks.length,
+      gamesAnalyzed: todayGames.length,
+      noGamesToday: false,
+      tier: 'premium',
+      layers: PREMIUM_LAYERS,
+      cached: false,
+      fetchedAt: new Date().toISOString(),
+      quota: { remaining, used },
+    });
+  } catch (err) {
+    console.error("❌ /api/picks/premium error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

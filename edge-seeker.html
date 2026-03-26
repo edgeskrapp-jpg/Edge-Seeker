@@ -1547,6 +1547,19 @@
 <!-- PAGE: EDGESEEKER MASCOT -->
 <main id="page-edgeseeker" class="page">
 
+  <!-- PREMIUM MODEL HEADER -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px">PREMIUM MODEL</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--accent);background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);padding:4px 10px;border-radius:20px">⚡ ALL LAYERS ACTIVE</div>
+  </div>
+
+  <!-- PREMIUM PICKS SECTION -->
+  <div id="premiumModelSection">
+    <div id="premiumModelContent" style="margin-bottom:20px">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;padding:16px">Connect wallet to unlock premium analysis</div>
+    </div>
+  </div>
+
   <!-- TODAY'S PROJECTION CARD (Feature 3) -->
   <div class="today-projection-card" id="todayProjectionCard" style="display:none">
     <div class="today-proj-header">
@@ -1798,18 +1811,21 @@
   function buildCard(pick, i) {
     const isTop = i === 0;
     const conf = pick.confidence || 0;
-    const emoji = conf >= 70 ? '🔥' : conf >= 50 ? '⚡' : '📊';
-    const label = conf >= 70 ? 'HIGH CONFIDENCE' : conf >= 50 ? 'SHARP ACTION' : 'VALUE BET';
     const barW = Math.min(100, Math.max(20, ((pick.edgePct - 3) / 12) * 80 + 20));
     const trueAmerican = probToAmerican(pick.trueWinProb / 100);
     const gameTime = fmtTime(pick.gameTime);
+    const mvt = pick.movement || 'stable';
+    const mvtBadge = mvt === 'moved_toward' ? '📈 LINE MOVING' : mvt === 'moved_against' ? '📉 LINE SHIFTED' : '';
     const card = document.createElement('div');
     card.className = `bet-card${isTop ? ' top-pick' : ''}`;
     card.style.animationDelay = `${i * 0.08}s`;
     card.innerHTML = `
       ${isTop ? '<div class="top-pick-badge">⚡ TOP PICK</div>' : ''}
       <div class="bet-matchup">⚾ MLB · ${gameTime} · ${(pick.betType||'Moneyline').toUpperCase()}</div>
-      <div class="confidence-badge">${emoji} ${label} · ${conf}/100</div>
+      <div class="confidence-badge" style="display:flex;align-items:center;justify-content:space-between">
+        <span>BASIC ANALYSIS · ${conf}/100</span>
+        <span style="font-size:10px;color:var(--muted);letter-spacing:0.5px">🔒 PREMIUM</span>
+      </div>
       <div class="bet-teams">
         <div class="team"><div class="team-name">${pick.teamAbbr}</div><div class="team-record">${pick.trueWinProb}% win</div></div>
         <div class="vs">VS</div>
@@ -1826,6 +1842,19 @@
         <div class="detail-item"><div class="detail-label">Book Odds</div><div class="detail-value cyan">${pick.bookOddsAmerican}</div></div>
         <div class="detail-item"><div class="detail-label">True Odds</div><div class="detail-value green">${trueAmerican}</div></div>
         <div class="detail-item"><div class="detail-label">Kelly %</div><div class="detail-value gold">${pick.kellyPct}%</div></div>
+      </div>
+      ${mvtBadge ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:0.5px">${mvtBadge}</div>` : ''}
+      <div style="margin-top:12px;padding:10px 12px;background:rgba(153,69,255,0.06);border:1px solid rgba(153,69,255,0.2);border-radius:10px">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:8px">🔒 PREMIUM ANALYSIS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 FIP Pitcher Grade</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Sharp Money Signal</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Bullpen ERA</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Pitcher Fatigue</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Weather Impact</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">🔒 Injury Report</div>
+        </div>
+        <button onclick="event.stopPropagation();showPage('edgeseeker',document.querySelector('.nav-item:last-child'))" style="width:100%;margin-top:10px;padding:8px;background:linear-gradient(90deg,rgba(153,69,255,0.3),rgba(245,166,35,0.2));border:1px solid rgba(153,69,255,0.4);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer">UNLOCK PREMIUM →</button>
       </div>
       <div class="book-tag">
         <span class="book-name">📖 ${pick.bookmaker || 'Best line'}</span>
@@ -4088,8 +4117,118 @@
     });
   }
 
+  // ── PREMIUM MODEL PICKS ───────────────────────────────────────────────────
+  async function loadPremiumModelPicks() {
+    const el = document.getElementById('premiumModelContent');
+    if (!el) return;
+
+    const provider = window.phantom?.solana || window.solana;
+    const walletConnected = document.getElementById('walletBar').classList.contains('visible');
+
+    if (!walletConnected || !provider?.publicKey) {
+      el.innerHTML = `
+        <div class="paywall-card">
+          <div class="paywall-icon">🔐</div>
+          <div class="paywall-title">CONNECT WALLET</div>
+          <div class="paywall-desc">Connect your Phantom wallet to access the full premium model with FIP, bullpen, sharp money, fatigue and weather signals.</div>
+          <button class="pay-btn" onclick="openWalletModal()">CONNECT WALLET</button>
+        </div>`;
+      return;
+    }
+
+    const wallet = provider.publicKey.toString();
+    el.innerHTML = `<div class="loading-state" style="padding:16px 0"><div class="loading-spinner"></div><div class="loading-text">LOADING PREMIUM MODEL...</div></div>`;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/picks/premium?wallet=${wallet}`);
+
+      if (res.status === 402) {
+        const data = await res.json();
+        el.innerHTML = `
+          <div class="paywall-card">
+            <div class="paywall-icon">⚡</div>
+            <div class="paywall-title">PREMIUM MODEL</div>
+            <div class="paywall-features">
+              <div class="paywall-feature"><div class="paywall-feature-icon">⚾</div><div class="paywall-feature-text">FIP pitcher grade — better than ERA for predicting future starts</div></div>
+              <div class="paywall-feature"><div class="paywall-feature-icon">📈</div><div class="paywall-feature-text">Pinnacle sharp money signal — follow the sharps</div></div>
+              <div class="paywall-feature"><div class="paywall-feature-icon">💪</div><div class="paywall-feature-text">Bullpen ERA adjustment from FanGraphs</div></div>
+              <div class="paywall-feature"><div class="paywall-feature-icon">😴</div><div class="paywall-feature-text">Pitcher fatigue model — days rest, pitch count</div></div>
+              <div class="paywall-feature"><div class="paywall-feature-icon">🌤️</div><div class="paywall-feature-text">Weather impact on scoring — wind, temp, park</div></div>
+              <div class="paywall-feature"><div class="paywall-feature-icon">🏥</div><div class="paywall-feature-text">Full injury tracker with confidence penalties</div></div>
+            </div>
+            <div class="paywall-price">${PREMIUM_PRICE_SOL} SOL</div>
+            <div class="paywall-price-sub">PER DAY · RESETS AT MIDNIGHT ET</div>
+            <button class="pay-btn" id="premModelPayBtn" onclick="sendPayment('${wallet}')">UNLOCK PREMIUM MODEL</button>
+            <div id="txStatus"></div>
+          </div>`;
+        return;
+      }
+
+      if (res.status === 401) {
+        el.innerHTML = `<div style="text-align:center;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">Wallet required.</div>`;
+        return;
+      }
+
+      const data = await res.json();
+      if (data.noGamesToday) {
+        el.innerHTML = `<div style="text-align:center;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">No games today — check back tomorrow.</div>`;
+        return;
+      }
+
+      const picks = data.picks || [];
+      if (!picks.length) {
+        el.innerHTML = `<div style="text-align:center;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">No premium edges found today — ${data.gamesAnalyzed || 0} games analyzed.</div>`;
+        return;
+      }
+
+      el.innerHTML = picks.map((pick, idx) => {
+        const barW = Math.min(100, Math.max(20, ((pick.edgePct - 3) / 12) * 80 + 20));
+        const conf = pick.confidence || 0;
+        const gameTime = fmtTime(pick.gameTime);
+        const hasFIP = pick.homePitcherFIP || pick.awayPitcherFIP;
+        const hasFatigue = pick.fatigueNote;
+        const hasSharp = pick.sharpMoneyNote || (pick.pinnacleMovement && pick.pinnacleMovement !== 'neutral');
+        const hasBullpen = pick.bullpenAdjustment != null && pick.bullpenAdjustment !== 0;
+        const hasWeather = pick.weatherAdjustment != null && pick.weatherAdjustment !== 0;
+        return `
+          <div style="background:linear-gradient(135deg,rgba(245,166,35,0.06),rgba(153,69,255,0.04));border:1px solid rgba(245,166,35,0.25);border-radius:16px;padding:16px;margin-bottom:12px;position:relative">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted)">⚾ MLB · ${gameTime}</div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--accent);background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.25);padding:2px 8px;border-radius:10px">PREMIUM MODEL</div>
+            </div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;margin-bottom:4px">${pick.teamAbbr} vs ${pick.opponentAbbr}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green);margin-bottom:10px">${pick.pick} · +${pick.edgePct}% edge · ${conf}/100 confidence</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:'DM Mono',monospace;font-size:10px">
+                <div style="color:var(--muted);margin-bottom:3px">ELO</div>
+                <div style="color:var(--text)">${pick.homeElo ? `Home ${pick.homeElo} / Away ${pick.awayElo}` : 'Fetching...'}</div>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:'DM Mono',monospace;font-size:10px">
+                <div style="color:var(--muted);margin-bottom:3px">BOOK ODDS</div>
+                <div style="color:var(--cyan)">${pick.bookOddsAmerican}</div>
+              </div>
+            </div>
+            <div style="border-top:1px solid var(--border);padding-top:10px;display:grid;gap:5px">
+              ${hasFIP ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text)">⚾ FIP: Home ${pick.homePitcherFIP ?? '—'} / Away ${pick.awayPitcherFIP ?? '—'}</div>` : ''}
+              ${hasFatigue ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold)">😴 ${pick.fatigueNote}</div>` : ''}
+              ${hasSharp ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent)">📈 ${pick.sharpMoneyNote || 'Sharp money signal detected'}</div>` : ''}
+              ${hasBullpen ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text)">💪 Bullpen adj: ${pick.bullpenAdjustment > 0 ? '+' : ''}${pick.bullpenAdjustment} runs</div>` : ''}
+              ${hasWeather ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text)">🌤️ Weather adj: ${pick.weatherAdjustment > 0 ? '+' : ''}${pick.weatherAdjustment} runs</div>` : ''}
+              ${pick.warning ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold)">⚠️ ${pick.warning}</div>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+    } catch (err) {
+      el.innerHTML = `<div style="text-align:center;padding:16px"><div style="font-size:20px;margin-bottom:8px">⚠️</div><div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${err.message}</div><button onclick="loadPremiumModelPicks()" style="margin-top:10px;padding:8px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer">RETRY</button></div>`;
+    }
+  }
+
   // ── EDGESEEKER MASCOT PAGE ────────────────────────────────────────────────
   async function loadEdgeseekerPage() {
+    // Load premium model picks
+    loadPremiumModelPicks();
+
     // Feature 3: Load today's projection card
     loadTodayProjection();
 
