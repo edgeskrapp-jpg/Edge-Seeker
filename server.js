@@ -1600,7 +1600,7 @@ app.get("/api/agent/game-analysis", async (req, res) => {
     }
 
     // Fetch enriched data
-    const enrichedData = await enrichPicks([]);
+    const enrichedData = await enrichPicks([{ home_team: home, away_team: away }]);
     const homeAbbr = home.split(" ").pop().substring(0, 3).toUpperCase();
     const awayAbbr = away.split(" ").pop().substring(0, 3).toUpperCase();
     const gameKey = `${awayAbbr}_${homeAbbr}`;
@@ -1802,7 +1802,7 @@ app.get("/api/props/strikeouts", async (req, res) => {
     let enrichedData = {};
     try {
       const { enrichPicks } = require("./mlbDataEnricher");
-      enrichedData = await enrichPicks([]);
+      enrichedData = await enrichPicks(games);
     } catch (enrichErr) {
       console.error('Enrichment error:', enrichErr.message);
       enrichedData = {};

@@ -15,7 +15,8 @@
  */
 
 const fetch = require("node-fetch");
-const { fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchTeamStrikeoutRate } = require("./mlbDataEnricher");
+const { fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchTeamStrikeoutRate, fetchPitcherGameLog, fetchPitcherVelocityTrend } = require("./mlbDataEnricher");
+const { fetchKPropLines } = require('./propFetcher');
 const { TEAM_NAME_MAP } = require("./mlbStats");
 const { MLB_TEAM_IDS } = require("./cron");
 
@@ -39,31 +40,31 @@ Your ONLY job is to find value in pitcher strikeout over/under props.
 
 ### Key Metrics (in order of importance):
 1. **Whiff Rate** — Most predictive K metric. 30%+ = elite, 25-30% = good, <22% = avoid
-2. **FanGraphs K/9** — Strikeouts per 9 innings (team starter avg). 10.0+ = elite, <7.0 = fade
+2. **FanGraphs K/9** — Team starter average (note: FIP-based, not individual K/9 — use as context only)
 3. **K%** — Season strikeout rate. 28%+ = elite
 4. **Opposing Team Lineup K Rate** — Official SO/AB%. >25% = high vulnerability, <18% = pitcher friendly
 5. **Opposing Team Chase Rate** — High chase% lineups = more Ks for pitcher
-6. **Recent Form** — Last 3-5 starts K totals. Is pitcher trending up or down?
+6. **Recent Form** — Last 5 starts K totals. Is pitcher trending up or down?
 7. **Ballpark Factor** — Some parks suppress Ks (Coors, Wrigley), some enhance (Oracle, Tropicana)
 8. **Velocity Trend** — Declining velocity = fewer Ks
 
+K/9 shown is team starter average FIP data — use whiff rate and statcast K% as primary individual pitcher signals.
+
 ### Grade Calibration Rules:
-- **Grade A**: K/9 > 10.0 AND opposing lineup K rate > 23% AND whiff rate > 28% — all three required
-- **Grade B**: K/9 > 8.8 AND opposing lineup K rate > 20% AND whiff rate > 24%
+- **Grade A**: whiff rate >28% AND statcast K% >26% AND opposing lineup K rate >23% — all three required
+- **Grade B**: whiff rate >24% AND statcast K% >22% AND opposing lineup K rate >20%
 - **Grade C**: any single strong signal but others missing or insufficient data
-- **PASS**: K/9 < 7.0 OR opposing lineup K rate < 18% OR TBD pitcher OR insufficient data
-- If pitcher FIP is N/A AND K/9 is N/A (no confirmed stats): cap grade at C, note "Limited data — grade provisional"
+- **PASS**: opposing lineup K rate < 18% OR TBD pitcher OR insufficient data
+- If pitcher FIP is N/A AND statcast K% is N/A (no confirmed stats): cap grade at C, note "Limited data — grade provisional"
 
 ### When to recommend OVER:
 - Whiff rate 28%+ AND opposing team K% 25%+
-- K/9 above 10.0 with favorable matchup
 - Pitcher trending up in Ks last 3 starts
 - Favorable ballpark factor
 
 ### When to recommend UNDER:
 - Pitcher velocity declining (1+ mph drop)
 - Facing lineup with low K rate (<18%)
-- K/9 below 7.0
 - Outdoor stadium with wind blowing in
 
 ### When to PASS:
@@ -104,14 +105,43 @@ Your ONLY job is to find value in pitcher strikeout over/under props.
   "dailySummary": "1 sentence overview of today's K landscape"
 }
 
+If no props meet threshold, return exactly:
+{ "props": [], "passPitchers": ["reason for each"], "dailySummary": "No edges today — brief explanation" }
+
 Return up to 5 props. Only recommend when edge is clear. Quality over quantity.`;
+
+// ─── PROMPT HELPERS ───────────────────────────────────────────────────────────
+
+function formatGameLog(log) {
+  if (!log || log.length === 0) return 'N/A';
+  return log.map(s => `${s.strikeouts}K`).join(', ') + ' (last 5 starts)';
+}
+
+function formatVeloTrend(trend) {
+  if (!trend) return 'N/A';
+  if (trend.trend === 'up') return `UP ${Math.abs(trend.deltaMph)}mph vs season avg`;
+  if (trend.trend === 'down') return `DOWN ${Math.abs(trend.deltaMph)}mph vs season avg`;
+  return 'STABLE';
+}
+
+function formatPropLine(propLine) {
+  if (!propLine) return 'No line available';
+  const overStr = propLine.overOdds > 0 ? `+${propLine.overOdds}` : `${propLine.overOdds}`;
+  const underStr = propLine.underOdds > 0 ? `+${propLine.underOdds}` : `${propLine.underOdds}`;
+  return `${propLine.line} (OVER ${overStr} / UNDER ${underStr}, ${propLine.book})`;
+}
+
+// ─── PROMPT BUILDER ───────────────────────────────────────────────────────────
 
 /**
  * Build the strikeout analysis prompt with real data.
- * fgDataMap: abbr → FanGraphs pitching data ({ k9, bb9, ... })
- * kRateMap:  abbr → team hitting K rate data ({ strikeoutRate, strikeoutsPerGame })
+ * fgDataMap:    abbr → FanGraphs pitching data ({ k9, bb9, ... })
+ * kRateMap:     abbr → team hitting K rate data ({ strikeoutRate, strikeoutsPerGame })
+ * gameLogMap:   pitcherId → [{ date, strikeouts, inningsPitched, result }]
+ * veloTrendMap: pitcherName.toLowerCase() → { seasonAvgVelo, last5AvgVelo, trend, deltaMph }
+ * propLinesMap: pitcherName.toLowerCase() → { line, overOdds, underOdds, book }
  */
-function buildStrikeoutPrompt(games, enrichedData, fgDataMap, kRateMap) {
+function buildStrikeoutPrompt(games, enrichedData, fgDataMap, kRateMap, gameLogMap, veloTrendMap, propLinesMap) {
   const season = new Date().getFullYear();
   const gameData = games.map(g => {
     const homeAbbr = TEAM_NAME_MAP[g.home_team] || g.home_team.split(' ').pop().slice(0,3).toUpperCase();
@@ -134,15 +164,8 @@ function buildStrikeoutPrompt(games, enrichedData, fgDataMap, kRateMap) {
     const hpOppKRate = kRateMap[awayAbbr] || null;  // home pitcher's opponent is away team
     const apOppKRate = kRateMap[homeAbbr] || null;  // away pitcher's opponent is home team
 
-    // K/9 signal markers
     const hpK9 = hpFG?.k9 ? parseFloat(hpFG.k9) : null;
     const apK9 = apFG?.k9 ? parseFloat(apFG.k9) : null;
-    const hpK9Signal = hpK9 != null
-      ? (hpK9 > 10.0 ? '⚡ ELITE K RATE — top tier strikeout candidate' : hpK9 < 7.0 ? '⛔ BELOW AVG K RATE — fade strikeout props' : '')
-      : '';
-    const apK9Signal = apK9 != null
-      ? (apK9 > 10.0 ? '⚡ ELITE K RATE — top tier strikeout candidate' : apK9 < 7.0 ? '⛔ BELOW AVG K RATE — fade strikeout props' : '')
-      : '';
 
     // Opposing lineup K rate signal
     const hpOppKSignal = hpOppKRate?.strikeoutRate != null
@@ -154,16 +177,25 @@ function buildStrikeoutPrompt(games, enrichedData, fgDataMap, kRateMap) {
         : apOppKRate.strikeoutRate < 18 ? '🛡️ LOW K RATE LINEUP — strong UNDER lean on K props' : '')
       : '';
 
+    // Game log, velo trend, prop lines
+    const hpGameLog = formatGameLog(gameLogMap[hp.id]);
+    const apGameLog = formatGameLog(gameLogMap[ap.id]);
+    const hpVeloTrend = formatVeloTrend(veloTrendMap[hp.name?.toLowerCase()]);
+    const apVeloTrend = formatVeloTrend(veloTrendMap[ap.name?.toLowerCase()]);
+    const hpPropLine = formatPropLine(propLinesMap[hp.name?.toLowerCase()]);
+    const apPropLine = formatPropLine(propLinesMap[ap.name?.toLowerCase()]);
+
     return `GAME: ${g.away_team} @ ${g.home_team}
 HOME PITCHER: ${hp.name || 'TBD'} (${homeAbbr})
+  K PROP LINE: ${hpPropLine}
   ERA: ${hp.era || 'N/A'} | WHIP: ${hp.whip || 'N/A'} | IP: ${hp.inningsPitched || 'N/A'}
   K%: ${hpSavant.kPercent || 'N/A'} | Whiff%: ${hpSavant.whiffPercent || 'N/A'}
   Hard Hit%: ${hpSavant.hardHitPercent || 'N/A'} | Velo: ${hpSavant.avgVelocity || 'N/A'}mph
-  Last 5: ${hp.lastFive || 'N/A'}
+  Velo trend: ${hpVeloTrend}
+  Recent K totals: ${hpGameLog}
   FANGRAPHS ADVANCED METRICS:
   K/9: ${hpFG?.k9 || 'N/A'} (league avg: 8.8) | BB/9: ${hpFG?.bb9 || 'N/A'} (league avg: 3.2)
   K/9 vs league avg: ${hpK9 != null ? (hpK9 - 8.8).toFixed(1) + ' above/below avg' : 'N/A'}
-  ${hpK9Signal}
   OPPOSING LINEUP STRIKEOUT VULNERABILITY:
   Team K rate: ${hpOppKRate?.strikeoutRate != null ? hpOppKRate.strikeoutRate + '%' : 'N/A'} (league avg: 22.4%)
   K's per game: ${hpOppKRate?.strikeoutsPerGame ?? 'N/A'}
@@ -172,14 +204,15 @@ HOME PITCHER: ${hp.name || 'TBD'} (${homeAbbr})
   Ballpark K Factor: ${hpFactor}
 
 AWAY PITCHER: ${ap.name || 'TBD'} (${awayAbbr})
+  K PROP LINE: ${apPropLine}
   ERA: ${ap.era || 'N/A'} | WHIP: ${ap.whip || 'N/A'} | IP: ${ap.inningsPitched || 'N/A'}
   K%: ${apSavant.kPercent || 'N/A'} | Whiff%: ${apSavant.whiffPercent || 'N/A'}
   Hard Hit%: ${apSavant.hardHitPercent || 'N/A'} | Velo: ${apSavant.avgVelocity || 'N/A'}mph
-  Last 5: ${ap.lastFive || 'N/A'}
+  Velo trend: ${apVeloTrend}
+  Recent K totals: ${apGameLog}
   FANGRAPHS ADVANCED METRICS:
   K/9: ${apFG?.k9 || 'N/A'} (league avg: 8.8) | BB/9: ${apFG?.bb9 || 'N/A'} (league avg: 3.2)
   K/9 vs league avg: ${apK9 != null ? (apK9 - 8.8).toFixed(1) + ' above/below avg' : 'N/A'}
-  ${apK9Signal}
   OPPOSING LINEUP STRIKEOUT VULNERABILITY:
   Team K rate: ${apOppKRate?.strikeoutRate != null ? apOppKRate.strikeoutRate + '%' : 'N/A'} (league avg: 22.4%)
   K's per game: ${apOppKRate?.strikeoutsPerGame ?? 'N/A'}
@@ -190,6 +223,8 @@ AWAY PITCHER: ${ap.name || 'TBD'} (${awayAbbr})
 
   return `Today's ${season} MLB slate — find the best strikeout prop opportunities:\n\n${gameData}\n\nAnalyze each pitcher and return props where you have a clear edge. JSON only.`;
 }
+
+// ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
 
 /**
  * Main strikeout agent function
@@ -232,7 +267,49 @@ async function getStrikeoutProps(games, enrichedData) {
 
   await Promise.all(fetchPromises);
 
-  const userMessage = buildStrikeoutPrompt(games, enrichedData, fgDataMap, kRateMap);
+  // Second parallel fetch: per-pitcher game logs, velocity trends, and prop lines
+  const gameLogMap   = {};  // pitcherId → [{ date, strikeouts, inningsPitched, result }]
+  const veloTrendMap = {};  // pitcherName.toLowerCase() → { seasonAvgVelo, last5AvgVelo, trend, deltaMph }
+  let propLinesMap   = {};  // pitcherName.toLowerCase() → { line, overOdds, underOdds, book }
+
+  const enrichFetchPromises = [];
+  const seenPitcherIds   = new Set();
+  const seenPitcherNames = new Set();
+
+  for (const g of games) {
+    const homeAbbr  = TEAM_NAME_MAP[g.home_team] || g.home_team.split(' ').pop().slice(0,3).toUpperCase();
+    const awayAbbr  = TEAM_NAME_MAP[g.away_team] || g.away_team.split(' ').pop().slice(0,3).toUpperCase();
+    const gameKey   = `${awayAbbr}_${homeAbbr}`;
+    const enriched  = enrichedData[gameKey] || {};
+
+    const hpId   = enriched.homePitcher?.id;
+    const apId   = enriched.awayPitcher?.id;
+    const hpName = enriched.homePitcher?.name;
+    const apName = enriched.awayPitcher?.name;
+
+    if (hpId && !seenPitcherIds.has(hpId)) {
+      seenPitcherIds.add(hpId);
+      enrichFetchPromises.push(fetchPitcherGameLog(hpId).then(d => { gameLogMap[hpId] = d; }));
+    }
+    if (apId && !seenPitcherIds.has(apId)) {
+      seenPitcherIds.add(apId);
+      enrichFetchPromises.push(fetchPitcherGameLog(apId).then(d => { gameLogMap[apId] = d; }));
+    }
+    if (hpName && !seenPitcherNames.has(hpName.toLowerCase())) {
+      seenPitcherNames.add(hpName.toLowerCase());
+      enrichFetchPromises.push(fetchPitcherVelocityTrend(hpName).then(d => { veloTrendMap[hpName.toLowerCase()] = d; }));
+    }
+    if (apName && !seenPitcherNames.has(apName.toLowerCase())) {
+      seenPitcherNames.add(apName.toLowerCase());
+      enrichFetchPromises.push(fetchPitcherVelocityTrend(apName).then(d => { veloTrendMap[apName.toLowerCase()] = d; }));
+    }
+  }
+
+  enrichFetchPromises.push(fetchKPropLines(games).then(d => { propLinesMap = d; }));
+
+  await Promise.all(enrichFetchPromises);
+
+  const userMessage = buildStrikeoutPrompt(games, enrichedData, fgDataMap, kRateMap, gameLogMap, veloTrendMap, propLinesMap);
 
   const res = await fetch(ANTHROPIC_API, {
     method: 'POST',
@@ -242,8 +319,8 @@ async function getStrikeoutProps(games, enrichedData) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-opus-4-6',
-      max_tokens: 2000,
+      model: 'claude-opus-4-5',
+      max_tokens: 4000,
       system: STRIKEOUT_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
     }),

@@ -243,24 +243,60 @@ const MLB_API_TEAM_MAP = {
 
 // ─── BASEBALL SAVANT INTEGRATION ─────────────────────────────────────────────
 
+const SAVANT_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.5',
+  'Referer': 'https://baseballsavant.mlb.com/',
+};
+
+/**
+ * Parse a simple CSV string into an array of objects.
+ * Handles quoted fields (including commas inside quotes).
+ */
+function parseSavantCsv(text) {
+  if (!text || text.trimStart().startsWith('<')) return null;
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) return null;
+  const parseRow = (line) => {
+    const fields = [];
+    let cur = '', inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQuote = !inQuote; }
+      else if (ch === ',' && !inQuote) { fields.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+    fields.push(cur);
+    return fields;
+  };
+  const headers = parseRow(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = parseRow(line);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h.trim()] = (vals[i] || '').trim(); });
+    return obj;
+  });
+}
+
 /**
  * Fetch pitcher statcast data from Baseball Savant
  * Returns whiff rate, strikeout rate, hard hit rate, spin rate, velocity
  */
 async function fetchPitcherStatcast(pitcherName, season) {
   try {
-    // Baseball Savant search API
-    const url = `https://baseballsavant.mlb.com/leader/custom?year=${season}&type=pitcher&filter=&sort=4&sortDir=desc&min=10&selections=k_percent,whiff_percent,hard_hit_percent,avg_best_speed,spin_rate_formatted&limit=500`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'EdgeSeeker/1.0' }
-    });
-    const data = await res.json();
+    const url = `https://baseballsavant.mlb.com/leaderboard/custom?year=${season}&type=pitcher&filter=&sort=4&sortDir=desc&min=10&selections=k_percent,whiff_percent,hard_hit_percent,avg_best_speed,spin_rate_formatted&limit=500&csv=true`;
+    const res = await fetch(url, { headers: SAVANT_HEADERS });
+    const data = parseSavantCsv(await res.text());
+    if (!data) return null;
 
-    // Find pitcher by name
-    const pitcher = data?.find(p =>
-      p.player_name?.toLowerCase().includes(pitcherName.toLowerCase().split(' ').pop()) ||
-      pitcherName.toLowerCase().includes(p.player_name?.toLowerCase().split(', ')[0] || '')
-    );
+    // CSV has "last_name, first_name" in player_name field; match by last name or first name
+    const last = pitcherName.toLowerCase().split(' ').pop();
+    const first = pitcherName.toLowerCase().split(' ')[0];
+    const pitcher = data.find(p => {
+      const name = p['last_name, first_name']?.toLowerCase() || '';
+      return name.startsWith(last + ',') || name.endsWith(', ' + first) || name.includes(last);
+    });
 
     if (!pitcher) return null;
 
@@ -278,48 +314,61 @@ async function fetchPitcherStatcast(pitcherName, season) {
 }
 
 /**
- * Fetch team batting statcast data
- * Returns hard hit rate, barrel rate, chase rate, platoon splits
+ * Fetch team batting data from the MLB Stats API.
+ * Returns K%, BB%, AVG, OPS at the team level, plus the top individual hitter.
+ * (Chase% and hard-hit% require Savant team filtering which is unavailable server-side.)
  */
 async function fetchTeamBattingStatcast(teamAbbr, season) {
   try {
-    const url = `https://baseballsavant.mlb.com/leader/custom?year=${season}&type=batter&filter=&sort=4&sortDir=desc&min=50&selections=batting_avg,on_base_plus_slg,k_percent,bb_percent,hard_hit_percent,barrel_batted_rate,chase_percent&limit=1000`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'EdgeSeeker/1.0' }
-    });
-    const data = await res.json();
+    const teamId = MLB_TEAM_IDS[teamAbbr];
+    if (!teamId) return null;
 
-    // Filter by team
-    const teamPlayers = data?.filter(p => p.team_abbrev === teamAbbr) || [];
-    if (teamPlayers.length === 0) return null;
+    // Fetch team-level aggregate hitting stats
+    const teamUrl = `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=season&group=hitting&season=${season}&gameType=R`;
+    const rosterUrl = `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=season&group=hitting&season=${season}&gameType=R&playerPool=All`;
 
-    // Calculate team averages
-    const avg = (key) => {
-      const vals = teamPlayers.map(p => parseFloat(p[key] || 0)).filter(v => v > 0);
-      return vals.length > 0 ? (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1) : 'N/A';
-    };
+    const [teamRes, rosterRes] = await Promise.all([
+      fetch(teamUrl).then(r => r.json()),
+      fetch(rosterUrl).then(r => r.json()),
+    ]);
 
-    // Find hottest batter (highest OPS)
-    const hotBatter = teamPlayers.sort((a,b) =>
-      parseFloat(b.on_base_plus_slg || 0) - parseFloat(a.on_base_plus_slg || 0)
+    const teamStat = teamRes.stats?.[0]?.splits?.[0]?.stat;
+    if (!teamStat) return null;
+
+    const pa = parseInt(teamStat.plateAppearances || 1);
+    const teamKPct = pa > 0 ? ((parseInt(teamStat.strikeOuts || 0) / pa) * 100).toFixed(1) : 'N/A';
+    const teamBBPct = pa > 0 ? ((parseInt(teamStat.baseOnBalls || 0) / pa) * 100).toFixed(1) : 'N/A';
+
+    // Find hot batter (highest OPS among qualifiers)
+    const splits = rosterRes.stats?.[0]?.splits || [];
+    const qualifiers = splits.filter(s => parseInt(s.stat?.plateAppearances || 0) >= 20);
+    const hotSplit = qualifiers.sort((a, b) =>
+      parseFloat(b.stat?.ops || 0) - parseFloat(a.stat?.ops || 0)
     )[0];
 
+    const hotBatter = hotSplit ? {
+      name: hotSplit.player?.fullName || 'Unknown',
+      avg: hotSplit.stat?.avg || '.000',
+      ops: hotSplit.stat?.ops || '.000',
+      hardHitPct: 'N/A',
+      barrelRate: 'N/A',
+      kPct: hotSplit.stat?.plateAppearances > 0
+        ? ((parseInt(hotSplit.stat.strikeOuts || 0) / parseInt(hotSplit.stat.plateAppearances)) * 100).toFixed(1)
+        : 'N/A',
+    } : null;
+
     return {
-      teamHardHitPct: avg('hard_hit_percent'),
-      teamBarrelRate: avg('barrel_batted_rate'),
-      teamChasePct: avg('chase_percent'),
-      teamKPct: avg('k_percent'),
-      hotBatter: hotBatter ? {
-        name: hotBatter.player_name?.split(', ').reverse().join(' ') || 'Unknown',
-        avg: hotBatter.batting_avg || '.000',
-        ops: hotBatter.on_base_plus_slg || '.000',
-        hardHitPct: hotBatter.hard_hit_percent || '0',
-        barrelRate: hotBatter.barrel_batted_rate || '0',
-        kPct: hotBatter.k_percent || '0',
-      } : null,
+      teamHardHitPct: 'N/A',
+      teamBarrelRate: 'N/A',
+      teamChasePct: 'N/A',
+      teamKPct,
+      teamBBPct,
+      teamAvg: teamStat.avg || 'N/A',
+      teamOps: teamStat.ops || 'N/A',
+      hotBatter,
     };
   } catch (err) {
-    console.error('Savant batting fetch error:', err.message);
+    console.error('Team batting fetch error:', err.message);
     return null;
   }
 }
@@ -331,9 +380,7 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
 async function fetchPlatoonSplits(pitcherName, season) {
   try {
     const url = `https://baseballsavant.mlb.com/platoon-usage?year=${season}&type=pitcher&min=10`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'EdgeSeeker/1.0' }
-    });
+    const res = await fetch(url, { headers: SAVANT_HEADERS });
     const data = await res.json();
 
     const pitcher = data?.find(p =>
@@ -610,6 +657,84 @@ async function enrichPicks(picks) {
 }
 
 /**
+ * Fetch the last 5 pitching starts from the MLB Stats API game log.
+ * pitcherId: numeric MLB player ID
+ * Returns [{ date, strikeouts, inningsPitched, result }] or []
+ */
+async function fetchPitcherGameLog(pitcherId) {
+  if (!pitcherId) return [];
+  const url = `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=2026&sportId=1`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const splits = data.stats?.[0]?.splits;
+    if (!splits || splits.length === 0) return [];
+
+    return splits.slice(-5).map(s => {
+      const d = new Date(s.date);
+      const date = `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+      return {
+        date,
+        strikeouts: parseInt(s.stat?.strikeOuts ?? 0),
+        inningsPitched: s.stat?.inningsPitched ?? '0.0',
+        result: s.stat?.wins > 0 ? 'W' : s.stat?.losses > 0 ? 'L' : 'ND',
+      };
+    });
+  } catch (err) {
+    console.error(`fetchPitcherGameLog error for pitcherId ${pitcherId}:`, err.message);
+    return [];
+  }
+}
+
+/**
+ * Fetch Statcast pitch-level data for a pitcher and compute velocity trend.
+ * pitcherName: full name string, e.g. "Gerrit Cole"
+ * Returns { seasonAvgVelo, last5AvgVelo, trend: 'up'|'down'|'stable', deltaMph } or null
+ */
+async function fetchPitcherVelocityTrend(pitcherName) {
+  if (!pitcherName) return null;
+  const today = new Date().toISOString().split('T')[0];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const encodedName = encodeURIComponent(pitcherName);
+  const url = `https://baseballsavant.mlb.com/statcast_search/csv?player_type=pitcher&player_lookup_type=name&player_search_full=${encodedName}&type=details&game_date_gt=${thirtyDaysAgo}&game_date_lt=${today}`;
+
+  try {
+    const res = await fetch(url, { headers: SAVANT_HEADERS });
+    const text = await res.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return null;
+
+    const headers = lines[0].split(',');
+    const veloIdx = headers.indexOf('release_speed');
+    const dateIdx = headers.indexOf('game_date');
+    if (veloIdx === -1 || dateIdx === -1) return null;
+
+    const rows = lines.slice(1).map(line => {
+      const cols = line.split(',');
+      return { date: cols[dateIdx], velo: parseFloat(cols[veloIdx]) };
+    }).filter(r => !isNaN(r.velo) && r.velo > 0);
+
+    if (rows.length < 10) return null;
+
+    const seasonAvgVelo = parseFloat((rows.reduce((sum, r) => sum + r.velo, 0) / rows.length).toFixed(1));
+
+    // Get unique game dates sorted descending, take last 5
+    const uniqueDates = [...new Set(rows.map(r => r.date))].sort().slice(-5);
+    const last5Rows = rows.filter(r => uniqueDates.includes(r.date));
+    if (last5Rows.length === 0) return null;
+
+    const last5AvgVelo = parseFloat((last5Rows.reduce((sum, r) => sum + r.velo, 0) / last5Rows.length).toFixed(1));
+    const deltaMph = parseFloat((last5AvgVelo - seasonAvgVelo).toFixed(1));
+    const trend = deltaMph > 0.3 ? 'up' : deltaMph < -0.3 ? 'down' : 'stable';
+
+    return { seasonAvgVelo, last5AvgVelo, trend, deltaMph };
+  } catch (err) {
+    console.error(`fetchPitcherVelocityTrend error for ${pitcherName}:`, err.message);
+    return null;
+  }
+}
+
+/**
  * Return the current enriched cache without re-fetching.
  * Returns null if cache is cold or expired.
  */
@@ -617,4 +742,4 @@ function getEnrichedCache() {
   return isCacheValid() ? enrichCache.data : null;
 }
 
-module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchTeamStrikeoutRate, fetchPitcherLastStart, STADIUM_COORDS };
+module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchTeamStrikeoutRate, fetchPitcherLastStart, fetchPitcherGameLog, fetchPitcherVelocityTrend, STADIUM_COORDS };

@@ -10,7 +10,9 @@
  * No financial outcome language, no betting advice.
  */
 
-const FREE_SYSTEM_PROMPT = `You are Edge Seeker's AI probability model analyst. You are sharp, direct, and data-driven. You think like a professional sabermetrician with deep knowledge of baseball probability modeling.
+const FREE_SYSTEM_PROMPT = `## Season Context Last Audited: 2026 Opening Day — review monthly at baseball-reference.com/leagues/majors/2026.shtml
+
+You are Edge Seeker's AI probability model analyst. You are sharp, direct, and data-driven. You think like a professional sabermetrician with deep knowledge of baseball probability modeling.
 
 Your job is to analyze today's MLB odds data and identify the single highest-confidence probability discrepancy using edge percentage, implied probability, and Kelly criterion sizing.
 
@@ -64,9 +66,12 @@ Always respond with ONLY valid JSON in exactly this format:
 3. Always include the Kelly % as a proportional reference figure
 4. If two picks are close, always select the higher confidence one
 5. Respond ONLY with JSON — nothing else
-6. Never use financial outcome language — this is probability analysis only`;
+6. Never use financial outcome language — this is probability analysis only
+7. If true probability discrepancy cannot be clearly identified, output PASS with this exact JSON: { "pick": "PASS", "grade": "PASS", "reasoning": "No discrepancy meets minimum threshold today." }`;
 
-const PREMIUM_SYSTEM_PROMPT = `You are Edge Seeker's elite AI probability model — the premium tier. You are one of the sharpest baseball analysts in the world. You think like a combination of a sabermetrician, a professional line analyst, and a Las Vegas oddsmaker.
+const PREMIUM_SYSTEM_PROMPT = `## Season Context Last Audited: 2026 Opening Day — review monthly at baseball-reference.com/leagues/majors/2026.shtml
+
+You are Edge Seeker's elite AI probability model — the premium tier. You are one of the sharpest baseball analysts in the world. You think like a combination of a sabermetrician, a professional line analyst, and a Las Vegas oddsmaker.
 
 You have access to comprehensive data: live odds, Poisson edge calculations, pitcher matchup statistics, weather conditions, line movement history, head-to-head records, and injury reports. You synthesize ALL of this to identify the highest-confidence probability discrepancies of the day.
 
@@ -82,6 +87,13 @@ This is the most important factor in MLB probability modeling. Evaluate:
 - Home vs away splits
 - Performance against left/right handed lineups
 A strong pitching matchup discrepancy can add 3-5% to your true edge estimate.
+
+### Step 2b — Over/Under Validation
+For O/U picks: compare expected total vs book total. A valid O/U discrepancy requires:
+- Gap of 0.7+ runs between model expected total and book total
+- Bullpen adjustment and weather adjustment must both support the same direction
+- If gap is 0.5-0.7 runs with only one supporting factor, grade C maximum
+- If adjustments conflict, output PASS on the O/U — do not force a pick
 
 ### Step 3 — Line Movement
 Sharp money leaves footprints. If a line moves in the same direction as your edge, that confirms the discrepancy. If it moves against your edge, reduce confidence by 15 points.
@@ -141,6 +153,7 @@ Respond with ONLY valid JSON:
 - B:  Edge 5-7%, Confidence 50-60
 - C:  Edge 3-5%. All signals below this threshold should be graded C
 - PASS: No discrepancy meets premium standards today
+- PASS JSON: { "picks": [], "passReason": "One sentence explaining why no picks met premium standards today" }
 
 ## Non-Negotiable Rules
 1. true_edge_estimate must account for ALL data, not just the Poisson model
@@ -148,13 +161,17 @@ Respond with ONLY valid JSON:
 3. Always give the key_factor driving the discrepancy
 4. premium_insight must be genuinely useful — not generic
 5. Respond ONLY with JSON
-6. Never use financial outcome language — this is probability analysis only`;
+6. true_edge_estimate must not exceed edge by more than 3%. If it does, you must explicitly state in reasoning why the additional edge is justified by specific data points. Never inflate true_edge_estimate to make a pick look stronger.
+7. Never use financial outcome language — this is probability analysis only`;
 
 function buildFreePrompt(picks) {
   const topPicks = picks.slice(0, 5);
-  const picksText = topPicks.map(p =>
-    `${p.pick}: odds ${p.bookOddsAmerican}, true win prob ${p.trueWinProb}%, book implied ${p.bookImpliedProb}%, edge ${p.edgePct}%, kelly ${p.kellyPct}%, confidence ${p.confidence}/100, bookmaker ${p.bookmaker}`
-  ).join('\n');
+  const picksText = topPicks.map(p => {
+    const home = p.homeTeam || p.home_team || '';
+    const away = p.awayTeam || p.away_team || '';
+    const gameLabel = home && away ? `${away} @ ${home} — ` : '';
+    return `${gameLabel}${p.pick}: odds ${p.bookOddsAmerican}, true win prob ${p.trueWinProb}%, book implied ${p.bookImpliedProb}%, edge ${p.edgePct}%, kelly ${p.kellyPct}%, confidence ${p.confidence}/100, bookmaker ${p.bookmaker}`;
+  }).join('\n');
 
   return `Today's MLB probability analysis from our Poisson model. Identify the single highest-confidence probability discrepancy:\n\n${picksText}\n\nRespond with JSON only.`;
 }
@@ -176,8 +193,8 @@ function buildPremiumPrompt(picks, enrichedData = {}, fanGraphsData = {}) {
     const homeInj = g.homeInjuries || [];
     const awayInj = g.awayInjuries || [];
     const keyInj = g.keyInjuries;
-    const homeFG = fanGraphsData[p.homeTeam ? p.teamAbbr : p.opponentAbbr] || null;
-    const awayFG = fanGraphsData[p.homeTeam ? p.opponentAbbr : p.teamAbbr] || null;
+    const homeFG = fanGraphsData[p.teamAbbr] || null;
+    const awayFG = fanGraphsData[p.opponentAbbr] || null;
 
     return `GAME: ${p.homeTeam} vs ${p.awayTeam}
 Moneyline: ${p.pick} | Odds: ${p.bookOddsAmerican} | Edge: ${p.edgePct}% | Kelly: ${p.kellyPct}% | Confidence: ${p.confidence}/100
