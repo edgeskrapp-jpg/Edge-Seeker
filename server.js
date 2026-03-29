@@ -1372,82 +1372,168 @@ async function verifyPayment(walletAddress) {
   }
 }
 
-// ─── WALLET SPLIT ────────────────────────────────────────────────────────────
+// ─── WALLET SPLIT (v2 — @solana/kit) ─────────────────────────────────────────
+//
+// Key differences from v1:
+//   - createSolanaRpc()        instead of new Connection()
+//   - address()                instead of new PublicKey()
+//   - createKeyPairFromBytes() instead of Keypair.fromSecretKey()
+//   - pipe()                   for building transactions
+//   - simulateTransaction()    before sending — safety net for mainnet
+//   - sendAndConfirmTransactionFactory() instead of sendAndConfirmTransaction()
 
 /**
  * splitPayment(amountSol, payerWallet)
- * Best-effort: splits an incoming SOL payment from REVENUE_WALLET to configured destinations.
- * Treasury portion stays in REVENUE_WALLET (no transfer needed).
- * Requires REVENUE_WALLET_PRIVATE_KEY env var (base58 encoded).
+ *
+ * Best-effort: splits an incoming SOL payment from REVENUE_WALLET
+ * to configured destinations using @solana/kit v2.
+ *
+ * Treasury portion stays in REVENUE_WALLET — no transfer needed.
+ * Requires REVENUE_WALLET_PRIVATE_KEY env var (base58, set in Vercel only).
+ *
+ * This function is always called async and non-blocking — a failure
+ * here never prevents premium access from being granted.
+ *
+ * ⚠️  IRREVERSIBLE ON-CHAIN: transfers real SOL on mainnet.
+ *     REVENUE_WALLET_PRIVATE_KEY must only be set in Vercel env vars.
+ *     Never hardcode or commit private keys.
  */
 async function splitPayment(amountSol, payerWallet) {
   try {
-    const { Connection, PublicKey, Transaction, SystemProgram, Keypair, sendAndConfirmTransaction } = require("@solana/web3.js");
-    const bs58 = require("bs58");
+    const {
+      createSolanaRpc,
+      createSolanaRpcSubscriptions,
+      address,
+      createKeyPairFromBytes,
+      createTransactionMessage,
+      setTransactionMessageFeePayer,
+      setTransactionMessageLifetimeUsingBlockhash,
+      appendTransactionMessageInstructions,
+      signTransactionMessageWithSigners,
+      sendAndConfirmTransactionFactory,
+      getSignatureFromTransaction,
+      lamports,
+      pipe,
+    } = require('@solana/kit');
 
+    const { getTransferSolInstruction } = require('@solana-program/system');
+    const bs58 = require('bs58');
+
+    // ── Guard: skip if private key not configured ─────────────────────────
     const privateKeyEnv = process.env.REVENUE_WALLET_PRIVATE_KEY;
     if (!privateKeyEnv) {
-      console.warn("⚠️  REVENUE_WALLET_PRIVATE_KEY not set — skipping split");
+      console.warn('⚠️  REVENUE_WALLET_PRIVATE_KEY not set — skipping split');
       return;
     }
 
-    const connection = new Connection(SOLANA_RPC, "confirmed");
-    const revenueKeypair = Keypair.fromSecretKey(bs58.decode(privateKeyEnv));
+    // ── Guard: skip if amount too small to be worth splitting ─────────────
+    const MIN_SPLIT_SOL = 0.005;
+    if (amountSol < MIN_SPLIT_SOL) {
+      console.warn(`⚠️  Amount ${amountSol} SOL too small to split — skipping`);
+      return;
+    }
 
+    // ── RPC connection ────────────────────────────────────────────────────
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://rpc.ankr.com/solana';
+    const rpc = createSolanaRpc(rpcUrl);
+    const rpcSubscriptions = createSolanaRpcSubscriptions(
+      rpcUrl.replace('https://', 'wss://')
+    );
+
+    // ── Load keypair from base58 private key ──────────────────────────────
+    const privateKeyBytes = bs58.decode(privateKeyEnv);
+    const revenueKeypair = await createKeyPairFromBytes(privateKeyBytes);
+
+    // ── Calculate split amounts ───────────────────────────────────────────
     const activeSplit = PRIZE_POOL_ENABLED
       ? { operations: 0.70, prizePool: 0.20, treasury: 0.10 }
       : SPLIT_CONFIG;
 
-    const LAMPORTS = 1_000_000_000;
-    const operationsLamports = Math.floor(amountSol * activeSplit.operations * LAMPORTS);
-    const prizePoolLamports  = Math.floor(amountSol * activeSplit.prizePool  * LAMPORTS);
-    const treasuryLamports   = Math.floor(amountSol * activeSplit.treasury   * LAMPORTS);
+    const LAMPORTS_PER_SOL = 1_000_000_000n;
+    const amountLamports = BigInt(Math.floor(amountSol * Number(LAMPORTS_PER_SOL)));
+    const operationsLamports = (amountLamports * BigInt(Math.floor(activeSplit.operations * 100))) / 100n;
+    const prizePoolLamports  = (amountLamports * BigInt(Math.floor(activeSplit.prizePool  * 100))) / 100n;
 
     console.log(`💸 Split for ${payerWallet} — ${amountSol} SOL:`);
-    console.log(`   Operations (${(activeSplit.operations * 100).toFixed(0)}%): ${operationsLamports / LAMPORTS} SOL → ${OPERATIONS_WALLET}`);
+    console.log(`   Operations (${(activeSplit.operations * 100).toFixed(0)}%): ${Number(operationsLamports) / Number(LAMPORTS_PER_SOL)} SOL → ${OPERATIONS_WALLET}`);
     if (PRIZE_POOL_ENABLED) {
-      console.log(`   Prize Pool (${(activeSplit.prizePool * 100).toFixed(0)}%): ${prizePoolLamports / LAMPORTS} SOL → ${PRIZE_POOL_WALLET}`);
+      console.log(`   Prize Pool (${(activeSplit.prizePool * 100).toFixed(0)}%): ${Number(prizePoolLamports) / Number(LAMPORTS_PER_SOL)} SOL → ${PRIZE_POOL_WALLET}`);
     } else {
       console.log(`   Prize Pool: DISABLED (0 SOL)`);
     }
-    console.log(`   Treasury  (${(activeSplit.treasury * 100).toFixed(0)}%): ${treasuryLamports / LAMPORTS} SOL stays in revenue wallet`);
+    console.log(`   Treasury  (${(activeSplit.treasury * 100).toFixed(0)}%): stays in revenue wallet`);
 
+    // ── Build transfer instructions ───────────────────────────────────────
     const instructions = [];
 
-    // Operations transfer
-    if (operationsLamports > 0) {
+    if (operationsLamports > 0n) {
       instructions.push(
-        SystemProgram.transfer({
-          fromPubkey: revenueKeypair.publicKey,
-          toPubkey: new PublicKey(OPERATIONS_WALLET),
-          lamports: operationsLamports,
+        getTransferSolInstruction({
+          source: revenueKeypair,
+          destination: address(OPERATIONS_WALLET),
+          amount: lamports(operationsLamports),
         })
       );
     }
 
-    // Prize pool transfer — only when enabled
-    if (PRIZE_POOL_ENABLED && prizePoolLamports > 0) {
+    if (PRIZE_POOL_ENABLED && prizePoolLamports > 0n) {
       instructions.push(
-        SystemProgram.transfer({
-          fromPubkey: revenueKeypair.publicKey,
-          toPubkey: new PublicKey(PRIZE_POOL_WALLET),
-          lamports: prizePoolLamports,
+        getTransferSolInstruction({
+          source: revenueKeypair,
+          destination: address(PRIZE_POOL_WALLET),
+          amount: lamports(prizePoolLamports),
         })
       );
     }
 
     if (instructions.length === 0) {
-      console.log("   No transfers to execute.");
+      console.log('   No transfers to execute.');
       return;
     }
 
-    const tx = new Transaction().add(...instructions);
-    const sig = await sendAndConfirmTransaction(connection, tx, [revenueKeypair]);
-    console.log(`   ✅ Split tx confirmed: ${sig}`);
+    // ── Fetch latest blockhash ────────────────────────────────────────────
+    const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+    // ── Build transaction using pipe() ────────────────────────────────────
+    const transactionMessage = pipe(
+      createTransactionMessage({ version: 0 }),
+      tx => setTransactionMessageFeePayer(revenueKeypair.address, tx),
+      tx => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+      tx => appendTransactionMessageInstructions(instructions, tx),
+    );
+
+    // ── Simulate before sending ───────────────────────────────────────────
+    console.log('   🔍 Simulating split transaction...');
+    const signedTx = await signTransactionMessageWithSigners(transactionMessage);
+
+    const simulation = await rpc.simulateTransaction(signedTx, {
+      commitment: 'confirmed',
+      sigVerify: true,
+    }).send();
+
+    if (simulation.value.err) {
+      console.error('❌ Split simulation failed — transaction NOT sent:', simulation.value.err);
+      console.error('   Logs:', simulation.value.logs?.join('\n   '));
+      return;
+    }
+
+    console.log('   ✅ Simulation passed — sending split transaction...');
+
+    // ── Send and confirm ──────────────────────────────────────────────────
+    const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
+
+    await sendAndConfirm(signedTx, {
+      commitment: 'confirmed',
+      maxRetries: 3n,
+    });
+
+    const signature = getSignatureFromTransaction(signedTx);
+    console.log(`   ✅ Split tx confirmed: ${signature}`);
+    console.log(`   🔗 https://solscan.io/tx/${signature}`);
 
   } catch (err) {
-    // Best-effort — log but never block premium access
-    console.error("❌ splitPayment error (non-blocking):", err.message);
+    // Best-effort — never block premium access
+    console.error('❌ splitPayment error (non-blocking):', err.message);
   }
 }
 
