@@ -735,6 +735,106 @@ async function fetchPitcherVelocityTrend(pitcherName) {
 }
 
 /**
+ * Fetch batter Statcast data from Baseball Savant.
+ * Returns barrel rate, exit velocity, HR/FB%, fly ball rate, and recent HR counts.
+ */
+async function fetchBatterStatcast(batterName) {
+  if (!batterName) return null;
+  try {
+    const encodedName = encodeURIComponent(batterName);
+    const summaryUrl = `https://baseballsavant.mlb.com/statcast_search/csv?player_type=batter&player_lookup_type=name&player_search_full=${encodedName}&type=summary&season=2026`;
+    const summaryRes = await fetch(summaryUrl, { headers: SAVANT_HEADERS });
+    const summaryText = await summaryRes.text();
+    const summaryData = parseSavantCsv(summaryText);
+    if (!summaryData || summaryData.length === 0) return null;
+
+    const row = summaryData[0];
+
+    const barrelRaw = parseFloat(row['barrel_batted_rate']);
+    const evoRaw    = parseFloat(row['launch_speed_avg']);
+    const hrFbRaw   = parseFloat(row['hr_fb_rate']);
+    const fbPctRaw  = parseFloat(row['fb_pct']);
+
+    const barrelRate = !isNaN(barrelRaw) ? `${barrelRaw.toFixed(1)}%` : null;
+    const exitVelo   = !isNaN(evoRaw)    ? `${evoRaw.toFixed(1)}mph`  : null;
+    const hrPerFB    = !isNaN(hrFbRaw)   ? `${hrFbRaw.toFixed(1)}%`   : null;
+    const fbPct      = !isNaN(fbPctRaw)  ? `${fbPctRaw.toFixed(1)}%`  : null;
+
+    // Fetch last 14 days of pitch-level details to count recent HR game-dates
+    const today        = new Date().toISOString().split('T')[0];
+    const fourteenAgo  = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const sevenAgo     = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const detailsUrl   = `https://baseballsavant.mlb.com/statcast_search/csv?player_type=batter&player_lookup_type=name&player_search_full=${encodedName}&type=details&game_date_gt=${fourteenAgo}&game_date_lt=${today}&season=2026`;
+
+    let recentHR7  = null;
+    let recentHR14 = null;
+
+    try {
+      const detailsRes  = await fetch(detailsUrl, { headers: SAVANT_HEADERS });
+      const detailsText = await detailsRes.text();
+      const detailsData = parseSavantCsv(detailsText);
+
+      if (detailsData && detailsData.length > 0) {
+        // Count rows where events === 'home_run', split by 7 / 14 day windows
+        const hrRows14 = detailsData.filter(r => r['events'] === 'home_run');
+        const hrRows7  = hrRows14.filter(r => r['game_date'] >= sevenAgo);
+        recentHR14 = hrRows14.length;
+        recentHR7  = hrRows7.length;
+      }
+    } catch (_) {
+      // recentHR fields stay null — non-fatal
+    }
+
+    return { barrelRate, exitVelo, hrPerFB, fbPct, recentHR7, recentHR14, hand: null };
+  } catch (err) {
+    console.error(`fetchBatterStatcast error for ${batterName}:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Fetch pitcher HR-allowed Statcast data from Baseball Savant.
+ * Returns HR/9, fly ball rate allowed, barrel% allowed, avg EV allowed.
+ */
+async function fetchPitcherHRStats(pitcherName) {
+  if (!pitcherName) return null;
+  try {
+    const encodedName = encodeURIComponent(pitcherName);
+    const url = `https://baseballsavant.mlb.com/statcast_search/csv?player_type=pitcher&player_lookup_type=name&player_search_full=${encodedName}&type=summary&season=2026`;
+    const res  = await fetch(url, { headers: SAVANT_HEADERS });
+    const text = await res.text();
+    const data = parseSavantCsv(text);
+    if (!data || data.length === 0) return null;
+
+    const row = data[0];
+
+    const hrRaw     = parseFloat(row['hr']);
+    const ipStr     = row['p_formatted_ip'] || '';
+    const barrelRaw = parseFloat(row['barrel_batted_rate']);
+    const evRaw     = parseFloat(row['launch_speed_avg']);
+    const fbRaw     = parseFloat(row['fb_pct']);
+
+    // Parse formatted IP (e.g. "23.1" means 23 full innings + 1 out = 23.333)
+    const ipParts = ipStr.split('.');
+    const fullInnings = parseInt(ipParts[0]) || 0;
+    const outs        = parseInt(ipParts[1]) || 0;
+    const ip          = fullInnings + (outs / 3);
+
+    if (isNaN(hrRaw) || ip < 5) return null;
+
+    const hr9          = ((hrRaw / ip) * 9).toFixed(2);
+    const fbPct        = !isNaN(fbRaw)     ? `${fbRaw.toFixed(1)}%`    : null;
+    const barrelAllowed = !isNaN(barrelRaw) ? `${barrelRaw.toFixed(1)}%` : null;
+    const evAllowed    = !isNaN(evRaw)      ? `${evRaw.toFixed(1)}mph`   : null;
+
+    return { hr9, fbPct, barrelAllowed, evAllowed };
+  } catch (err) {
+    console.error(`fetchPitcherHRStats error for ${pitcherName}:`, err.message);
+    return null;
+  }
+}
+
+/**
  * Return the current enriched cache without re-fetching.
  * Returns null if cache is cold or expired.
  */
@@ -742,4 +842,4 @@ function getEnrichedCache() {
   return isCacheValid() ? enrichCache.data : null;
 }
 
-module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchTeamStrikeoutRate, fetchPitcherLastStart, fetchPitcherGameLog, fetchPitcherVelocityTrend, STADIUM_COORDS };
+module.exports = { enrichPicks, getEnrichedCache, fetchWeather, fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchTeamStrikeoutRate, fetchPitcherLastStart, fetchPitcherGameLog, fetchPitcherVelocityTrend, fetchBatterStatcast, fetchPitcherHRStats, STADIUM_COORDS };

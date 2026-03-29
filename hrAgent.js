@@ -15,6 +15,7 @@
 const fetch = require("node-fetch");
 const { TEAM_NAME_MAP } = require("./mlbStats");
 const { MLB_TEAM_IDS } = require("./cron");
+const { fetchBatterStatcast, fetchPitcherHRStats } = require("./mlbDataEnricher");
 
 const PARK_HR_FACTORS = {
   COL: { hr: 1.40, note: "Coors Field — extreme altitude, ball carries significantly" },
@@ -143,12 +144,12 @@ When barrel rate, exit velocity, and HR/FB% are all N/A (no 2026 Statcast data y
 
 /**
  * Build the HR analysis prompt.
- * games:        array of { home_team, away_team }
- * enrichedData: keyed by `${awayAbbr}_${homeAbbr}`, contains pitchers, batting, weather
- * hrDataMap:    batterName.toLowerCase() → { barrelRate, exitVelo, hrPerFB, recentHR7, recentHR14, hand }
- *               (empty object for now — individual batter Statcast integration coming in Session 2)
+ * games:          array of { home_team, away_team }
+ * enrichedData:   keyed by `${awayAbbr}_${homeAbbr}`, contains pitchers, batting, weather
+ * hrDataMap:      batterName.toLowerCase() → { barrelRate, exitVelo, hrPerFB, recentHR7, recentHR14, hand }
+ * pitcherHRMap:   pitcherName.toLowerCase() → { hr9, fbPct, barrelAllowed, evAllowed }
  */
-function buildHRPrompt(games, enrichedData, hrDataMap) {
+function buildHRPrompt(games, enrichedData, hrDataMap, pitcherHRMap) {
   const season = new Date().getFullYear();
 
   const gameData = games.map(g => {
@@ -207,8 +208,24 @@ function buildHRPrompt(games, enrichedData, hrDataMap) {
       ? awayBatters.join('\n')
       : '  (No lineup data available)';
 
+    // Hot batter Statcast enrichment
+    const hHot = hBat.hotBatter;
+    const aHot = aBat.hotBatter;
+    const hHotHR = hHot ? (hrDataMap[hHot.name?.toLowerCase()] || {}) : null;
+    const aHotHR = aHot ? (hrDataMap[aHot.name?.toLowerCase()] || {}) : null;
+
+    const hHotLine = hHot
+      ? `  HOT BATTER: ${hHot.name || 'N/A'}\n  Statcast: Barrel%=${hHotHR?.barrelRate || 'N/A'} | ExitVelo=${hHotHR?.exitVelo || 'N/A'} | HR/FB=${hHotHR?.hrPerFB || 'N/A'} | HR last 7 days=${hHotHR?.recentHR7 ?? 'N/A'} | HR last 14 days=${hHotHR?.recentHR14 ?? 'N/A'}`
+      : '';
+
+    const aHotLine = aHot
+      ? `  HOT BATTER: ${aHot.name || 'N/A'}\n  Statcast: Barrel%=${aHotHR?.barrelRate || 'N/A'} | ExitVelo=${aHotHR?.exitVelo || 'N/A'} | HR/FB=${aHotHR?.hrPerFB || 'N/A'} | HR last 7 days=${aHotHR?.recentHR7 ?? 'N/A'} | HR last 14 days=${aHotHR?.recentHR14 ?? 'N/A'}`
+      : '';
+
+    const hpHR = pitcherHRMap[hp.name?.toLowerCase()] || {};
+    const apHR = pitcherHRMap[ap.name?.toLowerCase()] || {};
+
     return `GAME: ${g.away_team} @ ${g.home_team}
-NOTE: Individual batter Statcast data not yet integrated — using team-level batting data
 
 HOME PARK: ${homeAbbr} — HR Factor: ${parkFactor}
 
@@ -216,16 +233,18 @@ WEATHER: Temp: ${weather.temp || 'N/A'}°F | Wind: ${windSpeed}mph ${windDir}
   Wind HR Impact: ${windImpact}
 
 HOME PITCHER: ${hp.name || 'TBD'} (${homeAbbr})
-  ERA: ${hp.era || 'N/A'} | WHIP: ${hp.whip || 'N/A'} | HR/9: ${hp.hr9 || 'N/A'} | Hand: ${hp.throws || 'N/A'}
+  ERA: ${hp.era || 'N/A'} | WHIP: ${hp.whip || 'N/A'} | Hand: ${hp.throws || 'N/A'}
+  HR Stats: HR/9=${hpHR.hr9 || 'N/A'} | FB%=${hpHR.fbPct || 'N/A'} | Barrel% allowed=${hpHR.barrelAllowed || 'N/A'} | Avg EV allowed=${hpHR.evAllowed || 'N/A'}
 
 AWAY PITCHER: ${ap.name || 'TBD'} (${awayAbbr})
-  ERA: ${ap.era || 'N/A'} | WHIP: ${ap.whip || 'N/A'} | HR/9: ${ap.hr9 || 'N/A'} | Hand: ${ap.throws || 'N/A'}
+  ERA: ${ap.era || 'N/A'} | WHIP: ${ap.whip || 'N/A'} | Hand: ${ap.throws || 'N/A'}
+  HR Stats: HR/9=${apHR.hr9 || 'N/A'} | FB%=${apHR.fbPct || 'N/A'} | Barrel% allowed=${apHR.barrelAllowed || 'N/A'} | Avg EV allowed=${apHR.evAllowed || 'N/A'}
 
 HOME BATTERS (${homeAbbr}):
-${homeBatterLines}
+${homeBatterLines}${hHotLine ? '\n' + hHotLine : ''}
 
 AWAY BATTERS (${awayAbbr}):
-${awayBatterLines}`;
+${awayBatterLines}${aHotLine ? '\n' + aHotLine : ''}`;
   }).join('\n---\n');
 
   return `Today's ${season} MLB slate — find the best home run prop opportunities:\n\n${gameData}\n\nAnalyze each game and return HR props where you have a clear edge. JSON only.`;
@@ -235,18 +254,39 @@ ${awayBatterLines}`;
 
 /**
  * Main HR props agent function.
- * Individual batter Statcast data (barrel rate, exit velo, HR/FB%) not yet integrated.
- * hrDataMap will be populated in Session 2.
  */
 async function getHRProps(games, enrichedData) {
   if (!games || games.length === 0) {
     return { props: [], dailySummary: 'No games today.' };
   }
 
-  // hrDataMap: individual batter Statcast data — coming in Session 2
-  const hrDataMap = {};
+  // Collect unique pitcher and batter names from enrichedData
+  const pitcherNames = new Set();
+  const batterNames  = new Set();
 
-  const userMessage = buildHRPrompt(games, enrichedData, hrDataMap);
+  for (const key of Object.keys(enrichedData)) {
+    const e = enrichedData[key];
+    if (e.homePitcher?.name) pitcherNames.add(e.homePitcher.name);
+    if (e.awayPitcher?.name) pitcherNames.add(e.awayPitcher.name);
+    if (e.homeBatting?.hotBatter?.name) batterNames.add(e.homeBatting.hotBatter.name);
+    if (e.awayBatting?.hotBatter?.name) batterNames.add(e.awayBatting.hotBatter.name);
+  }
+
+  const pitcherHRMap = {};
+  const hrDataMap    = {};
+
+  await Promise.all([
+    ...[...pitcherNames].map(name =>
+      fetchPitcherHRStats(name).then(d => { if (d) pitcherHRMap[name.toLowerCase()] = d; })
+    ),
+    ...[...batterNames].map(name =>
+      fetchBatterStatcast(name).then(d => { if (d) hrDataMap[name.toLowerCase()] = d; })
+    ),
+  ]);
+
+  console.log(`⚾ HR Agent: fetched HR stats for ${Object.keys(pitcherHRMap).length} pitchers, ${Object.keys(hrDataMap).length} batters`);
+
+  const userMessage = buildHRPrompt(games, enrichedData, hrDataMap, pitcherHRMap);
 
   const res = await fetch(ANTHROPIC_API, {
     method: 'POST',
