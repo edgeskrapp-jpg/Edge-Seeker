@@ -2343,11 +2343,11 @@
   async function fetchSOLBalance(pubkey) {
     try {
       const res = await fetch(`${API_BASE}/api/balance?wallet=${pubkey}`);
+      if (!res.ok) throw new Error('no endpoint');
       const data = await res.json();
       const lamports = data?.lamports || 0;
       const sol = (lamports / 1_000_000_000).toFixed(2);
 
-      // Fetch SOL price in USD
       let usdVal = '';
       try {
         const priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
@@ -2358,10 +2358,10 @@
 
       document.getElementById('solBalanceAmount').textContent = `${sol} SOL`;
       document.getElementById('solBalanceUsd').textContent = usdVal;
-
-    } catch (err) {
-      console.error('Balance fetch error:', err);
-      document.getElementById('solBalanceAmount').textContent = '— SOL';
+    } catch {
+      // Silently show placeholder — endpoint not available
+      const el = document.getElementById('solBalanceAmount');
+      if (el) el.textContent = '— SOL';
     }
   }
 
@@ -4046,6 +4046,7 @@
     ];
 
     const el = document.getElementById('sharpMoneyList');
+    if (!el) return;
 
     // During preseason show placeholder
     const now = new Date();
@@ -4201,6 +4202,7 @@
 
   function renderRecentPicks(picks) {
     const container = document.getElementById('recentPicksList');
+    if (!container) return;
     if (!picks || picks.length === 0) {
       container.innerHTML = `
         <div class="accuracy-empty">
