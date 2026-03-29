@@ -37,6 +37,44 @@ const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
 // ─── FEATURE FLAGS ────────────────────────────────────────────────────────────
 const ODDS_API_UPGRADED = false; // Set to true when on paid plan for historical odds + all sharp books
 
+// ─── INPUT VALIDATORS ─────────────────────────────────────────────────────────
+
+// Solana wallet addresses are base58, 32-44 characters
+const WALLET_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+// Date format YYYY-MM-DD
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+// Valid bet results
+const VALID_RESULTS = ['win', 'loss', 'push', 'void', 'pending'];
+
+// Valid leaderboard types
+const VALID_LEADERBOARD_TYPES = ['all_time', 'monthly', 'weekly'];
+
+function isValidWallet(wallet) {
+  return typeof wallet === 'string' && WALLET_REGEX.test(wallet);
+}
+
+function isValidDate(date) {
+  return typeof date === 'string' && DATE_REGEX.test(date);
+}
+
+function isValidId(id) {
+  return !isNaN(parseInt(id)) && parseInt(id) > 0;
+}
+
+function isValidAmount(amount) {
+  const n = parseFloat(amount);
+  return !isNaN(n) && n > 0 && n < 1000000;
+}
+
+function sanitizeString(str, maxLength = 100) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[<>"'`;]/g, '').trim().slice(0, maxLength);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── TIER DEFINITIONS ─────────────────────────────────────────────────────────
 const FREE_TIER_LAYERS = ['poisson', 'parkFactors', 'elo', 'oddsMovement'];
 const PREMIUM_LAYERS = ['poisson', 'parkFactors', 'elo', 'oddsMovement', 'fip', 'fatigue', 'injuries', 'pinnacle', 'bullpen', 'weather', 'fanGraphs', 'statcast'];
@@ -880,6 +918,9 @@ app.get("/api/picks/premium", async (req, res) => {
     if (!wallet) {
       return res.status(401).json({ error: "Wallet required", message: "Connect your Phantom wallet to access premium picks" });
     }
+    if (!isValidWallet(wallet)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
 
     const payment = await verifyPayment(wallet);
     if (!payment.paid) {
@@ -1146,7 +1187,14 @@ app.post("/api/users/upsert", async (req, res) => {
   try {
     const { wallet_address, username } = req.body;
     if (!wallet_address) return res.status(400).json({ error: "wallet_address required" });
-    const user = await upsertUser(wallet_address, username);
+    if (!isValidWallet(wallet_address)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
+    if (username && typeof username !== 'string') {
+      return res.status(400).json({ error: 'Invalid username' });
+    }
+    const safeUsername = username ? sanitizeString(username, 30) : undefined;
+    const user = await upsertUser(wallet_address, safeUsername);
     res.json({ user });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1155,6 +1203,9 @@ app.post("/api/users/upsert", async (req, res) => {
 
 app.get("/api/users/:wallet", async (req, res) => {
   try {
+    if (!isValidWallet(req.params.wallet)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
     const user = await getUser(req.params.wallet);
     const points = await getPoints(req.params.wallet);
     res.json({ user, points });
@@ -1170,6 +1221,15 @@ app.post("/api/bets", async (req, res) => {
     const { wallet_address, pick, amount, odds, book, result, source, is_edge_pick } = req.body;
     if (!wallet_address || !pick || !amount || !odds) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+    if (!isValidWallet(wallet_address)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
+    if (!isValidAmount(amount)) {
+      return res.status(400).json({ error: 'Invalid amount — must be a positive number under 1,000,000' });
+    }
+    if (result && !VALID_RESULTS.includes(result)) {
+      return res.status(400).json({ error: `Invalid result — must be one of: ${VALID_RESULTS.join(', ')}` });
     }
 
     // Get existing bets to calculate streak
@@ -1208,6 +1268,9 @@ app.post("/api/bets", async (req, res) => {
 
 app.get("/api/bets/:wallet", async (req, res) => {
   try {
+    if (!isValidWallet(req.params.wallet)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
     const bets = await getUserBets(req.params.wallet);
     res.json({ bets });
   } catch (err) {
@@ -1218,6 +1281,12 @@ app.get("/api/bets/:wallet", async (req, res) => {
 app.patch("/api/bets/:id/result", async (req, res) => {
   try {
     const { result, wallet_address, is_edge_pick, streak_count } = req.body;
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid pick ID' });
+    }
+    if (!VALID_RESULTS.includes(result)) {
+      return res.status(400).json({ error: `Invalid result — must be one of: ${VALID_RESULTS.join(', ')}` });
+    }
     const points = calculateBetPoints({
       result,
       source: req.body.source || 'manual',
@@ -1236,8 +1305,10 @@ app.patch("/api/bets/:id/result", async (req, res) => {
 
 app.get("/api/leaderboard", async (req, res) => {
   try {
-    const type = req.query.type || 'all_time';
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const type = VALID_LEADERBOARD_TYPES.includes(req.query.type)
+      ? req.query.type
+      : 'all_time';
     const board = await getLeaderboard(type, limit);
     res.json({ leaderboard: board, type });
   } catch (err) {
@@ -1247,6 +1318,9 @@ app.get("/api/leaderboard", async (req, res) => {
 
 app.get("/api/points/:wallet", async (req, res) => {
   try {
+    if (!isValidWallet(req.params.wallet)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
     const points = await getPoints(req.params.wallet);
     const bets = await getUserBets(req.params.wallet);
     const resolved = bets.filter(b => b.result !== 'pending');
@@ -1585,6 +1659,9 @@ app.get("/api/agent/premium", async (req, res) => {
         message: "Connect your Phantom wallet to access premium picks"
       });
     }
+    if (!isValidWallet(wallet)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
 
     // Verify payment on-chain
     const payment = await verifyPayment(wallet);
@@ -1681,6 +1758,14 @@ app.get("/api/agent/game-analysis", async (req, res) => {
     const { home, away, wallet } = req.query;
     if (!home || !away) return res.status(400).json({ error: "home and away required" });
     if (!wallet) return res.status(401).json({ error: "Wallet required" });
+    if (!isValidWallet(wallet)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
+    const safeHome = sanitizeString(home, 50);
+    const safeAway = sanitizeString(away, 50);
+    if (!safeHome || !safeAway) {
+      return res.status(400).json({ error: 'Invalid team name' });
+    }
 
     // Verify payment
     const payment = await verifyPayment(wallet);
@@ -1700,14 +1785,14 @@ app.get("/api/agent/game-analysis", async (req, res) => {
     let gamePicks = [];
     if (isCacheValid(cache.picks)) {
       gamePicks = (cache.picks.data?.picks || []).filter(p =>
-        p.homeTeam === home && p.awayTeam === away
+        p.homeTeam === safeHome && p.awayTeam === safeAway
       );
     }
 
     // Fetch enriched data
-    const enrichedData = await enrichPicks([{ home_team: home, away_team: away }]);
-    const homeAbbr = home.split(" ").pop().substring(0, 3).toUpperCase();
-    const awayAbbr = away.split(" ").pop().substring(0, 3).toUpperCase();
+    const enrichedData = await enrichPicks([{ home_team: safeHome, away_team: safeAway }]);
+    const homeAbbr = safeHome.split(" ").pop().substring(0, 3).toUpperCase();
+    const awayAbbr = safeAway.split(" ").pop().substring(0, 3).toUpperCase();
     const gameKey = `${awayAbbr}_${homeAbbr}`;
     const gameEnriched = enrichedData[gameKey] || {};
 
@@ -1720,7 +1805,7 @@ app.get("/api/agent/game-analysis", async (req, res) => {
 5. Weather impact
 6. Sharp money observation
 
-Game: ${away} @ ${home}
+Game: ${safeAway} @ ${safeHome}
 ${gamePicks.length > 0 ? `Moneyline Edge: ${gamePicks[0].pick} +${gamePicks[0].edgePct}% edge` : 'No moneyline edge detected'}
 ${gameEnriched.homePitcher ? `Home Pitcher: ${gameEnriched.homePitcher.name} ERA:${gameEnriched.homePitcher.era} WHIP:${gameEnriched.homePitcher.whip} Last5:${gameEnriched.homePitcher.lastFive}` : ''}
 ${gameEnriched.awayPitcher ? `Away Pitcher: ${gameEnriched.awayPitcher.name} ERA:${gameEnriched.awayPitcher.era} WHIP:${gameEnriched.awayPitcher.whip} Last5:${gameEnriched.awayPitcher.lastFive}` : ''}
@@ -2336,6 +2421,9 @@ app.post("/api/accuracy/log", async (req, res) => {
     if (!picks || !Array.isArray(picks)) {
       return res.status(400).json({ error: "picks array required" });
     }
+    if (date && !isValidDate(date)) {
+      return res.status(400).json({ error: 'Invalid date format — use YYYY-MM-DD' });
+    }
 
     const { supabaseQuery } = require("./supabase");
     const pickDate = date || new Date().toISOString().split('T')[0];
@@ -2389,6 +2477,12 @@ app.patch("/api/accuracy/result/:id", async (req, res) => {
     const { secret, result, notes } = req.body;
     if (secret !== process.env.ADMIN_SECRET) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid pick ID' });
+    }
+    if (!VALID_RESULTS.includes(result)) {
+      return res.status(400).json({ error: `Invalid result — must be one of: ${VALID_RESULTS.join(', ')}` });
     }
 
     const { supabaseQuery } = require("./supabase");
