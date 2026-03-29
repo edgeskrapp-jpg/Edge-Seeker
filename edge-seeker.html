@@ -8,27 +8,37 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0A0E1A;
-    --surface: #0D1525;
-    --surface2: #141C2E;
-    --border: #1E3A6E;
-    --accent: #F5A623;
-    --accent-dim: #F5A62340;
-    --accent-faint: #F5A62310;
-    --accent-glow: #F5A62360;
-    --accent2: #7B61FF;
+    --bg: #060D1A;
+    --surface: #0A1628;
+    --surface2: #0F1E35;
+    --border: #1A2535;
+    --accent: #C1440E;
+    --accent-dim: #C1440E40;
+    --accent-faint: #C1440E10;
+    --accent-glow: #C1440E60;
+    --accent2: #1B4F8A;
     --green: #00FF88;
     --red: #FF3A5C;
     --gold: #FFD060;
-    --text: #E8EDF5;
-    --muted: #5A6A85;
+    --text: #F5F0E8;
+    --muted: #4A5A6A;
     --sol: #9945FF;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-  body { font-family: 'Instrument Sans', sans-serif; background: radial-gradient(ellipse at 15% 85%, #F5A62318 0%, transparent 50%), radial-gradient(ellipse at 85% 15%, #1E3A6E18 0%, transparent 55%), #0A0E1A;
-  background-attachment: fixed; color: var(--text); min-height: 100vh; overflow-x: hidden; }
+  body {
+    font-family: 'Instrument Sans', sans-serif;
+    background:
+      radial-gradient(ellipse at 50% 0%, #1B4F8A22 0%, transparent 60%),
+      radial-gradient(ellipse at 15% 85%, #C1440E12 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 100%, #1B4F8A14 0%, transparent 45%),
+      #060D1A;
+    background-attachment: fixed;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
   /* PAGES */
   .page { display: none; }
