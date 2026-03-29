@@ -6,7 +6,6 @@
  * PREMIUM: Claude Opus + full enriched data (pitcher stats, weather, line movement)
  */
 
-const fetch = require("node-fetch");
 const {
   FREE_SYSTEM_PROMPT,
   PREMIUM_SYSTEM_PROMPT,

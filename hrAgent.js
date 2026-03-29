@@ -12,7 +12,6 @@
  * - Opposing pitcher handedness
  */
 
-const fetch = require("node-fetch");
 const { TEAM_NAME_MAP } = require("./mlbStats");
 const { MLB_TEAM_IDS } = require("./cron");
 const { fetchBatterStatcast, fetchPitcherHRStats } = require("./mlbDataEnricher");

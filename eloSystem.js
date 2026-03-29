@@ -17,7 +17,6 @@
  * <1300 = Weak (full rebuild)
  */
 
-const fetch = require("node-fetch");
 
 // K-factor — how much Elo changes per game
 // 20 is standard for MLB (higher = more volatile)

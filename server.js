@@ -13,7 +13,6 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const fetch = require("node-fetch");
 const path = require("path");
 const { analyzePicks, applyInjuryPenalty, applyEloAdjustment, applySharpMoneySignal } = require("./edgeAnalyzer");
 const { getEnrichedCache } = require("./mlbDataEnricher");
@@ -460,7 +459,7 @@ async function storeOpeningLines(games) {
   try {
     // POST with resolution=ignore-duplicates — stores opening line, ignores subsequent calls
     const url = `${process.env.SUPABASE_URL}/rest/v1/opening_lines`;
-    const res = await require('node-fetch')(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'apikey': process.env.SUPABASE_KEY,

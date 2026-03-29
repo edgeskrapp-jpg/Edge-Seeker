@@ -14,7 +14,6 @@
  * Returns top K prop opportunities for the day
  */
 
-const fetch = require("node-fetch");
 const { fetchPitcherStatcast, fetchTeamBattingStatcast, fetchFanGraphsPitching, fetchTeamStrikeoutRate, fetchPitcherGameLog, fetchPitcherVelocityTrend } = require("./mlbDataEnricher");
 const { fetchKPropLines } = require('./propFetcher');
 const { TEAM_NAME_MAP } = require("./mlbStats");

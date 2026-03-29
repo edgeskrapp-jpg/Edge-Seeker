@@ -8,7 +8,6 @@
  * - Open-Meteo (free weather API): api.open-meteo.com
  */
 
-const fetch = require("node-fetch");
 const { MLB_TEAM_IDS } = require("./cron");
 
 // ─── MLB STADIUM COORDINATES ──────────────────────────────────────────────────
