@@ -36,13 +36,116 @@
   #page-picks { background: radial-gradient(ellipse at 50% 30%, #111B2E 0%, #0D1525 40%, #0A0E1A 100%); }
 
   /* HEADER */
-  header { position: sticky; top: 0; z-index: 100; background: rgba(8,11,16,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
-  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 2px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .logo span { font-size: 10px; font-family: 'DM Mono', monospace; letter-spacing: 3px; display: block; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-top: -4px; }
-  .connect-btn { background: linear-gradient(135deg, var(--sol), var(--accent2)); border: none; border-radius: 10px; color: white; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; padding: 10px 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; letter-spacing: 0.5px; }
-  .connect-btn:hover { opacity: 0.85; transform: translateY(-1px); }
-  .connect-btn .dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(8, 11, 16, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(245, 166, 35, 0.12);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  /* LOGO */
+  .logo {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    flex-shrink: 0;
+  }
+  .logo-wordmark {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--text);
+    line-height: 1;
+  }
+  .logo-wordmark em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .logo-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 2.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  /* LIVE STATUS PILL */
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(245, 166, 35, 0.06);
+    border: 1px solid rgba(245, 166, 35, 0.18);
+    border-radius: 20px;
+    padding: 5px 12px;
+    flex: 1;
+    justify-content: center;
+    max-width: 160px;
+  }
+  .header-status-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+  .header-status-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  /* CONNECT BUTTON */
+  .connect-btn {
+    background: rgba(245, 166, 35, 0.1);
+    border: 1px solid rgba(245, 166, 35, 0.35);
+    border-radius: 10px;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 9px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.2s;
+    letter-spacing: 0.8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .connect-btn:hover {
+    background: rgba(245, 166, 35, 0.18);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .connect-btn.connected {
+    background: rgba(0, 255, 136, 0.06);
+    border-color: rgba(0, 255, 136, 0.25);
+    color: var(--green);
+  }
+  .connect-btn .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
   /* WALLET MODAL */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
@@ -974,7 +1077,16 @@
 
 <!-- HEADER -->
 <header>
-  <div class="logo">Edge Seeker<span>BASEBALL ANALYTICS</span></div>
+  <div class="logo">
+    <div class="logo-wordmark">EDGE <em>SEEKER</em></div>
+    <div class="logo-sub">MLB ANALYTICS</div>
+  </div>
+
+  <div class="header-status">
+    <div class="header-status-dot"></div>
+    <div class="header-status-text">AI ACTIVE</div>
+  </div>
+
   <button class="connect-btn" onclick="openWalletModal()">
     <div class="dot"></div>
     <span id="connectText">CONNECT</span>
@@ -2192,6 +2304,7 @@
       document.getElementById('walletWName').textContent = name;
       document.getElementById('walletBar').classList.add('visible');
       document.getElementById('connectText').textContent = 'CONNECTED';
+      document.querySelector('.connect-btn').classList.add('connected');
 
       showToast(`${emoji} ${name} connected!`);
 
@@ -2269,6 +2382,7 @@
 
     document.getElementById('walletBar').classList.remove('visible');
     document.getElementById('connectText').textContent = 'CONNECT';
+    document.querySelector('.connect-btn').classList.remove('connected');
     document.getElementById('solBalanceAmount').textContent = '— SOL';
     document.getElementById('solBalanceUsd').textContent = '';
     showToast('Wallet disconnected');
@@ -2291,6 +2405,7 @@
       document.getElementById('walletWName').textContent = 'Phantom';
       document.getElementById('walletBar').classList.add('visible');
       document.getElementById('connectText').textContent = 'CONNECTED';
+      document.querySelector('.connect-btn').classList.add('connected');
       fetchSOLBalance(pubkey);
       checkPremiumStatus(pubkey);
     }
