@@ -26,7 +26,7 @@ const agentCache = {
 };
 
 function getTodayDate() {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
 
 function isCacheValid(cacheEntry) {

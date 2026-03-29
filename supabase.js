@@ -127,7 +127,7 @@ async function getLeaderboard(type = 'all_time', limit = 50) {
 // ─── DAILY PICKS ─────────────────────────────────────────────────────────────
 
 async function saveDailyPicks(picks, date) {
-  const pickDate = date || new Date().toISOString().split('T')[0];
+  const pickDate = date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   let saved = 0;
   for (let i = 0; i < picks.length; i++) {
     const rank = i + 1;
@@ -143,7 +143,7 @@ async function saveDailyPicks(picks, date) {
 }
 
 async function getDailyPicks(date) {
-  const pickDate = date || new Date().toISOString().split('T')[0];
+  const pickDate = date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const rows = await supabaseQuery(
     'daily_picks',
     'GET',

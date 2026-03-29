@@ -170,7 +170,7 @@ function computeMovement(currentOdds, openingOdds) {
 }
 
 function addOddsMovement(picks) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   return picks.map(pick => {
     const key = `${pick.teamAbbr}_${today}`;
     const opening = openingOddsMap[key];
@@ -397,7 +397,7 @@ async function fetchQuota() {
 async function storeOpeningLines(games) {
   if (!games || games.length === 0) return;
   const { supabaseQuery } = require('./supabase');
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const rows = [];
 
   for (const game of games) {
@@ -489,7 +489,7 @@ async function storeOpeningLines(games) {
 async function analyzeLineMovement(currentGames) {
   if (!currentGames || currentGames.length === 0) return [];
   const { supabaseQuery } = require('./supabase');
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
   // Fetch all opening lines for today
   let openingLines = [];
@@ -1151,7 +1151,7 @@ app.get("/api/sharp/movement", async (req, res) => {
     }
 
     const lineMovement = await analyzeLineMovement(games);
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     const { supabaseQuery } = require('./supabase');
 
     let openingLines = [];
@@ -1956,7 +1956,7 @@ app.get("/api/stats/teams", async (req, res) => {
  */
 app.get("/api/props/strikeouts", async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
     // Return cache if valid
     if (cache.strikeouts.data && cache.strikeouts.date === today) {
@@ -2267,7 +2267,7 @@ async function buildDailyDigest() {
   try {
     if (!process.env.DISCORD_WEBHOOK_URL) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     const dateStr = new Date().toLocaleDateString('en-US', {
       timeZone: 'America/New_York',
       weekday: 'short', month: 'short', day: 'numeric',
@@ -2425,7 +2425,7 @@ app.post("/api/accuracy/log", async (req, res) => {
     }
 
     const { supabaseQuery } = require("./supabase");
-    const pickDate = date || new Date().toISOString().split('T')[0];
+    const pickDate = date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
     // Check if already logged today
     const existing = await supabaseQuery(
@@ -2662,7 +2662,7 @@ app.get("/api/cron/auto-run-agent", async (req, res) => {
     const picks = applyPickFilters(analyzePicks(games));
     const result = await getPremiumPick(picks);
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     agentAutoRun.lastRun = today;
     agentAutoRun.lastRunTime = new Date().toLocaleTimeString('en-US', {
       timeZone: 'America/New_York',
