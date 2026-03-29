@@ -1367,64 +1367,60 @@ const SPLIT_CONFIG = {
 async function verifyPayment(walletAddress) {
   // Always free for whitelisted wallets
   if (FREE_ACCESS_WALLETS.includes(walletAddress)) {
-    return { paid: true, free: true, reason: "Whitelisted wallet" };
+    return { paid: true, free: true, reason: 'Whitelisted wallet' };
   }
 
   try {
-    // Fetch recent transactions for the revenue wallet
-    const res = await fetch(SOLANA_RPC, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getSignaturesForAddress",
-        params: [
-          REVENUE_WALLET,
-          { limit: 50 }
-        ]
-      })
-    });
+    const { createSolanaRpc } = require('@solana/kit');
 
-    const data = await res.json();
-    const signatures = data.result || [];
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://rpc.ankr.com/solana';
+    const rpc = createSolanaRpc(rpcUrl);
 
-    if (signatures.length === 0) return { paid: false, reason: "No transactions found" };
+    // Fetch recent transaction signatures for the REVENUE wallet
+    // We look at incoming transactions to the revenue wallet, not outgoing
+    const signaturesResponse = await rpc.getSignaturesForAddress(
+      REVENUE_WALLET,
+      { limit: 50 }
+    ).send();
 
-    // Check each recent transaction
-    const oneDayAgo = Math.floor(Date.now() / 1000) - 86400;
+    const signatures = signaturesResponse ?? [];
+
+    if (signatures.length === 0) {
+      return { paid: false, reason: 'No transactions found' };
+    }
+
+    // Only check transactions from the last 24 hours
+    const oneDayAgo = BigInt(Math.floor(Date.now() / 1000) - 86400);
 
     for (const sig of signatures) {
-      // Skip old transactions
-      if (sig.blockTime < oneDayAgo) continue;
+      // Skip old transactions — blockTime is BigInt in v2
+      if (sig.blockTime == null || sig.blockTime < oneDayAgo) continue;
 
       // Fetch full transaction details
-      const txRes = await fetch(SOLANA_RPC, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getTransaction",
-          params: [sig.signature, { encoding: "json", maxSupportedTransactionVersion: 0 }]
-        })
-      });
+      const tx = await rpc.getTransaction(
+        sig.signature,
+        {
+          encoding: 'json',
+          maxSupportedTransactionVersion: 0,
+          commitment: 'confirmed',
+        }
+      ).send();
 
-      const txData = await txRes.json();
-      const tx = txData.result;
       if (!tx) continue;
 
-      // Check if this transaction is from the paying wallet
-      const accountKeys = tx.transaction?.message?.accountKeys || [];
+      // Check if this transaction was sent FROM the paying wallet
+      const accountKeys = tx.transaction?.message?.accountKeys ?? [];
       const fromWallet = accountKeys[0];
 
       if (fromWallet !== walletAddress) continue;
 
-      // Check SOL transfer amount
-      const preBalances = tx.meta?.preBalances || [];
-      const postBalances = tx.meta?.postBalances || [];
-      const lamportsSent = (preBalances[0] || 0) - (postBalances[0] || 0);
-      const solSent = lamportsSent / 1_000_000_000;
+      // Calculate SOL transferred — preBalances minus postBalances for sender
+      const preBalances = tx.meta?.preBalances ?? [];
+      const postBalances = tx.meta?.postBalances ?? [];
+
+      // balances are BigInt in v2 (lamports)
+      const lamportsSent = (preBalances[0] ?? 0n) - (postBalances[0] ?? 0n);
+      const solSent = Number(lamportsSent) / 1_000_000_000;
 
       if (solSent >= PREMIUM_PRICE_SOL) {
         return {
@@ -1432,16 +1428,18 @@ async function verifyPayment(walletAddress) {
           free: false,
           amount: solSent,
           signature: sig.signature,
-          reason: `Payment verified: ${solSent} SOL`
+          reason: `Payment verified: ${solSent} SOL`,
         };
       }
     }
 
-    return { paid: false, reason: `No payment of ${PREMIUM_PRICE_SOL} SOL found in last 24h` };
+    return {
+      paid: false,
+      reason: `No payment of ${PREMIUM_PRICE_SOL} SOL found in last 24h`,
+    };
 
   } catch (err) {
-    console.error("Payment verification error:", err.message);
-    // Fail open during testing — change to fail closed before launch
+    console.error('Payment verification error:', err.message);
     return { paid: false, reason: err.message };
   }
 }
