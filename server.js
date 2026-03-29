@@ -26,6 +26,7 @@ const {
   saveBet, getUserBets, updateBetResult,
   getPoints, addPoints,
   getLeaderboard,
+  getDailyPicks,
 } = require("./supabase");
 
 const app = express();
@@ -846,6 +847,24 @@ app.get("/api/picks", async (req, res) => {
     res.json(responseData);
   } catch (err) {
     console.error("❌ /api/picks error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/picks/daily
+ * Returns today's persisted daily picks from Supabase — no payment gate
+ */
+app.get("/api/picks/daily", async (req, res) => {
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const picks = await getDailyPicks(today);
+    if (picks.length > 0) {
+      return res.json({ picks, date: today, source: 'supabase', count: picks.length });
+    }
+    return res.json({ picks: [], date: today, source: 'pending', message: 'Picks not yet generated for today' });
+  } catch (err) {
+    console.error("❌ /api/picks/daily error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2412,6 +2431,14 @@ async function checkAndAutoRunAgent() {
 
     const picks = applyPickFilters(analyzePicks(games));
     await getPremiumPick(picks);
+
+    const { getDailyPicks: verifyDailyPicks } = require('./supabase');
+    const existing = await verifyDailyPicks(today);
+    if (existing.length === 0) {
+      console.log('⚠️ Supabase save may have failed — picks not found after agent run');
+    } else {
+      console.log(`✅ ${existing.length} daily picks confirmed in Supabase for ${today}`);
+    }
 
     agentAutoRun.lastRun = today;
     agentAutoRun.lastRunTime = new Date().toLocaleTimeString('en-US', {

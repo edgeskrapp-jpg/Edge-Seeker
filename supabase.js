@@ -124,10 +124,40 @@ async function getLeaderboard(type = 'all_time', limit = 50) {
   return enriched;
 }
 
+// ─── DAILY PICKS ─────────────────────────────────────────────────────────────
+
+async function saveDailyPicks(picks, date) {
+  const pickDate = date || new Date().toISOString().split('T')[0];
+  let saved = 0;
+  for (let i = 0; i < picks.length; i++) {
+    const rank = i + 1;
+    await supabaseQuery(
+      'daily_picks',
+      'POST',
+      { pick_date: pickDate, rank, tier: 'premium', pick: picks[i] },
+      '?on_conflict=pick_date,rank'
+    );
+    saved++;
+  }
+  return { saved };
+}
+
+async function getDailyPicks(date) {
+  const pickDate = date || new Date().toISOString().split('T')[0];
+  const rows = await supabaseQuery(
+    'daily_picks',
+    'GET',
+    null,
+    `?pick_date=eq.${pickDate}&order=rank.asc`
+  );
+  return rows.map(r => r.pick);
+}
+
 module.exports = {
   supabaseQuery,
   getUser, upsertUser,
   saveBet, getUserBets, updateBetResult,
   getPoints, addPoints,
   getLeaderboard,
+  saveDailyPicks, getDailyPicks,
 };

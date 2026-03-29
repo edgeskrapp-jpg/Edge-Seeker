@@ -14,6 +14,7 @@ const {
   buildPremiumPrompt,
 } = require("./agentPrompt");
 const { enrichPicks, fetchFanGraphsPitching } = require("./mlbDataEnricher");
+const { saveDailyPicks, getDailyPicks } = require("./supabase");
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
@@ -112,9 +113,20 @@ async function getFreePick(picks) {
  * Cached per day — only calls Claude Opus once per day
  */
 async function getPremiumPick(picks) {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+
   if (isCacheValid(agentCache.premium)) {
     console.log('🤖 Returning cached premium pick');
     return { ...agentCache.premium.data, cached: true };
+  }
+
+  // Second cache layer — check Supabase for today's persisted picks
+  const storedPicks = await getDailyPicks(today);
+  if (storedPicks.length >= 2) {
+    console.log('🤖 Returning premium picks from Supabase');
+    const result = { picks: storedPicks.slice(0, 2) };
+    agentCache.premium = { data: result, date: today };
+    return { ...result, cached: true };
   }
 
   if (!picks || picks.length === 0) {
@@ -141,18 +153,16 @@ async function getPremiumPick(picks) {
   const userMessage = buildPremiumPrompt(picks, enrichedData, fanGraphsData);
   const result = await callClaude(PREMIUM_SYSTEM_PROMPT, userMessage, 'claude-opus-4-5');
 
-  // Handle both old single pick format and new 2-pick format
-  if (result.picks && Array.isArray(result.picks)) {
-    // New format — array of picks
-    result.enrichedData = enrichedData;
-    agentCache.premium = { data: result, date: getTodayDate() };
-    return { ...result, cached: false };
-  } else {
-    // Wrap single pick in array for consistency
-    const wrapped = { picks: [result], enrichedData };
-    agentCache.premium = { data: wrapped, date: getTodayDate() };
-    return { ...wrapped, cached: false };
-  }
+  // Normalize to array of 1-2 picks
+  const picksArray = (result.picks && Array.isArray(result.picks))
+    ? result.picks.slice(0, 2)
+    : [result];
+
+  await saveDailyPicks(picksArray, today);
+
+  const wrapped = { picks: picksArray, enrichedData };
+  agentCache.premium = { data: wrapped, date: today };
+  return { ...wrapped, cached: false };
 }
 
 /**
