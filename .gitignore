@@ -42,7 +42,3 @@ Thumbs.db
 
 # ─── CLAUDE CODE ──────────────────────────────────────────────────────────────
 .claude/
-
-# ─── LOCAL ONLY — NOT IN REPO ─────────────────────────────────────────────────
-edgeseeker-landing.html
-deploy-landing.js
