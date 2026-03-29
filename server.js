@@ -82,6 +82,7 @@ const PREMIUM_LAYERS = ['poisson', 'parkFactors', 'elo', 'oddsMovement', 'fip', 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────────────
 
 app.use(express.json());
+app.use(express.static(__dirname));
 app.use(
   cors({
     origin: [
@@ -2711,731 +2712,139 @@ app.post("/api/admin/cache-bypass", (req, res) => {
 // ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
 
 /**
- * GET /admin
- * Admin dashboard — protected by ADMIN_SECRET query param
- * Access: edge-seeker.vercel.app/admin?secret=YOUR_ADMIN_SECRET
+ * GET /api/admin/status
+ * Returns all admin dashboard data as JSON.
+ * Called by admin.html on load — no more server-side template rendering.
  */
-app.get("/admin", async (req, res) => {
+app.get("/api/admin/status", async (req, res) => {
+  const secret = req.query.secret || req.headers['x-admin-secret'];
+  if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  // Fetch all stats in parallel
+  const [oddsQuota, dbStats] = await Promise.allSettled([
+    fetchQuota(),
+    (async () => {
+      const usersRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/users?select=count`, {
+        headers: { apikey: process.env.SUPABASE_KEY, Authorization: `Bearer ${process.env.SUPABASE_KEY}`, Prefer: 'count=exact' }
+      });
+      const betsRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/bets?select=count`, {
+        headers: { apikey: process.env.SUPABASE_KEY, Authorization: `Bearer ${process.env.SUPABASE_KEY}`, Prefer: 'count=exact' }
+      });
+      return {
+        users: usersRes.headers.get('content-range')?.split('/')[1] || '0',
+        bets: betsRes.headers.get('content-range')?.split('/')[1] || '0',
+      };
+    })(),
+  ]);
+
+  const quota = oddsQuota.status === 'fulfilled' ? oddsQuota.value : { remaining: 'N/A', used: 'N/A' };
+  const db = dbStats.status === 'fulfilled' ? dbStats.value : { users: 0, bets: 0 };
+
+  const { lastRefresh, nextRefresh } = getScheduledTimes();
+  const cacheAgeMs = cache.picks.fetchedAt ? Date.now() - cache.picks.fetchedAt : null;
+
+  const openingDay = new Date('2026-03-25T16:05:00-04:00');
+  const now = new Date();
+  const seasonStarted = now >= openingDay;
+  const daysUntilOpening = Math.ceil((openingDay - now) / (1000 * 60 * 60 * 24));
+
+  res.json({
+    timestamp: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }),
+    uptime: Math.floor(process.uptime() / 60),
+    nodeVersion: process.version,
+    heapUsedMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+
+    quota: {
+      remaining: quota.remaining,
+      used: quota.used,
+      limit: 500,
+    },
+
+    db: {
+      users: db.users,
+      bets: db.bets,
+      provider: 'Supabase',
+    },
+
+    agent: {
+      status: agentAutoRun.status,
+      lastRun: agentAutoRun.lastRunTime || null,
+      lastRunDate: agentAutoRun.lastRun || null,
+      freeModel: 'claude-sonnet',
+      premiumModel: 'claude-opus',
+    },
+
+    cache: {
+      isValid: isCacheValid(cache.picks),
+      hasData: !!cache.picks.data,
+      fetchedAt: cache.picks.fetchedAt ? new Date(cache.picks.fetchedAt).toISOString() : null,
+      ageMinutes: cacheAgeMs !== null ? Math.floor(cacheAgeMs / 60000) : null,
+      picksCount: cache.picks.data?.total || 0,
+      gamesAnalyzed: cache.picks.data?.gamesAnalyzed || 0,
+      bypass: CACHE_BYPASS,
+      lastRefresh: lastRefresh ? lastRefresh.toISOString() : null,
+      nextRefresh: nextRefresh ? nextRefresh.toISOString() : null,
+    },
+
+    season: {
+      started: seasonStarted,
+      openingDay: '2026-03-25',
+      daysUntilOpening: seasonStarted ? 0 : daysUntilOpening,
+      dataSource: seasonStarted ? 'Live (Supabase)' : 'Projections (pre-season)',
+    },
+
+    sharpMoney: {
+      oddsApiUpgraded: ODDS_API_UPGRADED,
+      booksTracked: ODDS_API_UPGRADED ? ['Pinnacle', 'Circa', 'Bookmaker'] : ['Pinnacle'],
+      steamThreshold: 8,
+      significantThreshold: 5,
+    },
+
+    split: {
+      prizePoolEnabled: PRIZE_POOL_ENABLED,
+      active: PRIZE_POOL_ENABLED
+        ? { operations: 70, prizePool: 20, treasury: 10 }
+        : {
+            operations: Math.round(SPLIT_CONFIG.operations * 100),
+            prizePool: Math.round(SPLIT_CONFIG.prizePool * 100),
+            treasury: Math.round(SPLIT_CONFIG.treasury * 100),
+          },
+      wallets: {
+        operations: OPERATIONS_WALLET,
+        prizePool: PRIZE_POOL_WALLET,
+        revenue: REVENUE_WALLET,
+      },
+    },
+  });
+});
+
+/**
+ * GET /admin
+ * Serves the standalone admin.html file.
+ * The HTML page fetches /api/admin/status on load for all dynamic data.
+ */
+app.get("/admin", (req, res) => {
   const { secret } = req.query;
   if (secret !== process.env.ADMIN_SECRET) {
     return res.status(401).send(`
       <html><body style="background:#080B10;color:#FF3A5C;font-family:monospace;padding:40px;text-align:center">
-        <h1>⛔ UNAUTHORIZED</h1>
-        <p>Invalid admin secret.</p>
+        <h1>⛔ UNAUTHORIZED</h1><p>Invalid admin secret.</p>
       </body></html>
     `);
   }
-
-  // Fetch all stats in parallel
-  let oddsQuota = { remaining: 'N/A', used: 'N/A' };
-  let dbStats = { users: 0, bets: 0 };
-  let agentCacheStatus = { free: 'cold', premium: 'cold' };
-
-  try { oddsQuota = await fetchQuota(); } catch {}
-
-  try {
-    const usersRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/users?select=count`, {
-      headers: { apikey: process.env.SUPABASE_KEY, Authorization: `Bearer ${process.env.SUPABASE_KEY}`, Prefer: 'count=exact' }
-    });
-    const betsRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/bets?select=count`, {
-      headers: { apikey: process.env.SUPABASE_KEY, Authorization: `Bearer ${process.env.SUPABASE_KEY}`, Prefer: 'count=exact' }
-    });
-    const userCount = usersRes.headers.get('content-range')?.split('/')[1] || '0';
-    const betCount = betsRes.headers.get('content-range')?.split('/')[1] || '0';
-    dbStats = { users: userCount, bets: betCount };
-  } catch {}
-
-  const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
-  const uptime = Math.floor(process.uptime() / 60);
-
-  // Season / Opening Day calculations
-  const openingDay = new Date('2026-03-25T16:05:00-04:00');
-  const nowDate = new Date();
-  const msUntilOpening = openingDay - nowDate;
-  const daysUntilOpening = Math.ceil(msUntilOpening / (1000 * 60 * 60 * 24));
-  const seasonStarted = nowDate >= openingDay;
-  const dataSource = seasonStarted ? 'Live (Supabase)' : 'Projections (pre-season)';
-
-  // Next 6AM ET cron run
-  const nextCron = new Date();
-  nextCron.setTime(nextCron.getTime()); // mutable copy
-  const etOffset = -4; // EDT
-  const etHour = (nextCron.getUTCHours() + etOffset + 24) % 24;
-  if (etHour >= 6) nextCron.setUTCDate(nextCron.getUTCDate() + 1);
-  nextCron.setUTCHours(10, 0, 0, 0); // 6AM ET = 10AM UTC (EDT)
-  const nextCronStr = nextCron.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-
-  // Cache schedule info
-  const { lastRefresh: lastPicksRefresh, nextRefresh: nextPicksRefresh } = getScheduledTimes();
-  const cacheValid = isCacheValid(cache.picks);
-  const cacheAgeMin = cache.picks.fetchedAt ? Math.floor((Date.now() - cache.picks.fetchedAt) / 60000) : null;
-  const lastRefreshStr = lastPicksRefresh
-    ? lastPicksRefresh.toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })
-    : 'N/A';
-  const nextRefreshStr = nextPicksRefresh
-    ? nextPicksRefresh.toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })
-    : 'N/A';
-  const cacheFetchedStr = cache.picks.fetchedAt
-    ? new Date(cache.picks.fetchedAt).toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })
-    : 'Never';
-
-  // Overall system health — tiered quota thresholds
-  const _qr = parseInt(oddsQuota.remaining);
-  const quotaEmergency = !isNaN(_qr) && _qr < 50;   // red CRITICAL — auto-refresh paused
-  const quotaCritical  = !isNaN(_qr) && _qr < 100;  // red warning
-  const quotaWarning   = !isNaN(_qr) && _qr < 200;  // yellow warning
-  const quotaOk        = isNaN(_qr) || _qr >= 200;
-  const allHealthy     = quotaOk;
-  const activeSplitPcts = PRIZE_POOL_ENABLED
-    ? { ops: 70, pool: 20, treas: 10 }
-    : { ops: Math.round(SPLIT_CONFIG.operations * 100), pool: Math.round(SPLIT_CONFIG.prizePool * 100), treas: Math.round(SPLIT_CONFIG.treasury * 100) };
-
+  // Pass secret to the page via a safe meta tag — admin.html reads it from there
   res.send(`<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Edge Seeker Admin</title>
-<style>
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Courier New', monospace;
-    background: #080B10;
-    color: #E8EDF5;
-    padding: 28px 32px;
-    min-height: 100vh;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-
-  /* ── HEADER ── */
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 2px solid #1E2A40;
-    padding-bottom: 24px;
-    margin-bottom: 36px;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-  .header-left { display: flex; flex-direction: column; gap: 6px; }
-  .logo { font-size: 30px; letter-spacing: 5px; color: #00E5FF; font-weight: bold; }
-  .subtitle { font-size: 11px; color: #5A6A85; letter-spacing: 3px; }
-  .time { font-size: 13px; color: #8A9AB5; margin-top: 2px; }
-  .status-pill {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #0E1420;
-    border: 1px solid #1E2A40;
-    border-radius: 999px;
-    padding: 10px 20px;
-    font-size: 13px;
-    font-weight: bold;
-    letter-spacing: 1px;
-  }
-  .status-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-  }
-  .status-dot.ok  { background: #00FF88; box-shadow: 0 0 8px #00FF88; }
-  .status-dot.warn { background: #FF3A5C; box-shadow: 0 0 8px #FF3A5C; }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
-
-  /* ── ALERT BANNER ── */
-  .alert-banner {
-    background: rgba(255,58,92,0.12);
-    border: 1px solid #FF3A5C;
-    border-radius: 10px;
-    padding: 14px 20px;
-    margin-bottom: 28px;
-    font-size: 14px;
-    color: #FF3A5C;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .alert-banner a { color: #FF7A95; text-decoration: underline; }
-
-  /* ── SECTION LABEL ── */
-  .section-label {
-    font-size: 11px;
-    letter-spacing: 3px;
-    color: #5A6A85;
-    text-transform: uppercase;
-    margin: 36px 0 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .section-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: #1E2A40;
-  }
-
-  /* ── GRID ── */
-  .grid-3 {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-  @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
-  @media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr; } }
-
-  /* ── CARD ── */
-  .card {
-    background: #0E1420;
-    border: 1px solid #1E2A40;
-    border-radius: 14px;
-    padding: 22px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .card-title {
-    font-size: 10px;
-    letter-spacing: 2.5px;
-    color: #5A6A85;
-    text-transform: uppercase;
-  }
-  .card-badge {
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 999px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-  }
-  .badge-green { background: rgba(0,255,136,0.15); color: #00FF88; }
-  .badge-red   { background: rgba(255,58,92,0.15);  color: #FF3A5C; }
-  .badge-gold  { background: rgba(255,208,96,0.15); color: #FFD060; }
-  .badge-sol   { background: rgba(153,69,255,0.15); color: #9945FF; }
-  .badge-cyan  { background: rgba(0,229,255,0.15);  color: #00E5FF; }
-
-  .card.t-cyan  { border-top: 2px solid #00E5FF; }
-  .card.t-green { border-top: 2px solid #00FF88; }
-  .card.t-gold  { border-top: 2px solid #FFD060; }
-  .card.t-sol   { border-top: 2px solid #9945FF; }
-  .card.t-red   { border-top: 2px solid #FF3A5C; }
-  .card.t-blue  { border-top: 2px solid #4A90E2; }
-
-  .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 9px 0;
-    border-bottom: 1px solid #0D1525;
-    font-size: 13.5px;
-    gap: 8px;
-  }
-  .row:last-child { border-bottom: none; padding-bottom: 0; }
-  .row-label { color: #6A7A95; flex-shrink: 0; }
-  .row-value { font-weight: bold; text-align: right; }
-
-  /* ── COLORS ── */
-  .c-green { color: #00FF88; }
-  .c-cyan  { color: #00E5FF; }
-  .c-gold  { color: #FFD060; }
-  .c-red   { color: #FF3A5C; }
-  .c-sol   { color: #9945FF; }
-  .c-white { color: #E8EDF5; }
-  .c-muted { color: #8A9AB5; }
-  .c-blue  { color: #4A90E2; }
-
-  /* ── ACTIONS ── */
-  .actions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 10px;
-  }
-  .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    background: #0E1420;
-    border: 1px solid #1E2A40;
-    border-radius: 10px;
-    color: #C8D4E8;
-    font-family: monospace;
-    font-size: 12.5px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-    padding: 11px 16px;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.18s;
-    white-space: nowrap;
-  }
-  .btn:hover       { border-color: #00E5FF; color: #00E5FF; background: rgba(0,229,255,0.06); }
-  .btn.danger:hover{ border-color: #FF3A5C; color: #FF3A5C; background: rgba(255,58,92,0.06); }
-  .btn.primary     { border-color: #00E5FF; color: #00E5FF; }
-
-  /* ── PICK RESULT FORM ── */
-  .result-panel {
-    background: #0E1420;
-    border: 1px solid #1E2A40;
-    border-radius: 14px;
-    padding: 24px;
-  }
-  .result-panel label {
-    display: block;
-    font-size: 11px;
-    letter-spacing: 1.5px;
-    color: #5A6A85;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .result-panel input,
-  .result-panel select {
-    background: #141C2E;
-    border: 1px solid #1E2A40;
-    border-radius: 8px;
-    color: #E8EDF5;
-    font-family: monospace;
-    font-size: 13px;
-    padding: 10px 14px;
-    width: 100%;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .result-panel input:focus,
-  .result-panel select:focus { border-color: #00E5FF; }
-  .result-fields {
-    display: grid;
-    grid-template-columns: 1fr 160px auto;
-    gap: 12px;
-    align-items: end;
-  }
-  @media (max-width: 600px) { .result-fields { grid-template-columns: 1fr; } }
-  .result-panel .field { display: flex; flex-direction: column; gap: 6px; }
-  .submit-btn {
-    background: linear-gradient(135deg, #00E5FF, #7B61FF);
-    border: none;
-    border-radius: 8px;
-    color: #080B10;
-    font-family: monospace;
-    font-size: 13px;
-    font-weight: bold;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-  }
-  .submit-btn:hover { opacity: 0.85; }
-  #updateMsg {
-    margin-top: 12px;
-    font-size: 13px;
-    display: none;
-  }
-
-  /* ── CHECKLIST ── */
-  .checklist {
-    background: #0E1420;
-    border: 1px solid #1E2A40;
-    border-radius: 14px;
-    overflow: hidden;
-  }
-  .check-item {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 24px;
-    border-bottom: 1px solid #0D1525;
-    font-size: 13.5px;
-  }
-  .check-item:last-child { border-bottom: none; }
-  .check-icon { font-size: 17px; flex-shrink: 0; }
-  .check-text { color: #8A9AB5; flex: 1; }
-  .check-link { font-size: 11px; color: #00E5FF; text-decoration: none; flex-shrink: 0; }
-  .check-link:hover { text-decoration: underline; }
-
-  code {
-    background: #141C2E;
-    padding: 2px 7px;
-    border-radius: 4px;
-    color: #00E5FF;
-    font-size: 11px;
-  }
-</style>
+  <meta name="admin-secret" content="${secret}">
+  <script>
+    // Redirect to admin.html with secret in sessionStorage (not URL)
+    sessionStorage.setItem('adminSecret', '${secret}');
+    window.location.href = '/admin.html';
+  </script>
 </head>
-<body>
-
-<!-- ═══════════════ HEADER ═══════════════ -->
-<div class="header">
-  <div class="header-left">
-    <div class="logo">EDGE SEEKER ADMIN</div>
-    <div class="subtitle">BACKEND DASHBOARD · RESTRICTED ACCESS</div>
-    <div class="time">🕐 ${now} ET &nbsp;·&nbsp; Uptime: ${uptime} min</div>
-  </div>
-  <div class="status-pill">
-    <div class="status-dot ${allHealthy ? 'ok' : 'warn'}"></div>
-    <span class="${allHealthy ? 'c-green' : 'c-red'}">${allHealthy ? 'ALL SYSTEMS OK' : 'NEEDS ATTENTION'}</span>
-  </div>
-</div>
-
-${quotaEmergency ? `<!-- QUOTA EMERGENCY -->
-<div class="alert-banner" style="background:rgba(220,38,38,0.18);border-color:#dc2626">
-  🚨 &nbsp;<strong>QUOTA CRITICAL — AUTO-REFRESH PAUSED</strong> — Only ${oddsQuota.remaining} requests remaining this month. Upgrade immediately.
-  &nbsp;<a href="https://the-odds-api.com" target="_blank">Upgrade at the-odds-api.com →</a>
-</div>` : quotaCritical ? `<!-- QUOTA CRITICAL -->
-<div class="alert-banner" style="background:rgba(220,38,38,0.12);border-color:#dc2626">
-  ❌ &nbsp;<strong>QUOTA CRITICAL</strong> — ${oddsQuota.remaining} requests remaining this month. Upgrade soon.
-  &nbsp;<a href="https://the-odds-api.com" target="_blank">Upgrade at the-odds-api.com →</a>
-</div>` : quotaWarning ? `<!-- QUOTA WARNING -->
-<div class="alert-banner" style="background:rgba(245,166,35,0.12);border-color:#F5A623">
-  ⚠️ &nbsp;<strong>QUOTA WARNING</strong> — ${oddsQuota.remaining} requests remaining this month.
-  &nbsp;<a href="https://the-odds-api.com" target="_blank">Monitor at the-odds-api.com →</a>
-</div>` : ''}
-
-<!-- ═══════════════ ROW 1: ODDS · DB · AI ═══════════════ -->
-<div class="section-label">System Status</div>
-<div class="grid-3">
-
-  <div class="card t-cyan">
-    <div class="card-header">
-      <span class="card-title">Odds API</span>
-      <span class="card-badge ${quotaEmergency ? 'badge-red' : quotaCritical ? 'badge-red' : quotaWarning ? 'badge-yellow' : 'badge-green'}">${quotaEmergency ? 'CRITICAL' : quotaCritical ? 'CRITICAL' : quotaWarning ? 'LOW' : 'HEALTHY'}</span>
-    </div>
-    <div class="row"><span class="row-label">Remaining</span><span class="row-value c-cyan">${oddsQuota.remaining}</span></div>
-    <div class="row"><span class="row-label">Used this month</span><span class="row-value c-white">${oddsQuota.used}</span></div>
-    <div class="row"><span class="row-label">Monthly limit</span><span class="row-value c-muted">500 (free tier)</span></div>
-    <div class="row"><span class="row-label">Resets</span><span class="row-value c-muted">1st of month</span></div>
-  </div>
-
-  <div class="card t-green">
-    <div class="card-header">
-      <span class="card-title">Database</span>
-      <span class="card-badge badge-green">CONNECTED</span>
-    </div>
-    <div class="row"><span class="row-label">Total users</span><span class="row-value c-green">${dbStats.users}</span></div>
-    <div class="row"><span class="row-label">Total picks logged</span><span class="row-value c-white">${dbStats.bets}</span></div>
-    <div class="row"><span class="row-label">Provider</span><span class="row-value c-muted">Supabase</span></div>
-    <div class="row"><span class="row-label">Free tier limit</span><span class="row-value c-muted">500 MB</span></div>
-  </div>
-
-  <div class="card t-gold">
-    <div class="card-header">
-      <span class="card-title">AI Agent</span>
-      <span class="card-badge ${agentAutoRun.status === 'running' ? 'badge-gold' : agentAutoRun.status === 'failed' ? 'badge-red' : 'badge-green'}">${agentAutoRun.status.toUpperCase()}</span>
-    </div>
-    <div class="row"><span class="row-label">Free model</span><span class="row-value c-white">claude-sonnet</span></div>
-    <div class="row"><span class="row-label">Premium model</span><span class="row-value c-white">claude-opus</span></div>
-    <div class="row"><span class="row-label">Auto-run times</span><span class="row-value c-gold">11:05 AM + 5:05 PM ET</span></div>
-    <div class="row"><span class="row-label">Agent Last Run</span><span class="row-value ${agentAutoRun.lastRunTime ? 'c-green' : 'c-muted'}">${agentAutoRun.lastRunTime || 'Not yet today'}</span></div>
-    <div class="row"><span class="row-label">Agent Status</span><span class="row-value ${agentAutoRun.status === 'ready' ? 'c-green' : agentAutoRun.status === 'running' ? 'c-gold' : 'c-red'}">${agentAutoRun.status === 'ready' ? '✅ Ready' : agentAutoRun.status === 'running' ? '⏳ Running...' : '❌ Failed'}</span></div>
-    <div class="row"><span class="row-label">Runs per day</span><span class="row-value c-green">2× (morning + afternoon)</span></div>
-  </div>
-
-</div>
-
-<!-- ═══════════════ ROW 1B: CACHE SCHEDULE ═══════════════ -->
-<div class="section-label">Cache Schedule</div>
-<div class="grid-3">
-
-  <div class="card t-cyan">
-    <div class="card-header">
-      <span class="card-title">Picks Cache</span>
-      <span class="card-badge ${cacheValid ? 'badge-green' : 'badge-red'}">${cacheValid ? 'FRESH' : 'STALE'}</span>
-    </div>
-    <div class="row"><span class="row-label">Status</span><span class="row-value ${cacheValid ? 'c-green' : 'c-red'}">${cacheValid ? '✅ Serving cached' : '⚠️ Will refresh on next call'}</span></div>
-    <div class="row"><span class="row-label">Last fetched</span><span class="row-value c-white">${cacheFetchedStr} ET</span></div>
-    <div class="row"><span class="row-label">Cache age</span><span class="row-value c-muted">${cacheAgeMin !== null ? cacheAgeMin + ' min' : 'Empty'}</span></div>
-    <div class="row"><span class="row-label">Has data</span><span class="row-value ${cache.picks.data ? 'c-green' : 'c-red'}">${cache.picks.data ? `${cache.picks.data.total || 0} picks` : 'Empty'}</span></div>
-  </div>
-
-  <div class="card t-red" id="bypassCard">
-    <div class="card-header">
-      <span class="card-title">Cache Bypass</span>
-      <span class="card-badge ${CACHE_BYPASS ? 'badge-red' : 'badge-green'}" id="bypassBadge">${CACHE_BYPASS ? 'LIVE — NO CACHE' : 'CACHED'}</span>
-    </div>
-    <div class="row"><span class="row-label">Bypass status</span><span class="row-value ${CACHE_BYPASS ? 'c-red' : 'c-green'}" id="bypassStatus">${CACHE_BYPASS ? '🔴 ENABLED — hitting API live' : '🟢 DISABLED — serving cache'}</span></div>
-    <div class="row"><span class="row-label">Cache age</span><span class="row-value c-muted">${cacheAgeMin !== null ? cacheAgeMin + ' min' : 'Empty'}</span></div>
-    <div class="row" style="margin-top:10px">
-      <button onclick="toggleBypass()" id="bypassBtn" style="width:100%;padding:10px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;background:${CACHE_BYPASS ? '#22c55e' : '#ef4444'};color:#fff;transition:opacity 0.2s">
-        ${CACHE_BYPASS ? '✅ DISABLE BYPASS' : '🔄 BYPASS CACHE'}
-      </button>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <span style="font-family:'DM Mono',monospace;font-size:10px;color:#F5A623;letter-spacing:0.5px">⚠️ Bypass uses 1 API call per refresh — disable when done</span>
-    </div>
-  </div>
-
-  <div class="card t-blue">
-    <div class="card-header">
-      <span class="card-title">Refresh Windows</span>
-      <span class="card-badge badge-sol">2× DAILY</span>
-    </div>
-    <div class="row"><span class="row-label">Morning</span><span class="row-value c-cyan">11:00 AM ET</span></div>
-    <div class="row"><span class="row-label">Afternoon</span><span class="row-value c-cyan">5:00 PM ET</span></div>
-    <div class="row"><span class="row-label">Last window</span><span class="row-value c-white">${lastRefreshStr} ET</span></div>
-    <div class="row"><span class="row-label">Next window</span><span class="row-value c-gold">${nextRefreshStr} ET</span></div>
-  </div>
-
-  <div class="card t-sol">
-    <div class="card-header">
-      <span class="card-title">API Budget</span>
-      <span class="card-badge badge-green">2/DAY</span>
-    </div>
-    <div class="row"><span class="row-label">Calls per day</span><span class="row-value c-green">2 (odds refresh)</span></div>
-    <div class="row"><span class="row-label">Calls per month</span><span class="row-value c-white">~62</span></div>
-    <div class="row"><span class="row-label">Monthly quota</span><span class="row-value c-muted">500 (free tier)</span></div>
-    <div class="row"><span class="row-label">Buffer remaining</span><span class="row-value c-green">~438 calls free</span></div>
-  </div>
-
-</div>
-
-<!-- ═══════════════ SHARP MONEY ═══════════════ -->
-<div class="section-label">Sharp Money</div>
-<div class="grid-3">
-
-  <div class="card t-red">
-    <div class="card-header">
-      <span class="card-title">Line Movement</span>
-      <span class="card-badge ${ODDS_API_UPGRADED ? 'badge-green' : 'badge-gold'}">${ODDS_API_UPGRADED ? 'UPGRADED' : 'STANDARD'}</span>
-    </div>
-    <div class="row"><span class="row-label">Odds API Plan</span><span class="row-value ${ODDS_API_UPGRADED ? 'c-green' : 'c-gold'}">${ODDS_API_UPGRADED ? 'UPGRADED — All sharp books' : 'STANDARD — Pinnacle only'}</span></div>
-    <div class="row"><span class="row-label">Sharp books tracked</span><span class="row-value c-white">${ODDS_API_UPGRADED ? 'Pinnacle, Circa, Bookmaker' : 'Pinnacle'}</span></div>
-    <div class="row"><span class="row-label">Steam threshold</span><span class="row-value c-muted">8+ pts movement</span></div>
-    <div class="row"><span class="row-label">Significant threshold</span><span class="row-value c-muted">5–7 pts</span></div>
-    <div class="row"><span class="row-label">Upgrade flag</span><span class="row-value c-muted">ODDS_API_UPGRADED in server.js</span></div>
-  </div>
-
-  <div class="card t-red">
-    <div class="card-header">
-      <span class="card-title">Today's Signals</span>
-      <span class="card-badge badge-red">LIVE</span>
-    </div>
-    <div class="row"><span class="row-label">Opening lines stored</span><span class="row-value c-white" id="adminOpeningLines">—</span></div>
-    <div class="row"><span class="row-label">Significant moves</span><span class="row-value c-gold" id="adminSigMoves">—</span></div>
-    <div class="row"><span class="row-label">Steam moves</span><span class="row-value c-red" id="adminSteamMoves">—</span></div>
-    <div class="row"><span class="row-label">Last refresh</span><span class="row-value c-muted" id="adminSharpDate">—</span></div>
-  </div>
-
-  <div class="card t-red">
-    <div class="card-header">
-      <span class="card-title">Pick Impact</span>
-      <span class="card-badge badge-green">TODAY</span>
-    </div>
-    <div class="row"><span class="row-label">Sharp confirms</span><span class="row-value c-green" id="adminSharpConfirm">—</span></div>
-    <div class="row"><span class="row-label">Sharp fades</span><span class="row-value c-red" id="adminSharpFade">—</span></div>
-    <div class="row"><span class="row-label">Steam confirms</span><span class="row-value c-green" id="adminSteamConfirm">—</span></div>
-    <div class="row"><span class="row-label">Steam fades</span><span class="row-value c-red" id="adminSteamFade">—</span></div>
-  </div>
-
-</div>
-
-<script>
-// Load sharp money stats on page load
-(async function loadSharpStats() {
-  try {
-    const r = await fetch('/api/sharp/movement');
-    const d = await r.json();
-    if (!d) return;
-    document.getElementById('adminOpeningLines').textContent = d.openingLinesStored ?? '—';
-    document.getElementById('adminSigMoves').textContent = d.significantMovesToday ?? '—';
-    document.getElementById('adminSteamMoves').textContent = d.steamMovesToday ?? '—';
-    document.getElementById('adminSharpDate').textContent = d.date ?? '—';
-    // Count confirms / fades from pick data
-    const picks = ${JSON.stringify(isCacheValid(cache.picks) ? (cache.picks.data?.picks || []) : [])};
-    let confirms = 0, fades = 0, steamConf = 0, steamFade = 0;
-    for (const p of picks) {
-      const sig = p.pinnacleMovement?.sharpSignal;
-      if (sig === 'strong_confirm') { confirms++; steamConf++; }
-      else if (sig === 'confirm') confirms++;
-      else if (sig === 'strong_fade') { fades++; steamFade++; }
-      else if (sig === 'fade') fades++;
-    }
-    document.getElementById('adminSharpConfirm').textContent = confirms;
-    document.getElementById('adminSharpFade').textContent = fades;
-    document.getElementById('adminSteamConfirm').textContent = steamConf;
-    document.getElementById('adminSteamFade').textContent = steamFade;
-  } catch(e) {}
-})();
-</script>
-
-<!-- ═══════════════ ROW 2: SERVER · SPLIT · SEASON ═══════════════ -->
-<div class="grid-3">
-
-  <div class="card t-sol">
-    <div class="card-header">
-      <span class="card-title">Server</span>
-      <span class="card-badge badge-sol">LIVE</span>
-    </div>
-    <div class="row"><span class="row-label">Environment</span><span class="row-value c-white">Vercel Production</span></div>
-    <div class="row"><span class="row-label">Uptime</span><span class="row-value c-green">${uptime} min</span></div>
-    <div class="row"><span class="row-label">Node version</span><span class="row-value c-white">${process.version}</span></div>
-    <div class="row"><span class="row-label">Heap used</span><span class="row-value c-white">${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB</span></div>
-    <div class="row"><span class="row-label">Platform</span><span class="row-value c-muted">linux/x64</span></div>
-  </div>
-
-  <div class="card t-sol">
-    <div class="card-header">
-      <span class="card-title">Wallet Split</span>
-      <span class="card-badge ${PRIZE_POOL_ENABLED ? 'badge-green' : 'badge-red'}">${PRIZE_POOL_ENABLED ? 'POOL ON' : 'POOL OFF'}</span>
-    </div>
-    <div class="row"><span class="row-label">Prize Pool</span><span class="row-value ${PRIZE_POOL_ENABLED ? 'c-green' : 'c-red'}">${PRIZE_POOL_ENABLED ? '✅ ENABLED' : '⛔ DISABLED'}</span></div>
-    <div class="row"><span class="row-label">Operations</span><span class="row-value c-sol">${activeSplitPcts.ops}%</span></div>
-    <div class="row"><span class="row-label">Prize Pool</span><span class="row-value c-sol">${activeSplitPcts.pool}%</span></div>
-    <div class="row"><span class="row-label">Treasury</span><span class="row-value c-sol">${activeSplitPcts.treas}%</span></div>
-    <div class="row"><span class="row-label" style="font-size:11px;color:#3A4A65">Set <code>PRIZE_POOL_ENABLED=true</code> + redeploy to enable</span><span></span></div>
-  </div>
-
-  <div class="card t-blue">
-    <div class="card-header">
-      <span class="card-title">Season Status</span>
-      <span class="card-badge ${seasonStarted ? 'badge-green' : 'badge-gold'}">${seasonStarted ? 'IN SEASON' : 'PRE-SEASON'}</span>
-    </div>
-    <div class="row"><span class="row-label">Season</span><span class="row-value c-white">2026 MLB</span></div>
-    <div class="row"><span class="row-label">Opening Day</span><span class="row-value c-cyan">March 25, 2026</span></div>
-    <div class="row"><span class="row-label">${seasonStarted ? 'Season started' : 'Days until opening'}</span><span class="row-value ${seasonStarted ? 'c-green' : 'c-gold'}">${seasonStarted ? '✅ Active' : daysUntilOpening + ' days'}</span></div>
-    <div class="row"><span class="row-label">Data source</span><span class="row-value ${seasonStarted ? 'c-green' : 'c-gold'}">${dataSource}</span></div>
-    <div class="row"><span class="row-label">Next cron run</span><span class="row-value c-muted">${nextCronStr} ET</span></div>
-  </div>
-
-</div>
-
-<!-- ═══════════════ QUICK ACTIONS ═══════════════ -->
-<div class="section-label">Quick Actions</div>
-<div class="actions-grid">
-  <a class="btn primary" href="/api/health" target="_blank">🔍 Health Check</a>
-  <a class="btn" href="/api/picks" target="_blank">⚡ View Picks</a>
-  <a class="btn" href="/api/agent/premium?wallet=8YPA4TV2rKkFdeJwvhQZPm6CNMNAm9sjP98p3DZSEgcL" target="_blank">🤖 Test Premium Agent</a>
-  <a class="btn" href="/api/quota" target="_blank">📊 API Quota</a>
-  <a class="btn" href="/api/accuracy" target="_blank">🎯 Accuracy Stats</a>
-  <a class="btn" href="/api/leaderboard" target="_blank">🏆 Leaderboard</a>
-  <a class="btn" href="/api/elo" target="_blank">📈 Elo Ratings</a>
-  <a class="btn" href="/api/admin/split-config?secret=${secret}" target="_blank">💸 Split Config</a>
-  <a class="btn" href="https://edge-seeker.vercel.app" target="_blank">🌐 View Live App</a>
-  <a class="btn" href="/api/cron/update-stats?secret=${secret}" target="_blank">⚾ Run Stats Update</a>
-  <a class="btn primary" href="/api/cron/auto-run-agent?secret=${secret}" target="_blank">🤖 Run Agent Now</a>
-  <a class="btn danger" href="/admin/refresh-agent?secret=${secret}" target="_blank">🔄 Refresh Agent Cache</a>
-  <a class="btn" href="/api/cron/auto-log-results?secret=${secret}" target="_blank">📊 Auto-Log Results</a>
-  <a class="btn" href="/api/digest/send?secret=${secret}" target="_blank">📨 Send Digest</a>
-  <a class="btn primary" href="/api/cron/refresh-picks?secret=${secret}" target="_blank">🔄 Refresh Picks Now</a>
-  <a class="btn" href="/api/cache/status" target="_blank">📡 Cache Status</a>
-  <a class="btn primary" href="/api/sharp/movement" target="_blank">⚡ Sharp Movement</a>
-</div>
-
-<!-- ═══════════════ UPDATE PICK RESULTS ═══════════════ -->
-<div class="section-label">Update Pick Results</div>
-<div class="result-panel">
-  <p style="font-size:13px;color:#6A7A95;margin-bottom:20px">Mark a pick as Win / Loss / Push after the game resolves. Find the pick ID from <a href="/api/accuracy" target="_blank" style="color:#00E5FF">/api/accuracy</a>.</p>
-  <div class="result-fields">
-    <div class="field">
-      <label>Pick ID</label>
-      <input id="pickId" placeholder="e.g. 42" />
-    </div>
-    <div class="field">
-      <label>Result</label>
-      <select id="pickResult">
-        <option value="win">WIN ✓</option>
-        <option value="loss">LOSS ✗</option>
-        <option value="push">PUSH ~</option>
-        <option value="void">VOID</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>&nbsp;</label>
-      <button class="submit-btn" onclick="updateResult()">UPDATE</button>
-    </div>
-  </div>
-  <div id="updateMsg"></div>
-</div>
-
-<script>
-async function toggleBypass() {
-  const btn = document.getElementById('bypassBtn');
-  btn.disabled = true;
-  btn.textContent = 'Working...';
-  try {
-    const res = await fetch('/api/admin/cache-bypass', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: '${secret}' })
-    });
-    const data = await res.json();
-    if (!res.ok) { alert('Error: ' + (data.error || res.status)); btn.disabled = false; return; }
-    const enabled = data.cacheBypas; // note: matches server key
-    document.getElementById('bypassBadge').textContent  = enabled ? 'LIVE — NO CACHE' : 'CACHED';
-    document.getElementById('bypassBadge').className    = 'card-badge ' + (enabled ? 'badge-red' : 'badge-green');
-    document.getElementById('bypassStatus').textContent = enabled ? '🔴 ENABLED — hitting API live' : '🟢 DISABLED — serving cache';
-    document.getElementById('bypassStatus').className   = 'row-value ' + (enabled ? 'c-red' : 'c-green');
-    btn.style.background  = enabled ? '#22c55e' : '#ef4444';
-    btn.textContent       = enabled ? '✅ DISABLE BYPASS' : '🔄 BYPASS CACHE';
-    btn.disabled = false;
-  } catch (err) {
-    alert('Request failed: ' + err.message);
-    btn.disabled = false;
-    btn.textContent = '🔄 BYPASS CACHE';
-  }
-}
-
-async function updateResult() {
-  const id = document.getElementById('pickId').value.trim();
-  const result = document.getElementById('pickResult').value;
-  if (!id) { alert('Enter a pick ID'); return; }
-  const res = await fetch('/api/accuracy/result/' + id, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret: '${secret}', result })
-  });
-  const data = await res.json();
-  const msg = document.getElementById('updateMsg');
-  msg.style.display = 'block';
-  msg.style.color = res.ok ? '#00FF88' : '#FF3A5C';
-  msg.textContent = res.ok ? '✅ Pick #' + id + ' updated to ' + result.toUpperCase() : '❌ Error: ' + data.error;
-  setTimeout(() => { msg.style.display = 'none'; }, 4000);
-}
-</script>
-
-<!-- ═══════════════ MAINTENANCE CHECKLIST ═══════════════ -->
-<div class="section-label">Monthly Maintenance</div>
-<div class="checklist">
-  <div class="check-item">
-    <div class="check-icon">📊</div>
-    <div class="check-text">Check Odds API quota — upgrade if below 100 remaining</div>
-    <a class="check-link" href="https://the-odds-api.com" target="_blank">the-odds-api.com →</a>
-  </div>
-  <div class="check-item">
-    <div class="check-icon">🤖</div>
-    <div class="check-text">Check Anthropic credit balance</div>
-    <a class="check-link" href="https://console.anthropic.com/settings/billing" target="_blank">console.anthropic.com →</a>
-  </div>
-  <div class="check-item">
-    <div class="check-icon">⚾</div>
-    <div class="check-text">Update mlbStats.js with real team run averages once season starts</div>
-    <a class="check-link" href="https://baseball-reference.com/leagues/majors/2026.shtml" target="_blank">baseball-reference.com →</a>
-  </div>
-  <div class="check-item">
-    <div class="check-icon">🗄️</div>
-    <div class="check-text">Check Supabase database size — free tier limit is 500 MB</div>
-    <a class="check-link" href="https://supabase.com/dashboard" target="_blank">supabase.com →</a>
-  </div>
-  <div class="check-item">
-    <div class="check-icon">🚀</div>
-    <div class="check-text">Review Vercel deployment logs and function usage</div>
-    <a class="check-link" href="https://vercel.com/dashboard" target="_blank">vercel.com →</a>
-  </div>
-  <div class="check-item">
-    <div class="check-icon">🔐</div>
-    <div class="check-text">Dashboard protected by <code>ADMIN_SECRET</code> env var. Access: <code>/admin?secret=YOUR_SECRET</code></div>
-  </div>
-</div>
-
-<div style="height:48px"></div>
-</body>
 </html>`);
 });
 
