@@ -134,6 +134,7 @@ function americanToDecimal(americanOdds) {
  *
  * Kelly is accepted but no longer added to base — edge alone sets the ceiling.
  */
+// kellyPct param reserved for future weighting — currently unused, edge alone sets score
 function confidenceScore(edgePct, kellyPct) {
   const e = edgePct; // decimal (0.05 = 5%)
   if (e >= 0.15) return 60;

@@ -847,6 +847,7 @@ app.get("/api/picks", async (req, res) => {
         eloRatings = await supabaseQuery("elo_ratings", "GET", null, "?order=elo.desc");
       } catch (_) {
         // Fallback to opening day seeds
+        console.warn('⚠️ Elo fallback to Opening Day seeds — Supabase elo_ratings table may be empty. Update via /api/cron/update-elo once season data is available.');
         const { OPENING_DAY_ELO } = require("./eloSystem");
         eloRatings = Object.entries(OPENING_DAY_ELO).map(([abbr, data]) => ({
           team_abbr: abbr,
@@ -962,6 +963,7 @@ app.get("/api/picks/premium", async (req, res) => {
       try {
         eloRatings = await supabaseQuery("elo_ratings", "GET", null, "?order=elo.desc");
       } catch (_) {
+        console.warn('⚠️ Elo fallback to Opening Day seeds — Supabase elo_ratings table may be empty. Update via /api/cron/update-elo once season data is available.');
         const { OPENING_DAY_ELO } = require("./eloSystem");
         eloRatings = Object.entries(OPENING_DAY_ELO).map(([abbr, data]) => ({
           team_abbr: abbr, elo: data.elo, wins: data.wins || 0, losses: data.losses || 0,
@@ -1098,6 +1100,7 @@ app.get("/api/cron/refresh-picks", async (req, res) => {
       try {
         eloRatings = await supabaseQuery("elo_ratings", "GET", null, "?order=elo.desc");
       } catch (_) {
+        console.warn('⚠️ Elo fallback to Opening Day seeds — Supabase elo_ratings table may be empty. Update via /api/cron/update-elo once season data is available.');
         const { OPENING_DAY_ELO } = require("./eloSystem");
         eloRatings = Object.entries(OPENING_DAY_ELO).map(([abbr, data]) => ({
           team_abbr: abbr, elo: data.elo, wins: data.wins || 0, losses: data.losses || 0,

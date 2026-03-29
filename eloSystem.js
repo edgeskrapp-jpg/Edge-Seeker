@@ -127,7 +127,7 @@ function getEloTier(elo) {
  * Called by the daily cron job
  */
 async function updateEloFromResults(currentElos) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${today}&hydrate=linescore`;
 
   try {
