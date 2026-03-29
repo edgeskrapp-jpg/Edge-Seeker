@@ -20,6 +20,7 @@ const { getEnrichedCache } = require("./mlbDataEnricher");
 const { calculateBetPoints, getAccuracyBonus } = require("./pointsConfig");
 const { getFreePick, getPremiumPick, invalidateCache } = require("./agentRouter");
 const { getStrikeoutProps } = require("./strikeoutAgent");
+const { getHRProps } = require("./hrAgent");
 const { updateMLBStats } = require("./cron");
 const {
   getUser, upsertUser,
@@ -114,6 +115,7 @@ const cache = {
   picks: { data: null, fetchedAt: null },
   raw: { data: null, fetchedAt: null },
   strikeouts: { data: null, date: null },
+  hr: { data: null, date: null },
 };
 
 // ─── CACHE BYPASS FLAG ────────────────────────────────────────────────────────
@@ -2019,6 +2021,32 @@ app.get("/api/props/strikeouts", async (req, res) => {
   }
 });
 
+app.get("/api/agent/hr-props", async (req, res) => {
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+
+    // Serve from cache if same day
+    if (cache.hr.data && cache.hr.date === today) {
+      return res.json({ ...cache.hr.data, cached: true });
+    }
+
+    const { games } = await fetchMLBOdds();
+    if (!games || games.length === 0) {
+      return res.json({ props: [], dailySummary: 'No games today.', cached: false });
+    }
+
+    const enrichedData = getEnrichedCache() || {};
+    const result = await getHRProps(games, enrichedData);
+
+    cache.hr = { data: result, date: today };
+
+    res.json({ ...result, cached: false });
+  } catch (err) {
+    console.error("❌ /api/agent/hr-props error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── ELO ROUTES ──────────────────────────────────────────────────────────────
 
 const { OPENING_DAY_ELO, updateEloFromResults, getEloTier, AL_TEAMS, NL_TEAMS, DIVISIONS } = require("./eloSystem");
@@ -2888,7 +2916,7 @@ app.get('/admin.html', (req, res) => {
 app.use((req, res) => {
   res.status(404).json({
     error: "Route not found",
-    availableRoutes: ["/api/health", "/api/picks", "/api/odds/raw", "/api/quota", "/api/leaderboard", "/api/bets/:wallet", "/api/points/:wallet", "/api/users/:wallet", "/api/agent/free", "/api/agent/premium"],
+    availableRoutes: ["/api/health", "/api/picks", "/api/odds/raw", "/api/quota", "/api/leaderboard", "/api/bets/:wallet", "/api/points/:wallet", "/api/users/:wallet", "/api/agent/free", "/api/agent/premium", "/api/agent/hr-props"],
   });
 });
 
