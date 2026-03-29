@@ -2875,6 +2875,10 @@ app.get('/edge-seeker.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'edge-seeker.html'));
 });
 
+app.get('/admin.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
 // ─── 404 HANDLER ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
