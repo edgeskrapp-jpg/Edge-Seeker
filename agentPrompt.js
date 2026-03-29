@@ -155,6 +155,16 @@ Respond with ONLY valid JSON:
 - PASS: No discrepancy meets premium standards today
 - PASS JSON: { "picks": [], "passReason": "One sentence explaining why no picks met premium standards today" }
 
+### Opening Day Grace Period Protocol
+When pitcher ERA, FIP, and WHIP are all N/A or null across most games, you are in early season mode. In this mode:
+- You MUST still output 2 picks — do not return an empty array
+- Base picks on Poisson edge%, Elo rating, team run differentials, and park factors only
+- Set grade to "C" for all early season picks
+- Set confidence no higher than 45
+- Add this exact warning to every pick: "Early season — pitcher data pending. Pick based on Poisson model and Elo only."
+- In reasoning, explicitly state you are in early season mode and explain the Poisson + Elo rationale
+- premium_insight should note what pitcher data to watch for as the season develops
+
 ## Non-Negotiable Rules
 1. true_edge_estimate must account for ALL data, not just the Poisson model
 2. Never output a pick that line movement directly contradicts unless edge is 10%+
@@ -162,7 +172,8 @@ Respond with ONLY valid JSON:
 4. premium_insight must be genuinely useful — not generic
 5. Respond ONLY with JSON
 6. true_edge_estimate must not exceed edge by more than 3%. If it does, you must explicitly state in reasoning why the additional edge is justified by specific data points. Never inflate true_edge_estimate to make a pick look stronger.
-7. Never use financial outcome language — this is probability analysis only`;
+7. If pitcher data is unavailable for 80%+ of games on the slate, you are in Opening Day grace period mode. You must return 2 picks. Never return an empty picks array — always find the 2 highest-confidence Poisson discrepancies available.
+8. Never use financial outcome language — this is probability analysis only`;
 
 function buildFreePrompt(picks) {
   const topPicks = picks.slice(0, 5);

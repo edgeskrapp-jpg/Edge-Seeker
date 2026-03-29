@@ -50,7 +50,7 @@ async function callClaude(systemPrompt, userMessage, model = 'claude-sonnet-4-20
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1000,
+      max_tokens: 4000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     }),
@@ -151,7 +151,18 @@ async function getPremiumPick(picks) {
 
   console.log('🤖 Calling Claude Opus for premium pick...');
   const userMessage = buildPremiumPrompt(picks, enrichedData, fanGraphsData);
-  const result = await callClaude(PREMIUM_SYSTEM_PROMPT, userMessage, 'claude-opus-4-5');
+  let result = await callClaude(PREMIUM_SYSTEM_PROMPT, userMessage, 'claude-opus-4-5');
+
+  // Early season fallback — retry once with grace period context injected
+  if ((!result.picks || result.picks.length === 0) && picks.length >= 2) {
+    console.log('⚠️ Claude returned empty picks — may be early season data gap');
+    const allNoPitcherData = picks.every(p => p.homePitcherFIP == null && p.awayPitcherFIP == null);
+    if (allNoPitcherData) {
+      console.log('🔄 Retrying with Opening Day grace period context...');
+      const gracePeriodPrefix = 'OPENING DAY GRACE PERIOD ACTIVE — pitcher stats are not yet available for the 2026 season. You must select the 2 best picks from the candidates provided using Poisson edge and team strength only. Do not return an empty array.\n\n';
+      result = await callClaude(PREMIUM_SYSTEM_PROMPT, gracePeriodPrefix + userMessage, 'claude-opus-4-5');
+    }
+  }
 
   // Normalize to array of 1-2 picks
   const picksArray = (result.picks && Array.isArray(result.picks))
