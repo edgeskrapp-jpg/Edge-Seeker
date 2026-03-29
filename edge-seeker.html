@@ -2342,17 +2342,9 @@
 
   async function fetchSOLBalance(pubkey) {
     try {
-      const res = await fetch(SOLANA_RPC, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0', id: 1,
-          method: 'getBalance',
-          params: [pubkey, { commitment: 'confirmed' }]
-        })
-      });
+      const res = await fetch(`${API_BASE}/api/balance?wallet=${pubkey}`);
       const data = await res.json();
-      const lamports = data?.result?.value || 0;
+      const lamports = data?.lamports || 0;
       const sol = (lamports / 1_000_000_000).toFixed(2);
 
       // Fetch SOL price in USD
@@ -4182,8 +4174,8 @@
       updateTrackerCard('pick1', data.pick1);
       updateTrackerCard('pick2', data.pick2);
 
-      document.getElementById('totalPicksCount').textContent =
-        `${data.totalPicks} TOTAL PICKS`;
+      const totalPicksEl = document.getElementById('totalPicksCount');
+      if (totalPicksEl) totalPicksEl.textContent = `${data.totalPicks} TOTAL PICKS`;
 
       renderRecentPicks(data.recent || []);
 
