@@ -1342,7 +1342,7 @@ const FREE_ACCESS_WALLETS = [
   "8YPA4TV2rKkFdeJwvhQZPm6CNMNAm9sjP98p3DZSEgcL", // Owner testing wallet
 ];
 const PREMIUM_PRICE_SOL = 0.01; // 0.01 SOL per day
-const SOLANA_RPC = process.env.SOLANA_RPC_URL || 'https://rpc.ankr.com/solana';
+const SOLANA_RPC = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
 const OPERATIONS_WALLET = "5r2Pz7A3EYsvSZrusoWwkEiaMWcMXUEn9CAxc8p1qDrB";
 const PRIZE_POOL_WALLET = "ATjh5UUu8bof58mGRECHcZdYGVxYLVKvxAR3Nhy6vUWv";
@@ -1373,7 +1373,7 @@ async function verifyPayment(walletAddress) {
   try {
     const { createSolanaRpc } = require('@solana/kit');
 
-    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://rpc.ankr.com/solana';
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
     const rpc = createSolanaRpc(rpcUrl);
 
     // Fetch recent transaction signatures for the REVENUE wallet
@@ -1506,7 +1506,7 @@ async function splitPayment(amountSol, payerWallet) {
     }
 
     // ── RPC connection ────────────────────────────────────────────────────
-    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://rpc.ankr.com/solana';
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
     const rpc = createSolanaRpc(rpcUrl);
     const rpcSubscriptions = createSolanaRpcSubscriptions(
       rpcUrl.replace('https://', 'wss://')
