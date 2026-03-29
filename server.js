@@ -2589,7 +2589,7 @@ async function checkAndAutoRunAgent() {
 
     if (etHour < AGENT_AUTO_RUN_TIME) return; // Too early
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     if (agentAutoRun.lastRun === today) return; // Already ran today
 
     // Skip odds API call if picks cache is still fresh (under 4 hours)
@@ -2608,7 +2608,8 @@ async function checkAndAutoRunAgent() {
       return;
     }
 
-    const picks = applyPickFilters(analyzePicks(games));
+    const cachedEnriched = getEnrichedCache();
+    const picks = applyPickFilters(analyzePicks(games, cachedEnriched));
     await getPremiumPick(picks);
 
     const { getDailyPicks: verifyDailyPicks } = require('./supabase');
