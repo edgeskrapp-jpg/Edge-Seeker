@@ -36,6 +36,7 @@ const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
 
 // ─── FEATURE FLAGS ────────────────────────────────────────────────────────────
 const ODDS_API_UPGRADED = false; // Set to true when on paid plan for historical odds + all sharp books
+const ODDS_API_QUOTA_WARNING = 100; // Alert when remaining credits drop to this level
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const SOLANA_RPC = process.env.SOLANA_RPC_URL || 'https://rpc.ankr.com/solana';
@@ -127,7 +128,7 @@ let CACHE_BYPASS = false;
 // ─── SCHEDULE-AWARE CACHE ─────────────────────────────────────────────────────
 // Picks cache refreshes exactly twice daily at 11AM ET and 5PM ET.
 // All other requests serve cached data — zero extra API calls between windows.
-const REFRESH_HOURS_ET = [11, 17]; // 11:00 AM ET and 5:00 PM ET
+const REFRESH_HOURS_ET = [11]; // Single daily refresh at 11AM ET — conserves Odds API quota
 
 function getETOffset() {
   // MLB season March–November → EDT (UTC-4); otherwise EST (UTC-5)
@@ -372,6 +373,9 @@ async function fetchMLBOdds() {
   const remaining = res.headers.get("x-requests-remaining");
   const used = res.headers.get("x-requests-used");
   console.log(`📊 Odds API quota — Used: ${used} | Remaining: ${remaining}`);
+  if (remaining !== 'N/A' && parseInt(remaining) <= ODDS_API_QUOTA_WARNING) {
+    console.warn(`⚠️ ODDS API QUOTA WARNING: Only ${remaining} credits remaining this month. Consider pausing non-essential refreshes.`);
+  }
 
   const data = await res.json();
   return { games: data, remaining, used };
@@ -808,6 +812,15 @@ app.get("/api/picks", async (req, res) => {
         const cached = cache.picks.data;
         const picksWithMovement = addOddsMovement(cached.picks || []);
         return res.json({ ...cached, picks: stripToFreeTier(picksWithMovement), cached: true });
+      }
+    }
+
+    // Quota conservation — serve stale cache if credits are critically low
+    if (cache.picks.data) {
+      const quota = await fetchQuota().catch(() => ({ remaining: 'N/A' }));
+      if (quota.remaining !== 'N/A' && parseInt(quota.remaining) <= ODDS_API_QUOTA_WARNING) {
+        console.warn('⚠️ Quota critically low — serving stale cache to conserve credits');
+        return res.json({ ...cache.picks.data, cached: true, staleCache: true, quotaWarning: true });
       }
     }
 
@@ -2181,6 +2194,8 @@ app.get("/api/admin/status", async (req, res) => {
       remaining: quota.remaining,
       used: quota.used,
       limit: 500,
+      warningThreshold: ODDS_API_QUOTA_WARNING,
+      isLow: quota.remaining !== 'N/A' && parseInt(quota.remaining) <= ODDS_API_QUOTA_WARNING,
     },
 
     db: {
