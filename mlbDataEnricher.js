@@ -338,23 +338,31 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
     const teamKPct = pa > 0 ? ((parseInt(teamStat.strikeOuts || 0) / pa) * 100).toFixed(1) : 'N/A';
     const teamBBPct = pa > 0 ? ((parseInt(teamStat.baseOnBalls || 0) / pa) * 100).toFixed(1) : 'N/A';
 
-    // Find hot batter (highest OPS among qualifiers)
+    // Find top 5 batters by OPS among qualifiers (20+ PA)
     const splits = rosterRes.stats?.[0]?.splits || [];
-    const qualifiers = splits.filter(s => parseInt(s.stat?.plateAppearances || 0) >= 20);
-    const hotSplit = qualifiers.sort((a, b) =>
-      parseFloat(b.stat?.ops || 0) - parseFloat(a.stat?.ops || 0)
-    )[0];
+    const qualifiers = splits
+      .filter(s => parseInt(s.stat?.plateAppearances || 0) >= 20)
+      .sort((a, b) => parseFloat(b.stat?.ops || 0) - parseFloat(a.stat?.ops || 0));
+
+    const hotSplit = qualifiers[0] || null;
 
     const hotBatter = hotSplit ? {
       name: hotSplit.player?.fullName || 'Unknown',
       avg: hotSplit.stat?.avg || '.000',
       ops: hotSplit.stat?.ops || '.000',
-      hardHitPct: 'N/A',
-      barrelRate: 'N/A',
-      kPct: hotSplit.stat?.plateAppearances > 0
-        ? ((parseInt(hotSplit.stat.strikeOuts || 0) / parseInt(hotSplit.stat.plateAppearances)) * 100).toFixed(1)
-        : 'N/A',
+      homeRuns: hotSplit.stat?.homeRuns || 0,
+      slugging: hotSplit.stat?.slg || '.000',
+      hand: null,
     } : null;
+
+    const topBatters = qualifiers.slice(0, 5).map(s => ({
+      name: s.player?.fullName || 'Unknown',
+      avg: s.stat?.avg || '.000',
+      ops: s.stat?.ops || '.000',
+      homeRuns: s.stat?.homeRuns || 0,
+      slugging: s.stat?.slg || '.000',
+      hand: null,
+    }));
 
     return {
       teamHardHitPct: 'N/A',
@@ -365,6 +373,7 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
       teamAvg: teamStat.avg || 'N/A',
       teamOps: teamStat.ops || 'N/A',
       hotBatter,
+      topBatters,
     };
   } catch (err) {
     console.error('Team batting fetch error:', err.message);
@@ -759,32 +768,11 @@ async function fetchBatterStatcast(batterName) {
     const hrPerFB    = !isNaN(hrFbRaw)   ? `${hrFbRaw.toFixed(1)}%`   : null;
     const fbPct      = !isNaN(fbPctRaw)  ? `${fbPctRaw.toFixed(1)}%`  : null;
 
-    // Fetch last 14 days of pitch-level details to count recent HR game-dates
-    const today        = new Date().toISOString().split('T')[0];
-    const fourteenAgo  = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const sevenAgo     = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const detailsUrl   = `https://baseballsavant.mlb.com/statcast_search/csv?player_type=batter&player_lookup_type=name&player_search_full=${encodedName}&type=details&game_date_gt=${fourteenAgo}&game_date_lt=${today}&season=2026`;
+    // Recent HR trend from season total only — details call removed to conserve API credits
+    const homeRunRaw = parseFloat(row['home_run']);
+    const homeRuns   = !isNaN(homeRunRaw) ? homeRunRaw : null;
 
-    let recentHR7  = null;
-    let recentHR14 = null;
-
-    try {
-      const detailsRes  = await fetch(detailsUrl, { headers: SAVANT_HEADERS });
-      const detailsText = await detailsRes.text();
-      const detailsData = parseSavantCsv(detailsText);
-
-      if (detailsData && detailsData.length > 0) {
-        // Count rows where events === 'home_run', split by 7 / 14 day windows
-        const hrRows14 = detailsData.filter(r => r['events'] === 'home_run');
-        const hrRows7  = hrRows14.filter(r => r['game_date'] >= sevenAgo);
-        recentHR14 = hrRows14.length;
-        recentHR7  = hrRows7.length;
-      }
-    } catch (_) {
-      // recentHR fields stay null — non-fatal
-    }
-
-    return { barrelRate, exitVelo, hrPerFB, fbPct, recentHR7, recentHR14, hand: null };
+    return { barrelRate, exitVelo, hrPerFB, fbPct, homeRuns, recentHR7: null, recentHR14: null, hand: null };
   } catch (err) {
     console.error(`fetchBatterStatcast error for ${batterName}:`, err.message);
     return null;

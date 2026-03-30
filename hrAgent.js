@@ -16,6 +16,8 @@ const { TEAM_NAME_MAP } = require("./mlbStats");
 const { MLB_TEAM_IDS } = require("./cron");
 const { fetchBatterStatcast, fetchPitcherHRStats } = require("./mlbDataEnricher");
 
+const hrCache = { data: null, date: null };
+
 const PARK_HR_FACTORS = {
   COL: { hr: 1.40, note: "Coors Field — extreme altitude, ball carries significantly" },
   CIN: { hr: 1.18, note: "GABP — short right field porch" },
@@ -75,6 +77,8 @@ Your ONLY job is to find value in batter home run over/under props.
 - **Grade B**: Barrel rate >8% AND pitcher HR/9 >1.0 AND park factor neutral or better
 - **Grade C**: Any single strong signal but others missing or insufficient data
 - **PASS**: Barrel rate <6% OR pitcher is elite HR suppressor (HR/9 <0.7) OR TBD pitcher OR insufficient data
+- **Park Override OVER**: At COL (factor 1.40), lower the barrel rate threshold to 8%+ for Grade B. Any batter with OPS > .800 at Coors is a Grade C minimum.
+- **Park Override UNDER/PASS**: At SF, SD, PIT — raise the barrel rate threshold to 15%+ for Grade B. Do not recommend OVER props at these parks unless metrics are elite AND wind is blowing out 10mph+.
 
 ### When to recommend OVER 0.5 HR:
 - Barrel rate 12%+ facing pitcher with HR/9 1.3+
@@ -134,10 +138,21 @@ If no props meet threshold:
 
 ## Opening Day Grace Period
 When barrel rate, exit velocity, and HR/FB% are all N/A (no 2026 Statcast data yet):
-- Still output up to 3 props based on 2025 career Statcast data if available, park factors, wind, and pitcher HR/9
+- Still output up to 3 props using the data available: AVG, OPS, SLG, season HR totals, park factors, wind, and pitcher ERA/WHIP
+- Use SLG > .500 as a proxy for power when barrel rate is unavailable
+- Use season HR total as a proxy for power trend when recent HR data is unavailable
 - Set grade to "C" for all early season props
-- Add warning: "Early season — 2026 Statcast data pending. Using 2025 career metrics."
-- Note in reasoning that you are using prior season data`;
+- Set confidence no higher than 45
+- Add warning: "Early season — Statcast data pending. Using AVG/OPS/SLG as power proxy."
+- Always pick batters playing at HR-friendly parks (factor > 1.05) first when data is thin
+
+## Ballpark Intelligence — Always Apply
+Never ignore park context. Flag these explicitly in reasoning:
+- COL (1.40): ANYONE playing at Coors is a HR candidate regardless of metrics — always mention Coors in reasoning for COL home games
+- NYY (1.15): Left-handed pull hitters at Yankee Stadium right field porch — note handedness vs short porch
+- CIN (1.18): Underrated HR park — mention GABP when picking CIN home batters
+- SF (0.88), SD (0.89), PIT (0.90): Actively suppress HR props at these parks unless barrel rate is elite (15%+)
+- CHC (0.95 but wind-dependent): Always check wind direction at Wrigley — 10mph+ blowing out overrides the park factor suppression`;
 
 // ─── PROMPT BUILDER ───────────────────────────────────────────────────────────
 
@@ -179,24 +194,18 @@ function buildHRPrompt(games, enrichedData, hrDataMap, pitcherHRMap) {
       }
     }
 
-    // Home batters — up to 5, annotate with hrDataMap if available
-    const homeBatters = (hBat.lineup || []).slice(0, 5).map(b => {
-      const key = (b.name || b).toLowerCase();
-      const hr = hrDataMap[key];
-      if (hr) {
-        return `  - ${b.name || b}: Barrel ${hr.barrelRate || 'N/A'} | EV ${hr.exitVelo || 'N/A'} | HR/FB ${hr.hrPerFB || 'N/A'} | HR last 7d: ${hr.recentHR7 ?? 'N/A'} | HR last 14d: ${hr.recentHR14 ?? 'N/A'} | Hand: ${hr.hand || 'N/A'}`;
-      }
-      return `  - ${b.name || b}`;
+    // Home batters — top 5 by OPS from topBatters, falling back to hotBatter
+    const homeBatters = (hBat.topBatters || (hBat.hotBatter ? [hBat.hotBatter] : [])).slice(0, 5).map(b => {
+      const key = (b.name || '').toLowerCase();
+      const hr = hrDataMap[key] || {};
+      return `  - ${b.name}: AVG ${b.avg} | OPS ${b.ops} | HR ${b.homeRuns ?? 'N/A'} | SLG ${b.slugging || 'N/A'} | Barrel% ${hr.barrelRate || 'N/A'} | EV ${hr.exitVelo || 'N/A'} | HR/FB ${hr.hrPerFB || 'N/A'}`;
     });
 
-    // Away batters — up to 5
-    const awayBatters = (aBat.lineup || []).slice(0, 5).map(b => {
-      const key = (b.name || b).toLowerCase();
-      const hr = hrDataMap[key];
-      if (hr) {
-        return `  - ${b.name || b}: Barrel ${hr.barrelRate || 'N/A'} | EV ${hr.exitVelo || 'N/A'} | HR/FB ${hr.hrPerFB || 'N/A'} | HR last 7d: ${hr.recentHR7 ?? 'N/A'} | HR last 14d: ${hr.recentHR14 ?? 'N/A'} | Hand: ${hr.hand || 'N/A'}`;
-      }
-      return `  - ${b.name || b}`;
+    // Away batters — top 5 by OPS from topBatters, falling back to hotBatter
+    const awayBatters = (aBat.topBatters || (aBat.hotBatter ? [aBat.hotBatter] : [])).slice(0, 5).map(b => {
+      const key = (b.name || '').toLowerCase();
+      const hr = hrDataMap[key] || {};
+      return `  - ${b.name}: AVG ${b.avg} | OPS ${b.ops} | HR ${b.homeRuns ?? 'N/A'} | SLG ${b.slugging || 'N/A'} | Barrel% ${hr.barrelRate || 'N/A'} | EV ${hr.exitVelo || 'N/A'} | HR/FB ${hr.hrPerFB || 'N/A'}`;
     });
 
     const homeBatterLines = homeBatters.length > 0
@@ -259,6 +268,12 @@ async function getHRProps(games, enrichedData) {
     return { props: [], dailySummary: 'No games today.' };
   }
 
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  if (hrCache.data && hrCache.date === today) {
+    console.log('⚾ HR Agent: serving from cache');
+    return hrCache.data;
+  }
+
   // Collect unique pitcher and batter names from enrichedData
   const pitcherNames = new Set();
   const batterNames  = new Set();
@@ -267,8 +282,11 @@ async function getHRProps(games, enrichedData) {
     const e = enrichedData[key];
     if (e.homePitcher?.name) pitcherNames.add(e.homePitcher.name);
     if (e.awayPitcher?.name) pitcherNames.add(e.awayPitcher.name);
-    if (e.homeBatting?.hotBatter?.name) batterNames.add(e.homeBatting.hotBatter.name);
-    if (e.awayBatting?.hotBatter?.name) batterNames.add(e.awayBatting.hotBatter.name);
+    const homeBatters = e.homeBatting?.topBatters || (e.homeBatting?.hotBatter ? [e.homeBatting.hotBatter] : []);
+    const awayBatters = e.awayBatting?.topBatters || (e.awayBatting?.hotBatter ? [e.awayBatting.hotBatter] : []);
+    for (const b of [...homeBatters, ...awayBatters]) {
+      if (b.name) batterNames.add(b.name);
+    }
   }
 
   const pitcherHRMap = {};
@@ -310,7 +328,12 @@ async function getHRProps(games, enrichedData) {
   const data = await res.json();
   const text = data.content?.[0]?.text || '{}';
   const clean = text.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean);
+  const result = JSON.parse(clean);
+
+  hrCache.data = result;
+  hrCache.date = today;
+
+  return result;
 }
 
 module.exports = { getHRProps, PARK_HR_FACTORS, HR_SYSTEM_PROMPT };
