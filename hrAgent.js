@@ -61,41 +61,40 @@ Your ONLY job is to find value in batter home run over/under props.
 ## Your Analytical Framework
 
 ### Key Metrics (in order of importance):
-1. **Barrel Rate** — Most predictive HR metric. 12%+ = elite, 8-12% = good, <6% = avoid
-2. **Exit Velocity** — Average EV. 92mph+ = elite, <88mph = fade
-3. **HR/FB%** — Home run rate on fly balls. 20%+ = elite, <12% = fade
-4. **Pitcher HR/9** — HRs allowed per 9 innings. 1.5+ = HR prone, <0.8 = suppressor
-5. **Pitcher Fly Ball Rate** — High FB% pitchers give up more HR opportunities
-6. **Park HR Factor** — Coors/Yankee Stadium vs Petco/Oracle is massive
+1. **ISO (Isolated Power)** — SLG minus AVG. Best power proxy when barrel rate unavailable. 0.250+ = elite power, 0.150-0.250 = solid, below 0.100 = avoid
+2. **SLG%** — Slugging percentage as exit velocity proxy. .550+ = elite, below .380 = fade for HR props
+3. **HR/Contact Rate** — Home runs per non-strikeout at-bat. 8%+ = elite HR hitter, below 3% = fade
+4. **Season HR Total** — Raw HR count in context of games played
+5. **Pitcher HR/9** — HRs allowed per 9 innings. 1.5+ = HR prone, below 0.8 = suppressor
+6. **Park HR Factor** — Coors/Yankee Stadium vs Petco/Oracle is the biggest edge
 7. **Wind** — 10mph+ blowing out = significant HR boost. Blowing in = suppress
-8. **Platoon Advantage** — RHB vs LHP and LHB vs RHP have HR rate advantages
-9. **Recent Form** — HR in last 7/14 days. Hot streaks are real in baseball
-10. **Batter Handedness vs Park** — LHB at Yankee Stadium right field porch is elite
+8. **Platoon Advantage** — Batter handedness vs pitcher handedness
+9. **OPS** — Overall offensive quality indicator
 
 ### Grade Calibration Rules:
-- **Grade A**: Barrel rate >12% AND pitcher HR/9 >1.3 AND favorable park factor >1.05 — all three required
-- **Grade B**: Barrel rate >8% AND pitcher HR/9 >1.0 AND park factor neutral or better
-- **Grade C**: Any single strong signal but others missing or insufficient data
-- **PASS**: Barrel rate <6% OR pitcher is elite HR suppressor (HR/9 <0.7) OR TBD pitcher OR insufficient data
-- **Park Override OVER**: At COL (factor 1.40), lower the barrel rate threshold to 8%+ for Grade B. Any batter with OPS > .800 at Coors is a Grade C minimum.
-- **Park Override UNDER/PASS**: At SF, SD, PIT — raise the barrel rate threshold to 15%+ for Grade B. Do not recommend OVER props at these parks unless metrics are elite AND wind is blowing out 10mph+.
+- **Grade A**: ISO >0.250 AND pitcher HR/9 >1.3 AND park factor >1.05 — all three required
+- **Grade B**: ISO >0.180 AND pitcher HR/9 >1.0 AND park factor neutral or better
+- **Grade C**: Any single strong signal — high ISO at HR park, or pitcher HR/9 >1.5, or Coors Field with any qualified batter
+- **PASS**: ISO below 0.100 OR pitcher HR/9 below 0.7 OR TBD pitcher OR below 50 PA
+- **Park Override OVER**: At COL (factor 1.40), lower the ISO threshold to 0.150+ for Grade B. Any batter with OPS > .800 at Coors is a Grade C minimum.
+- **Park Override UNDER/PASS**: At SF, SD, PIT — raise the ISO threshold to 0.250+ for Grade B. Do not recommend OVER props at these parks unless metrics are elite AND wind is blowing out 10mph+.
 
 ### When to recommend OVER 0.5 HR:
-- Barrel rate 12%+ facing pitcher with HR/9 1.3+
+- ISO >0.250 facing pitcher with HR/9 1.3+
 - Favorable park factor 1.05+ with wind blowing out 10mph+
-- Batter with 3+ HR in last 14 days facing fly ball pitcher
+- Batter with high HR/contact rate (8%+) facing HR-prone pitcher
 
 ### When to recommend UNDER 0.5 HR (or PASS):
-- Batter barrel rate below 6%
+- Batter ISO below 0.100
 - Elite groundball pitcher with HR/9 under 0.7
 - Extreme pitcher-friendly park (Petco, Oracle) with wind blowing in
-- No recent HR production (0 HR last 14 days) with no strong barrel metrics
+- Low season HR total with no strong power metrics
 
 ### When to PASS:
 - TBD pitcher
 - Insufficient batter data (fewer than 50 PA)
 - Conflicting signals with no clear edge
-- Early season with no 2026 Statcast data yet — note data source
+- ISO unavailable and no other power indicators present
 
 ## Output Format — JSON only:
 {
@@ -111,16 +110,18 @@ Your ONLY job is to find value in batter home run over/under props.
       "confidence": 72,
       "grade": "A",
       "keyMetrics": {
-        "barrelRate": "18.2%",
-        "exitVelocity": "95.1mph",
-        "hrPerFB": "22.4%",
+        "iso": "0.287 (elite power)",
+        "slugging": ".567",
+        "hrContactRate": "9.2% HR/contact",
+        "seasonHR": "8 HR in 24 games",
         "pitcherHR9": "1.42",
-        "pitcherFBPct": "38.2%",
-        "parkFactor": "1.15 (HR friendly — short right field porch)",
-        "windImpact": "12mph blowing out to RF — significant HR boost",
-        "platoonAdvantage": "RHB vs LHP — favorable",
-        "recentForm": "2 HR last 7 days",
-        "batterHand": "R"
+        "pitcherFBProxy": "12.4% HR/H",
+        "parkFactor": "1.15 (HR friendly)",
+        "windImpact": "12mph blowing out — HR boost",
+        "platoonAdvantage": "LHB vs RHP — favorable",
+        "batterHand": "L",
+        "ops": ".934",
+        "dataSource": "MLB Stats API"
       },
       "reasoning": "2-3 sentences using specific numbers",
       "warning": "Risk factor or empty string",
@@ -198,14 +199,14 @@ function buildHRPrompt(games, enrichedData, hrDataMap, pitcherHRMap) {
     const homeBatters = (hBat.topBatters || (hBat.hotBatter ? [hBat.hotBatter] : [])).slice(0, 5).map(b => {
       const key = (b.name || '').toLowerCase();
       const hr = hrDataMap[key] || {};
-      return `  - ${b.name}: AVG ${b.avg} | OPS ${b.ops} | HR ${b.homeRuns ?? 'N/A'} | SLG ${b.slugging || 'N/A'} | Barrel% ${hr.barrelRate || 'N/A'} | EV ${hr.exitVelo || 'N/A'} | HR/FB ${hr.hrPerFB || 'N/A'}`;
+      return `  - ${b.name}: AVG ${b.avg} | SLG ${b.slg || b.slugging || 'N/A'} | ISO ${b.iso || hr.iso || 'N/A'} | HR ${b.homeRuns ?? 'N/A'} | OPS ${b.ops} | Hand: ${hr.hand || b.hand || 'N/A'} | HR/Contact: ${hr.hrPerFB || 'N/A'}`;
     });
 
     // Away batters — top 5 by OPS from topBatters, falling back to hotBatter
     const awayBatters = (aBat.topBatters || (aBat.hotBatter ? [aBat.hotBatter] : [])).slice(0, 5).map(b => {
       const key = (b.name || '').toLowerCase();
       const hr = hrDataMap[key] || {};
-      return `  - ${b.name}: AVG ${b.avg} | OPS ${b.ops} | HR ${b.homeRuns ?? 'N/A'} | SLG ${b.slugging || 'N/A'} | Barrel% ${hr.barrelRate || 'N/A'} | EV ${hr.exitVelo || 'N/A'} | HR/FB ${hr.hrPerFB || 'N/A'}`;
+      return `  - ${b.name}: AVG ${b.avg} | SLG ${b.slg || b.slugging || 'N/A'} | ISO ${b.iso || hr.iso || 'N/A'} | HR ${b.homeRuns ?? 'N/A'} | OPS ${b.ops} | Hand: ${hr.hand || b.hand || 'N/A'} | HR/Contact: ${hr.hrPerFB || 'N/A'}`;
     });
 
     const homeBatterLines = homeBatters.length > 0
@@ -223,11 +224,11 @@ function buildHRPrompt(games, enrichedData, hrDataMap, pitcherHRMap) {
     const aHotHR = aHot ? (hrDataMap[aHot.name?.toLowerCase()] || {}) : null;
 
     const hHotLine = hHot
-      ? `  HOT BATTER: ${hHot.name || 'N/A'}\n  Statcast: Barrel%=${hHotHR?.barrelRate || 'N/A'} | ExitVelo=${hHotHR?.exitVelo || 'N/A'} | HR/FB=${hHotHR?.hrPerFB || 'N/A'} | HR last 7 days=${hHotHR?.recentHR7 ?? 'N/A'} | HR last 14 days=${hHotHR?.recentHR14 ?? 'N/A'}`
+      ? `  HOT BATTER: ${hHot.name || 'N/A'}\n  Power: ISO=${hHotHR?.iso || 'N/A'} | SLG=${hHotHR?.slg || hHot.slg || hHot.slugging || 'N/A'} | HR/Contact=${hHotHR?.hrPerFB || 'N/A'} | OPS=${hHotHR?.ops || hHot.ops || 'N/A'}`
       : '';
 
     const aHotLine = aHot
-      ? `  HOT BATTER: ${aHot.name || 'N/A'}\n  Statcast: Barrel%=${aHotHR?.barrelRate || 'N/A'} | ExitVelo=${aHotHR?.exitVelo || 'N/A'} | HR/FB=${aHotHR?.hrPerFB || 'N/A'} | HR last 7 days=${aHotHR?.recentHR7 ?? 'N/A'} | HR last 14 days=${aHotHR?.recentHR14 ?? 'N/A'}`
+      ? `  HOT BATTER: ${aHot.name || 'N/A'}\n  Power: ISO=${aHotHR?.iso || 'N/A'} | SLG=${aHotHR?.slg || aHot.slg || aHot.slugging || 'N/A'} | HR/Contact=${aHotHR?.hrPerFB || 'N/A'} | OPS=${aHotHR?.ops || aHot.ops || 'N/A'}`
       : '';
 
     const hpHR = pitcherHRMap[hp.name?.toLowerCase()] || {};
@@ -242,11 +243,11 @@ WEATHER: Temp: ${weather.temp || 'N/A'}°F | Wind: ${windSpeed}mph ${windDir}
 
 HOME PITCHER: ${hp.name || 'TBD'} (${homeAbbr})
   ERA: ${hp.era || 'N/A'} | WHIP: ${hp.whip || 'N/A'} | Hand: ${hp.throws || 'N/A'}
-  HR Stats: HR/9=${hpHR.hr9 || 'N/A'} | FB%=${hpHR.fbPct || 'N/A'} | Barrel% allowed=${hpHR.barrelAllowed || 'N/A'} | Avg EV allowed=${hpHR.evAllowed || 'N/A'}
+  HR Stats: HR/9=${hpHR.hr9 || 'N/A'} | HR/H proxy=${hpHR.fbPct || 'N/A'} | OAV=${hpHR.barrelAllowed || 'N/A'} | OPS against=${hpHR.evAllowed || 'N/A'}
 
 AWAY PITCHER: ${ap.name || 'TBD'} (${awayAbbr})
   ERA: ${ap.era || 'N/A'} | WHIP: ${ap.whip || 'N/A'} | Hand: ${ap.throws || 'N/A'}
-  HR Stats: HR/9=${apHR.hr9 || 'N/A'} | FB%=${apHR.fbPct || 'N/A'} | Barrel% allowed=${apHR.barrelAllowed || 'N/A'} | Avg EV allowed=${apHR.evAllowed || 'N/A'}
+  HR Stats: HR/9=${apHR.hr9 || 'N/A'} | HR/H proxy=${apHR.fbPct || 'N/A'} | OAV=${apHR.barrelAllowed || 'N/A'} | OPS against=${apHR.evAllowed || 'N/A'}
 
 HOME BATTERS (${homeAbbr}):
 ${homeBatterLines}${hHotLine ? '\n' + hHotLine : ''}
@@ -292,12 +293,14 @@ async function getHRProps(games, enrichedData) {
   const pitcherHRMap = {};
   const hrDataMap    = {};
 
+  const season = new Date().getFullYear();
+
   await Promise.all([
     ...[...pitcherNames].map(name =>
-      fetchPitcherHRStats(name).then(d => { if (d) pitcherHRMap[name.toLowerCase()] = d; })
+      fetchPitcherHRStats(name, season).then(d => { if (d) pitcherHRMap[name.toLowerCase()] = d; })
     ),
     ...[...batterNames].map(name =>
-      fetchBatterStatcast(name).then(d => { if (d) hrDataMap[name.toLowerCase()] = d; })
+      fetchBatterStatcast(name, season).then(d => { if (d) hrDataMap[name.toLowerCase()] = d; })
     ),
   ]);
 

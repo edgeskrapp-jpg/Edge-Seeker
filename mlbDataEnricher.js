@@ -359,8 +359,9 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
       name: s.player?.fullName || 'Unknown',
       avg: s.stat?.avg || '.000',
       ops: s.stat?.ops || '.000',
-      homeRuns: s.stat?.homeRuns || 0,
-      slugging: s.stat?.slg || '.000',
+      slg: s.stat?.slg || '.000',
+      homeRuns: parseInt(s.stat?.homeRuns || 0),
+      iso: (parseFloat(s.stat?.slg || 0) - parseFloat(s.stat?.avg || 0)).toFixed(3),
       hand: null,
     }));
 
@@ -743,36 +744,56 @@ async function fetchPitcherVelocityTrend(pitcherName) {
 }
 
 /**
- * Fetch batter Statcast data from Baseball Savant.
- * Returns barrel rate, exit velocity, HR/FB%, fly ball rate, and recent HR counts.
+ * Fetch batter power metrics using MLB Stats API only.
+ * Returns ISO, SLG, HR/contact rate, and season HR count as power proxies.
  */
-async function fetchBatterStatcast(batterName) {
+async function fetchBatterStatcast(batterName, season) {
   if (!batterName) return null;
   try {
-    const encodedName = encodeURIComponent(batterName);
-    const summaryUrl = `https://baseballsavant.mlb.com/statcast_search/csv?player_type=batter&player_lookup_type=name&player_search_full=${encodedName}&type=summary&season=2026`;
-    const summaryRes = await fetch(summaryUrl, { headers: SAVANT_HEADERS });
-    const summaryText = await summaryRes.text();
-    const summaryData = parseSavantCsv(summaryText);
-    if (!summaryData || summaryData.length === 0) return null;
+    const searchUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(batterName)}&sportId=1`;
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+    const player = searchData.people?.[0];
+    if (!player) return null;
 
-    const row = summaryData[0];
+    const playerId = player.id;
+    const statsUrl = `https://statsapi.mlb.com/api/v1/people/${playerId}/stats?stats=season&group=hitting&season=${season}&gameType=R`;
+    const statsRes = await fetch(statsUrl);
+    const statsData = await statsRes.json();
+    const stat = statsData.stats?.[0]?.splits?.[0]?.stat;
+    if (!stat) return null;
 
-    const barrelRaw = parseFloat(row['barrel_batted_rate']);
-    const evoRaw    = parseFloat(row['launch_speed_avg']);
-    const hrFbRaw   = parseFloat(row['hr_fb_rate']);
-    const fbPctRaw  = parseFloat(row['fb_pct']);
+    const ab  = parseInt(stat.atBats || 0);
+    const so  = parseInt(stat.strikeOuts || 0);
+    const h   = parseInt(stat.hits || 0);
+    const hr  = parseInt(stat.homeRuns || 0);
+    const slg = parseFloat(stat.slg || 0);
+    const avg = parseFloat(stat.avg || 0);
+    const pa  = parseInt(stat.plateAppearances || 0);
 
-    const barrelRate = !isNaN(barrelRaw) ? `${barrelRaw.toFixed(1)}%` : null;
-    const exitVelo   = !isNaN(evoRaw)    ? `${evoRaw.toFixed(1)}mph`  : null;
-    const hrPerFB    = !isNaN(hrFbRaw)   ? `${hrFbRaw.toFixed(1)}%`   : null;
-    const fbPct      = !isNaN(fbPctRaw)  ? `${fbPctRaw.toFixed(1)}%`  : null;
+    // ISO = SLG - AVG (power proxy for barrel rate)
+    const iso = slg > 0 && avg > 0 ? (slg - avg).toFixed(3) : null;
 
-    // Recent HR trend from season total only — details call removed to conserve API credits
-    const homeRunRaw = parseFloat(row['home_run']);
-    const homeRuns   = !isNaN(homeRunRaw) ? homeRunRaw : null;
+    // HR/FB approximation: non-SO, non-HR outs are roughly fly balls + grounders
+    // HR / (AB - SO - (H - HR)) gives rough HR/contact rate
+    const contactAB = ab - so - (h - hr);
+    const hrContactRate = contactAB > 0 ? ((hr / contactAB) * 100).toFixed(1) : null;
 
-    return { barrelRate, exitVelo, hrPerFB, fbPct, homeRuns, recentHR7: null, recentHR14: null, hand: null };
+    return {
+      barrelRate: iso ? `ISO ${iso} (power proxy)` : null,
+      exitVelo: slg > 0 ? `SLG ${stat.slg} (EV proxy)` : null,
+      hrPerFB: hrContactRate ? `${hrContactRate}% HR/contact` : null,
+      homeRuns: hr,
+      avg: stat.avg || '.000',
+      ops: stat.ops || '.000',
+      slg: stat.slg || '.000',
+      iso,
+      recentHR7: null,
+      recentHR14: null,
+      hand: player.batSide?.code || null,
+      pa,
+      source: 'mlb_stats_api',
+    };
   } catch (err) {
     console.error(`fetchBatterStatcast error for ${batterName}:`, err.message);
     return null;
@@ -780,41 +801,44 @@ async function fetchBatterStatcast(batterName) {
 }
 
 /**
- * Fetch pitcher HR-allowed Statcast data from Baseball Savant.
- * Returns HR/9, fly ball rate allowed, barrel% allowed, avg EV allowed.
+ * Fetch pitcher HR-allowed stats using MLB Stats API only.
+ * Returns HR/9, HR/H proxy for fly ball rate, ERA, WHIP.
  */
-async function fetchPitcherHRStats(pitcherName) {
+async function fetchPitcherHRStats(pitcherName, season) {
   if (!pitcherName) return null;
   try {
-    const encodedName = encodeURIComponent(pitcherName);
-    const url = `https://baseballsavant.mlb.com/statcast_search/csv?player_type=pitcher&player_lookup_type=name&player_search_full=${encodedName}&type=summary&season=2026`;
-    const res  = await fetch(url, { headers: SAVANT_HEADERS });
-    const text = await res.text();
-    const data = parseSavantCsv(text);
-    if (!data || data.length === 0) return null;
+    const searchUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(pitcherName)}&sportId=1`;
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+    const player = searchData.people?.[0];
+    if (!player) return null;
 
-    const row = data[0];
+    const playerId = player.id;
+    const statsUrl = `https://statsapi.mlb.com/api/v1/people/${playerId}/stats?stats=season&group=pitching&season=${season}&gameType=R`;
+    const statsRes = await fetch(statsUrl);
+    const statsData = await statsRes.json();
+    const stat = statsData.stats?.[0]?.splits?.[0]?.stat;
+    if (!stat) return null;
 
-    const hrRaw     = parseFloat(row['hr']);
-    const ipStr     = row['p_formatted_ip'] || '';
-    const barrelRaw = parseFloat(row['barrel_batted_rate']);
-    const evRaw     = parseFloat(row['launch_speed_avg']);
-    const fbRaw     = parseFloat(row['fb_pct']);
+    const ip  = parseFloat(stat.inningsPitched || 0);
+    const hr  = parseInt(stat.homeRuns || 0);
+    if (ip < 5) return null; // insufficient sample
 
-    // Parse formatted IP (e.g. "23.1" means 23 full innings + 1 out = 23.333)
-    const ipParts = ipStr.split('.');
-    const fullInnings = parseInt(ipParts[0]) || 0;
-    const outs        = parseInt(ipParts[1]) || 0;
-    const ip          = fullInnings + (outs / 3);
+    const hr9 = ip > 0 ? ((hr / ip) * 9).toFixed(2) : null;
 
-    if (isNaN(hrRaw) || ip < 5) return null;
+    // FB% proxy: (HR allowed / hits allowed) * 100 — rough but directional
+    const hits = parseInt(stat.hits || 0);
+    const fbProxy = hits > 0 ? ((hr / hits) * 100).toFixed(1) : null;
 
-    const hr9          = ((hrRaw / ip) * 9).toFixed(2);
-    const fbPct        = !isNaN(fbRaw)     ? `${fbRaw.toFixed(1)}%`    : null;
-    const barrelAllowed = !isNaN(barrelRaw) ? `${barrelRaw.toFixed(1)}%` : null;
-    const evAllowed    = !isNaN(evRaw)      ? `${evRaw.toFixed(1)}mph`   : null;
-
-    return { hr9, fbPct, barrelAllowed, evAllowed };
+    return {
+      hr9,
+      fbPct: fbProxy ? `${fbProxy}% HR/H (FB proxy)` : null,
+      barrelAllowed: stat.avg || null,
+      evAllowed: stat.ops || null,
+      era: stat.era || null,
+      whip: stat.whip || null,
+      source: 'mlb_stats_api',
+    };
   } catch (err) {
     console.error(`fetchPitcherHRStats error for ${pitcherName}:`, err.message);
     return null;
