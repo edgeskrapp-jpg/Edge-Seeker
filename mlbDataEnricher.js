@@ -750,11 +750,31 @@ async function fetchPitcherVelocityTrend(pitcherName) {
 async function fetchBatterStatcast(batterName, season) {
   if (!batterName) return null;
   try {
-    const searchUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(batterName)}&sportId=1`;
+    // Strategy 1 — full name search
+    const searchUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(batterName)}&sportId=1&activeStatus=ACTIVE`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
-    const player = searchData.people?.[0];
-    if (!player) return null;
+
+    // Strategy 2 — last name only if no results
+    let people = searchData.people || [];
+    if (people.length === 0) {
+      const lastName = batterName.split(' ').slice(1).join(' ') || batterName;
+      const fallbackUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(lastName)}&sportId=1&activeStatus=ACTIVE`;
+      const fallbackRes = await fetch(fallbackUrl);
+      const fallbackData = await fallbackRes.json();
+      people = fallbackData.people || [];
+    }
+
+    const nameLower = batterName.toLowerCase();
+    const player = people.find(p =>
+      p.fullName?.toLowerCase() === nameLower ||
+      p.fullName?.toLowerCase().includes(nameLower.split(' ').pop())
+    ) || people[0];
+
+    if (!player) {
+      console.log(`⚾ HR Agent: no MLB Stats API match for "${batterName}"`);
+      return null;
+    }
 
     const playerId = player.id;
     const statsUrl = `https://statsapi.mlb.com/api/v1/people/${playerId}/stats?stats=season&group=hitting&season=${season}&gameType=R`;
@@ -807,11 +827,31 @@ async function fetchBatterStatcast(batterName, season) {
 async function fetchPitcherHRStats(pitcherName, season) {
   if (!pitcherName) return null;
   try {
-    const searchUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(pitcherName)}&sportId=1`;
+    // Strategy 1 — full name search
+    const searchUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(pitcherName)}&sportId=1&activeStatus=ACTIVE`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
-    const player = searchData.people?.[0];
-    if (!player) return null;
+
+    // Strategy 2 — last name only if no results
+    let people = searchData.people || [];
+    if (people.length === 0) {
+      const lastName = pitcherName.split(' ').slice(1).join(' ') || pitcherName;
+      const fallbackUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(lastName)}&sportId=1&activeStatus=ACTIVE`;
+      const fallbackRes = await fetch(fallbackUrl);
+      const fallbackData = await fallbackRes.json();
+      people = fallbackData.people || [];
+    }
+
+    const nameLower = pitcherName.toLowerCase();
+    const player = people.find(p =>
+      p.fullName?.toLowerCase() === nameLower ||
+      p.fullName?.toLowerCase().includes(nameLower.split(' ').pop())
+    ) || people[0];
+
+    if (!player) {
+      console.log(`⚾ HR Agent: no MLB Stats API match for "${pitcherName}"`);
+      return null;
+    }
 
     const playerId = player.id;
     const statsUrl = `https://statsapi.mlb.com/api/v1/people/${playerId}/stats?stats=season&group=pitching&season=${season}&gameType=R`;
