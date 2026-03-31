@@ -324,7 +324,7 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
 
     // Fetch team-level aggregate hitting stats
     const teamUrl = `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=season&group=hitting&season=${season}&gameType=R`;
-    const rosterUrl = `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=season&group=hitting&season=${season}&gameType=R&playerPool=All`;
+    const rosterUrl = `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=season&group=hitting&season=${season}&gameType=R&playerPool=All&hydrate=person`;
 
     const [teamRes, rosterRes] = await Promise.all([
       fetch(teamUrl).then(r => r.json()),
@@ -347,7 +347,7 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
     const hotSplit = qualifiers[0] || null;
 
     const hotBatter = hotSplit ? {
-      name: hotSplit.player?.fullName || 'Unknown',
+      name: hotSplit.player?.fullName || hotSplit.person?.fullName || hotSplit.player?.lastName || null,
       avg: hotSplit.stat?.avg || '.000',
       ops: hotSplit.stat?.ops || '.000',
       homeRuns: hotSplit.stat?.homeRuns || 0,
@@ -356,7 +356,7 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
     } : null;
 
     const topBatters = qualifiers.slice(0, 5).map(s => ({
-      name: s.player?.fullName || 'Unknown',
+      name: s.player?.fullName || s.person?.fullName || s.player?.lastName || null,
       avg: s.stat?.avg || '.000',
       ops: s.stat?.ops || '.000',
       slg: s.stat?.slg || '.000',
