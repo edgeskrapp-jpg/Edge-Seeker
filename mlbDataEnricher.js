@@ -324,7 +324,7 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
 
     // Fetch team-level aggregate hitting stats
     const teamUrl = `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=season&group=hitting&season=${season}&gameType=R`;
-    const rosterUrl = `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=season&group=hitting&season=${season}&gameType=R&playerPool=All&hydrate=person`;
+    const rosterUrl = `https://statsapi.mlb.com/api/v1/stats?stats=season&group=hitting&season=${season}&gameType=R&teamId=${teamId}&sportId=1`;
 
     const [teamRes, rosterRes] = await Promise.all([
       fetch(teamUrl).then(r => r.json()),
@@ -341,7 +341,7 @@ async function fetchTeamBattingStatcast(teamAbbr, season) {
     // Find top 5 batters by OPS among qualifiers (20+ PA)
     const splits = rosterRes.stats?.[0]?.splits || [];
     const qualifiers = splits
-      .filter(s => parseInt(s.stat?.plateAppearances || 0) >= 20)
+      .filter(s => parseInt(s.stat?.plateAppearances || 0) >= 5)
       .sort((a, b) => parseFloat(b.stat?.ops || 0) - parseFloat(a.stat?.ops || 0));
 
     const hotSplit = qualifiers[0] || null;
